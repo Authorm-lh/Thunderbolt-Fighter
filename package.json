@@ -1,0 +1,17 @@
+{
+  "name": "thunderbolt-fighter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "electron": "^39.2.6"
+  }
+}
