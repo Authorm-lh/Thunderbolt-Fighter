@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
 
 class FirstPlayableScene extends Phaser.Scene {
   constructor() {

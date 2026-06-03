@@ -1,0 +1,59 @@
+import { cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+
+const require = createRequire(import.meta.url);
+const AdmZip = require('adm-zip');
+const { downloadArtifact } = require('@electron/get');
+
+const main = async () => {
+  const root = process.cwd();
+  const appName = 'Thunderbolt Fighter';
+  const releaseDir = path.join(root, 'release');
+  const outputDir = path.join(releaseDir, `${appName}-win32-x64`);
+  const appDir = path.join(outputDir, 'resources', 'app');
+  const electronPackageDir = path.join(root, 'node_modules', 'electron');
+  const electronDistDir = path.join(electronPackageDir, 'dist');
+  const electronExe = path.join(electronDistDir, 'electron.exe');
+
+  const electronPackage = JSON.parse(await readFile(path.join(electronPackageDir, 'package.json'), 'utf8'));
+
+  if (!existsSync(electronExe)) {
+    const zipPath = await downloadArtifact({
+      version: electronPackage.version,
+      artifactName: 'electron',
+      platform: 'win32',
+      arch: 'x64',
+      checksums: require('electron/checksums.json')
+    });
+
+    await rm(electronDistDir, { recursive: true, force: true });
+    await mkdir(electronDistDir, { recursive: true });
+    new AdmZip(zipPath).extractAllTo(electronDistDir, true);
+  }
+
+  if (!existsSync(electronExe)) {
+    throw new Error(`Electron runtime was not found at ${electronExe}`);
+  }
+
+  await rm(outputDir, { recursive: true, force: true });
+  await mkdir(appDir, { recursive: true });
+
+  await cp(electronDistDir, outputDir, { recursive: true });
+  await rm(path.join(outputDir, 'electron.exe'), { force: true });
+  await cp(electronExe, path.join(outputDir, `${appName}.exe`));
+
+  await cp(path.join(root, 'src'), path.join(appDir, 'src'), { recursive: true });
+  await cp(path.join(root, 'package.json'), path.join(appDir, 'package.json'));
+  await cp(path.join(root, 'node_modules', 'phaser'), path.join(appDir, 'node_modules', 'phaser'), {
+    recursive: true
+  });
+
+  console.log(`Packaged ${appName} for Windows at ${path.relative(root, outputDir)}`);
+};
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

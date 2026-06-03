@@ -23,7 +23,7 @@ test('project exposes an offline Electron and Phaser app scaffold', async () => 
   assert.match(indexHtml, /\.\/game\.js/);
 
   const renderer = await readText('src/renderer/game.js');
-  assert.match(renderer, /from 'phaser'/);
+  assert.match(renderer, /phaser\/dist\/phaser\.esm\.js/);
   assert.match(renderer, /new Phaser\.Game/);
 });
 
@@ -35,4 +35,22 @@ test('desktop shell opens to a Thunderbolt Fighter first screen', async () => {
   assert.match(renderer, /Thunderbolt Fighter/);
   assert.match(renderer, /Press Start/);
   assert.match(renderer, /FirstPlayableScene/);
+});
+
+test('project exposes a Windows desktop packaging command', async () => {
+  const packageJson = await readJson('package.json');
+  const packageScript = await readText('scripts/package-win.js');
+
+  assert.equal(packageJson.scripts['package:win'], 'node scripts/package-win.js');
+  assert.equal(packageJson.devDependencies['adm-zip'], '^0.5.17');
+  assert.match(packageScript, /downloadArtifact/);
+  assert.match(packageScript, /AdmZip/);
+  assert.match(packageScript, /extractAllTo/);
+  assert.match(packageScript, /platform: 'win32'/);
+  assert.match(packageScript, /arch: 'x64'/);
+  assert.match(packageScript, /const appName = 'Thunderbolt Fighter'/);
+  assert.match(packageScript, /electron\.exe/);
+  assert.match(packageScript, /`\$\{appName\}\.exe`/);
+  assert.match(packageScript, /resources', 'app/);
+  assert.match(packageScript, /node_modules', 'phaser/);
 });
