@@ -71,3 +71,14 @@ test('desktop smoke test launches the shell and reaches the first screen', async
   assert.match(smokeTest, /#game-root\[data-screen="first-playable"\]/);
   assert.match(smokeTest, /Thunderbolt Fighter/);
 });
+
+test('runtime assets and prototype reference assets are separated', async () => {
+  const packageScript = await readText('scripts/package-win.js');
+  const runtimeReadme = await readText('assets/runtime/README.md');
+  const prototypeReadme = await readText('assets/prototype/README.md');
+
+  assert.match(runtimeReadme, /Shipped runtime assets/);
+  assert.match(prototypeReadme, /Prototype and reference assets/);
+  assert.match(packageScript, /assets', 'runtime/);
+  assert.doesNotMatch(packageScript, /assets', 'prototype/);
+});

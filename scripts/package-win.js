@@ -48,6 +48,9 @@ const main = async () => {
   await cp(electronExe, path.join(outputDir, `${appName}.exe`));
 
   await cp(path.join(root, 'src'), path.join(appDir, 'src'), { recursive: true });
+  await cp(path.join(root, 'assets', 'runtime'), path.join(appDir, 'assets', 'runtime'), {
+    recursive: true
+  });
   await cp(path.join(root, 'package.json'), path.join(appDir, 'package.json'));
   await cp(path.join(root, 'node_modules', 'phaser'), path.join(appDir, 'node_modules', 'phaser'), {
     recursive: true
