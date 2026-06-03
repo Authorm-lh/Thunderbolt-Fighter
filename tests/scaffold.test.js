@@ -19,10 +19,12 @@ test('project exposes an offline Electron and Phaser app scaffold', async () => 
   assert.doesNotMatch(mainProcess, /https?:\/\//);
 
   const indexHtml = await readText('src/renderer/index.html');
+  assert.match(indexHtml, /Content-Security-Policy/);
   assert.match(indexHtml, /game-root/);
   assert.match(indexHtml, /\.\/game\.js/);
 
   const renderer = await readText('src/renderer/game.js');
+  assert.match(renderer, /import \* as Phaser/);
   assert.match(renderer, /phaser\/dist\/phaser\.esm\.js/);
   assert.match(renderer, /new Phaser\.Game/);
 });
@@ -46,6 +48,7 @@ test('project exposes a Windows desktop packaging command', async () => {
   assert.match(packageScript, /downloadArtifact/);
   assert.match(packageScript, /AdmZip/);
   assert.match(packageScript, /extractAllTo/);
+  assert.match(packageScript, /writeFile\(electronPathFile, 'electron\.exe'\)/);
   assert.match(packageScript, /platform: 'win32'/);
   assert.match(packageScript, /arch: 'x64'/);
   assert.match(packageScript, /const appName = 'Thunderbolt Fighter'/);
@@ -53,4 +56,18 @@ test('project exposes a Windows desktop packaging command', async () => {
   assert.match(packageScript, /`\$\{appName\}\.exe`/);
   assert.match(packageScript, /resources', 'app/);
   assert.match(packageScript, /node_modules', 'phaser/);
+});
+
+test('desktop smoke test launches the shell and reaches the first screen', async () => {
+  const packageJson = await readJson('package.json');
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.equal(packageJson.scripts['test:smoke'], 'node tests/smoke/electron-smoke.mjs');
+  assert.equal(packageJson.devDependencies['@playwright/test'], '^1.57.0');
+  assert.match(renderer, /dataset\.screen = 'first-playable'/);
+  assert.match(renderer, /dataset\.title = 'Thunderbolt Fighter'/);
+  assert.match(smokeTest, /_electron/);
+  assert.match(smokeTest, /#game-root\[data-screen="first-playable"\]/);
+  assert.match(smokeTest, /Thunderbolt Fighter/);
 });

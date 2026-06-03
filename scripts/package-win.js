@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -15,6 +15,7 @@ const main = async () => {
   const appDir = path.join(outputDir, 'resources', 'app');
   const electronPackageDir = path.join(root, 'node_modules', 'electron');
   const electronDistDir = path.join(electronPackageDir, 'dist');
+  const electronPathFile = path.join(electronPackageDir, 'path.txt');
   const electronExe = path.join(electronDistDir, 'electron.exe');
 
   const electronPackage = JSON.parse(await readFile(path.join(electronPackageDir, 'package.json'), 'utf8'));
@@ -36,6 +37,8 @@ const main = async () => {
   if (!existsSync(electronExe)) {
     throw new Error(`Electron runtime was not found at ${electronExe}`);
   }
+
+  await writeFile(electronPathFile, 'electron.exe');
 
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(appDir, { recursive: true });

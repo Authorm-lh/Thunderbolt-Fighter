@@ -1,4 +1,4 @@
-import Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
+import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
 
 class FirstPlayableScene extends Phaser.Scene {
   constructor() {
@@ -31,6 +31,10 @@ class FirstPlayableScene extends Phaser.Scene {
       color: '#ffd166',
       align: 'center'
     }).setOrigin(0.5);
+
+    const root = document.querySelector('#game-root');
+    root.dataset.screen = 'first-playable';
+    root.dataset.title = 'Thunderbolt Fighter';
   }
 }
 
