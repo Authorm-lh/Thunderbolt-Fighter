@@ -26,3 +26,13 @@ test('project exposes an offline Electron and Phaser app scaffold', async () => 
   assert.match(renderer, /from 'phaser'/);
   assert.match(renderer, /new Phaser\.Game/);
 });
+
+test('desktop shell opens to a Thunderbolt Fighter first screen', async () => {
+  const mainProcess = await readText('src/main/main.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(mainProcess, /title: 'Thunderbolt Fighter'/);
+  assert.match(renderer, /Thunderbolt Fighter/);
+  assert.match(renderer, /Press Start/);
+  assert.match(renderer, /FirstPlayableScene/);
+});
