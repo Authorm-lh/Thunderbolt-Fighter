@@ -16,6 +16,11 @@ export const PLAYER_WEAPON = {
   projectileRadius: 5
 };
 
+export const BACKGROUND_SCROLL = {
+  speed: 36,
+  tileHeight: 240
+};
+
 const isPressed = (inputState, codes) => codes.some((code) => Boolean(inputState[code]));
 
 export const resolvePlayerVelocity = (inputState) => {
@@ -35,3 +40,7 @@ export const resolvePlayerVelocity = (inputState) => {
 };
 
 export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= PLAYER_WEAPON.fireIntervalMs;
+
+export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeight }) => (
+  currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds
+) % tileHeight;

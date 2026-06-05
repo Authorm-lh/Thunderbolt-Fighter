@@ -1,5 +1,13 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
-import { GAMEPLAY_PLAYFIELD, PLAYER_FLIGHT, PLAYER_WEAPON, resolvePlayerVelocity, shouldAutoFire } from './gameplay-state.js';
+import {
+  BACKGROUND_SCROLL,
+  GAMEPLAY_PLAYFIELD,
+  PLAYER_FLIGHT,
+  PLAYER_WEAPON,
+  advanceBackgroundOffset,
+  resolvePlayerVelocity,
+  shouldAutoFire
+} from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
   { label: '1 min', runLengthMinutes: 1, xOffset: -116 },
@@ -193,6 +201,8 @@ class GameplayScene extends Phaser.Scene {
     this.wasdKeys = null;
     this.projectiles = [];
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
+    this.backgroundStars = [];
+    this.backgroundOffset = 0;
   }
 
   create(data) {
@@ -200,6 +210,7 @@ class GameplayScene extends Phaser.Scene {
     const root = document.querySelector('#game-root');
 
     this.cameras.main.setBackgroundColor('#09111f');
+    this.createBackgroundStarfield();
 
     this.player = this.add.triangle(
       PLAYER_FLIGHT.startX,
@@ -234,6 +245,8 @@ class GameplayScene extends Phaser.Scene {
       return;
     }
 
+    this.updateBackground(delta / 1000);
+
     const velocity = resolvePlayerVelocity({
       ArrowLeft: this.cursorKeys.left.isDown,
       ArrowRight: this.cursorKeys.right.isDown,
@@ -259,6 +272,34 @@ class GameplayScene extends Phaser.Scene {
     }
 
     this.updateProjectiles(deltaSeconds);
+  }
+
+  createBackgroundStarfield() {
+    const starColumns = [72, 156, 248, 336, 448, 560, 648];
+    const tileRows = Math.ceil(GAMEPLAY_PLAYFIELD.height / BACKGROUND_SCROLL.tileHeight) + 2;
+
+    for (let row = -1; row < tileRows; row += 1) {
+      starColumns.forEach((x, columnIndex) => {
+        const y = row * BACKGROUND_SCROLL.tileHeight + ((columnIndex * 47) % BACKGROUND_SCROLL.tileHeight);
+        const radius = columnIndex % 3 === 0 ? 2 : 1;
+        const star = this.add.circle(x, y, radius, 0x9ed7ff, 0.48);
+
+        star.baseY = y;
+        this.backgroundStars.push(star);
+      });
+    }
+  }
+
+  updateBackground(deltaSeconds) {
+    this.backgroundOffset = advanceBackgroundOffset({
+      currentOffset: this.backgroundOffset,
+      deltaSeconds,
+      tileHeight: BACKGROUND_SCROLL.tileHeight
+    });
+
+    this.backgroundStars.forEach((star) => {
+      star.y = ((star.baseY + this.backgroundOffset + BACKGROUND_SCROLL.tileHeight) % (GAMEPLAY_PLAYFIELD.height + BACKGROUND_SCROLL.tileHeight)) - BACKGROUND_SCROLL.tileHeight;
+    });
   }
 
   spawnPlayerProjectile() {

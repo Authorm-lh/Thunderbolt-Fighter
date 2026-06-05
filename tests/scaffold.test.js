@@ -126,6 +126,17 @@ test('player ship fires automatically on a fixed cadence', async () => {
   assert.match(renderer, /shouldAutoFire/);
 });
 
+test('gameplay background scrolls slowly to communicate vertical flight', async () => {
+  const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(BACKGROUND_SCROLL.speed, 36);
+  assert.equal(advanceBackgroundOffset({ currentOffset: 0, deltaSeconds: 1, tileHeight: 240 }), 36);
+  assert.equal(advanceBackgroundOffset({ currentOffset: 230, deltaSeconds: 1, tileHeight: 240 }), 26);
+  assert.match(renderer, /createBackgroundStarfield/);
+  assert.match(renderer, /advanceBackgroundOffset/);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');
