@@ -11,6 +11,18 @@ try {
   const title = await window.locator('#game-root').getAttribute('data-title');
   assert.equal(title, 'Thunderbolt Fighter');
 
+  const gameRoot = window.locator('#game-root');
+  assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '1');
+
+  await window.mouse.click(640, 468);
+  assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '3');
+
+  await window.mouse.click(784, 468);
+  assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '5');
+
+  await window.mouse.click(496, 468);
+  assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '1');
+
   const windowTitle = await window.title();
   assert.equal(windowTitle, 'Thunderbolt Fighter');
 } finally {

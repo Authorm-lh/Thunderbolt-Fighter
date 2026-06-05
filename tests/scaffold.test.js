@@ -39,6 +39,17 @@ test('desktop shell opens to a Thunderbolt Fighter main menu', async () => {
   assert.match(renderer, /MainMenuScene/);
 });
 
+test('main menu exposes 1, 3, and 5 minute run length choices', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /runLengthMinutes: 1/);
+  assert.match(renderer, /runLengthMinutes: 3/);
+  assert.match(renderer, /runLengthMinutes: 5/);
+  assert.match(renderer, /dataset\.runLengthMinutes/);
+  assert.match(smokeTest, /data-run-length-minutes/);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');
