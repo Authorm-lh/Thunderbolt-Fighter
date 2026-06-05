@@ -50,6 +50,17 @@ test('main menu exposes 1, 3, and 5 minute run length choices', async () => {
   assert.match(smokeTest, /data-run-length-minutes/);
 });
 
+test('main menu exposes simple, normal, and hard difficulty choices', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /difficulty: 'simple'/);
+  assert.match(renderer, /difficulty: 'normal'/);
+  assert.match(renderer, /difficulty: 'hard'/);
+  assert.match(renderer, /dataset\.difficulty/);
+  assert.match(smokeTest, /data-difficulty/);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');

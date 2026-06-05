@@ -12,16 +12,35 @@ try {
   assert.equal(title, 'Thunderbolt Fighter');
 
   const gameRoot = window.locator('#game-root');
+  const canvasBox = await window.locator('#game-root canvas').boundingBox();
+  assert.ok(canvasBox);
+
+  const clickGamePoint = (x, y) => window.mouse.click(
+    canvasBox.x + canvasBox.width * (x / 1280),
+    canvasBox.y + canvasBox.height * (y / 720)
+  );
+
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '1');
 
-  await window.mouse.click(640, 468);
+  await clickGamePoint(640, 408);
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '3');
 
-  await window.mouse.click(784, 468);
+  await clickGamePoint(784, 408);
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '5');
 
-  await window.mouse.click(496, 468);
+  await clickGamePoint(496, 408);
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '1');
+
+  assert.equal(await gameRoot.getAttribute('data-difficulty'), 'normal');
+
+  await clickGamePoint(496, 532);
+  assert.equal(await gameRoot.getAttribute('data-difficulty'), 'simple');
+
+  await clickGamePoint(784, 532);
+  assert.equal(await gameRoot.getAttribute('data-difficulty'), 'hard');
+
+  await clickGamePoint(640, 532);
+  assert.equal(await gameRoot.getAttribute('data-difficulty'), 'normal');
 
   const windowTitle = await window.title();
   assert.equal(windowTitle, 'Thunderbolt Fighter');

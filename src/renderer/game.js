@@ -6,10 +6,17 @@ const RUN_LENGTH_OPTIONS = [
   { label: '5 min', runLengthMinutes: 5, xOffset: 144 }
 ];
 
+const DIFFICULTY_OPTIONS = [
+  { label: 'Simple', difficulty: 'simple', xOffset: -144 },
+  { label: 'Normal', difficulty: 'normal', xOffset: 0 },
+  { label: 'Hard', difficulty: 'hard', xOffset: 144 }
+];
+
 class MainMenuScene extends Phaser.Scene {
   constructor() {
     super('main-menu');
     this.selectedRunLengthMinutes = 1;
+    this.selectedDifficulty = 'normal';
   }
 
   create() {
@@ -33,33 +40,41 @@ class MainMenuScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
 
-    this.add.text(centerX, centerY + 52, 'Run Length', {
+    this.add.text(centerX, centerY - 8, 'Run Length', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '22px',
       color: '#9ed7ff',
       align: 'center'
     }).setOrigin(0.5);
 
-    const runLengthButtons = RUN_LENGTH_OPTIONS.map((option) => this.createRunLengthButton(centerX + option.xOffset, centerY + 108, option));
+    const runLengthButtons = RUN_LENGTH_OPTIONS.map((option) => this.createOptionButton(centerX + option.xOffset, centerY + 48, option.label));
 
     const updateRunLengthSelection = (runLengthMinutes) => {
       this.selectedRunLengthMinutes = runLengthMinutes;
       root.dataset.runLengthMinutes = String(runLengthMinutes);
-
-      runLengthButtons.forEach(({ option, plate, label }) => {
-        const isSelected = option.runLengthMinutes === runLengthMinutes;
-        plate.setFillStyle(isSelected ? 0x1f8dd6 : 0x18263d, 1);
-        plate.setStrokeStyle(2, isSelected ? 0xffd166 : 0x46627f);
-        label.setColor(isSelected ? '#f8fbff' : '#9ed7ff');
-      });
+      this.updateSelectedButton(runLengthButtons, (option) => option.runLengthMinutes === runLengthMinutes);
     };
 
-    runLengthButtons.forEach(({ option, plate, label }) => {
-      plate.on('pointerdown', () => updateRunLengthSelection(option.runLengthMinutes));
-      label.on('pointerdown', () => updateRunLengthSelection(option.runLengthMinutes));
-    });
+    this.bindOptionButtons(runLengthButtons, RUN_LENGTH_OPTIONS, (option) => updateRunLengthSelection(option.runLengthMinutes));
 
-    this.add.text(centerX, centerY + 204, 'Start Run', {
+    this.add.text(centerX, centerY + 116, 'Difficulty', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '22px',
+      color: '#9ed7ff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    const difficultyButtons = DIFFICULTY_OPTIONS.map((option) => this.createOptionButton(centerX + option.xOffset, centerY + 172, option.label));
+
+    const updateDifficultySelection = (difficulty) => {
+      this.selectedDifficulty = difficulty;
+      root.dataset.difficulty = difficulty;
+      this.updateSelectedButton(difficultyButtons, (option) => option.difficulty === difficulty);
+    };
+
+    this.bindOptionButtons(difficultyButtons, DIFFICULTY_OPTIONS, (option) => updateDifficultySelection(option.difficulty));
+
+    this.add.text(centerX, centerY + 272, 'Start Run', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '32px',
       color: '#ffd166',
@@ -69,21 +84,39 @@ class MainMenuScene extends Phaser.Scene {
     root.dataset.screen = 'main-menu';
     root.dataset.title = 'Thunderbolt Fighter';
     updateRunLengthSelection(this.selectedRunLengthMinutes);
+    updateDifficultySelection(this.selectedDifficulty);
   }
 
-  createRunLengthButton(x, y, option) {
+  createOptionButton(x, y, labelText) {
     const plate = this.add.rectangle(x, y, 112, 52, 0x18263d, 1)
       .setStrokeStyle(2, 0x46627f)
       .setInteractive({ useHandCursor: true });
 
-    const label = this.add.text(x, y, option.label, {
+    const label = this.add.text(x, y, labelText, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '22px',
       color: '#9ed7ff',
       align: 'center'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-    return { option, plate, label };
+    return { plate, label };
+  }
+
+  bindOptionButtons(buttons, options, selectOption) {
+    buttons.forEach((button, index) => {
+      button.option = options[index];
+      button.plate.on('pointerdown', () => selectOption(button.option));
+      button.label.on('pointerdown', () => selectOption(button.option));
+    });
+  }
+
+  updateSelectedButton(buttons, isSelectedOption) {
+    buttons.forEach(({ option, plate, label }) => {
+      const isSelected = isSelectedOption(option);
+      plate.setFillStyle(isSelected ? 0x1f8dd6 : 0x18263d, 1);
+      plate.setStrokeStyle(2, isSelected ? 0xffd166 : 0x46627f);
+      label.setColor(isSelected ? '#f8fbff' : '#9ed7ff');
+    });
   }
 }
 
