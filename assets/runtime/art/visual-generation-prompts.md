@@ -297,6 +297,34 @@ Optional looping/tileable prompt:
 Create a vertically scrollable arcade shooter background layer, 1280 pixels wide, dark stormy sci-fi sky, subtle cloud bands and distant lights, designed to tile or scroll vertically with minimal visible seam, no ships, no UI, no text, no logo.
 ```
 
+## Main Menu Background
+
+Target file after approval: `assets/runtime/art/backgrounds/background_main_menu_1280x720.png`
+
+Recommended format: PNG, JPG, or WEBP.
+
+Recommended size: 1280x720, safe to crop or scale for 16:9 full-screen menu presentation.
+
+Intended usage: Generate under `assets/prototype/generated/visual/backgrounds/` first as a runtime-loadable candidate and design reference. Move to `assets/runtime/art/backgrounds/` only after maintainer approval and manifest documentation.
+
+Prompt:
+
+```text
+Create a 1280x720 main menu background for a compact arcade vertical shooter called Thunderbolt Fighter. The scene should feel like the calm, high-energy moment before launch: a heroic near-future player spacecraft parked or hovering in the lower third, viewed from a dramatic top-down or slightly elevated arcade angle, storm clouds and distant carrier deck or skybase silhouettes behind it, cool dark navy atmosphere, electric cyan lightning energy, small amber runway or warning lights, polished 2D digital game art, crisp mechanical detail, strong contrast, and enough clean negative space in the upper and center-left area for a title and menu buttons. It should match the sleek Thunderbolt Fighter asset style without looking like active gameplay. No text, no logo, no watermark, no UI, no bullets, no enemies.
+```
+
+Negative prompt:
+
+```text
+text, letters, numbers, logo, watermark, signature, UI mockup, menu buttons, title text, gameplay bullets, enemies, explosions, busy foreground clutter, cropped main ship, tiny unreadable ship, photorealistic screenshot, 3D render, pixel art, anime character, human pilot portrait, low contrast, excessive glow, noisy particles, dark unreadable scene
+```
+
+Optional reference-only mood prompt:
+
+```text
+Create a cinematic visual reference for the Thunderbolt Fighter main menu background, not a gameplay scene. Show a sleek heroic sci-fi fighter prepared for launch against a stormy high-altitude carrier or skybase environment, dark navy and steel palette with electric cyan energy and small amber warning lights, polished 2D arcade shooter concept art, clear open space for future title/menu layout, no text, no logo, no UI.
+```
+
 ## Parallax Cloud Layer
 
 Target file after approval: `assets/runtime/art/backgrounds/background_cloud_layer.png`
