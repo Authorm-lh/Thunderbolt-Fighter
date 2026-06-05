@@ -20,6 +20,7 @@ test('project exposes an offline Electron and Phaser app scaffold', async () => 
 
   const indexHtml = await readText('src/renderer/index.html');
   assert.match(indexHtml, /Content-Security-Policy/);
+  assert.match(indexHtml, /img-src 'self' data: blob:/);
   assert.match(indexHtml, /game-root/);
   assert.match(indexHtml, /\.\/game\.js/);
 
@@ -37,12 +38,11 @@ test('desktop shell opens to a polished Thunderbolt Fighter main menu', async ()
   assert.match(renderer, /Thunderbolt Fighter/);
   assert.match(renderer, /Start Run/);
   assert.match(renderer, /MainMenuScene/);
-  assert.match(renderer, /background_sky_1672x941/);
-  assert.match(renderer, /ui_title_plate/);
-  assert.match(renderer, /ui_panel_hud/);
-  assert.match(renderer, /ui_button_primary/);
-  assert.match(renderer, /mainMenuY: 238/);
-  assert.match(renderer, /runLengthY: 330/);
+  assert.match(renderer, /background_main_menu_1280x720/);
+  assert.doesNotMatch(renderer, /background_sky_1672x941/);
+  assert.match(renderer, /contentX: 320/);
+  assert.match(renderer, /mainMenuY: 204/);
+  assert.match(renderer, /runLengthY: 300/);
 });
 
 test('main menu exposes 1, 3, and 5 minute run length choices', async () => {

@@ -22,30 +22,30 @@ try {
 
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '1');
 
-  await clickGamePoint(640, 408);
+  await clickGamePoint(320, 354);
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '3');
 
-  await clickGamePoint(784, 408);
+  await clickGamePoint(436, 354);
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '5');
 
-  await clickGamePoint(496, 408);
+  await clickGamePoint(204, 354);
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '1');
 
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'normal');
 
-  await clickGamePoint(496, 532);
+  await clickGamePoint(204, 494);
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'simple');
 
-  await clickGamePoint(784, 532);
+  await clickGamePoint(436, 494);
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'hard');
 
-  await clickGamePoint(640, 532);
+  await clickGamePoint(320, 494);
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'normal');
 
   const startRunWithSelectedOptions = async () => {
-    await clickGamePoint(784, 408);
-    await clickGamePoint(784, 532);
-    await clickGamePoint(640, 632);
+    await clickGamePoint(436, 354);
+    await clickGamePoint(436, 494);
+    await clickGamePoint(320, 616);
   };
 
   await startRunWithSelectedOptions();

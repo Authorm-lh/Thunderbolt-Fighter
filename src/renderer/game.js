@@ -1,34 +1,31 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
 
 const RUN_LENGTH_OPTIONS = [
-  { label: '1 min', runLengthMinutes: 1, xOffset: -144 },
+  { label: '1 min', runLengthMinutes: 1, xOffset: -116 },
   { label: '3 min', runLengthMinutes: 3, xOffset: 0 },
-  { label: '5 min', runLengthMinutes: 5, xOffset: 144 }
+  { label: '5 min', runLengthMinutes: 5, xOffset: 116 }
 ];
 
 const DIFFICULTY_OPTIONS = [
-  { label: 'Simple', difficulty: 'simple', xOffset: -144 },
+  { label: 'Simple', difficulty: 'simple', xOffset: -116 },
   { label: 'Normal', difficulty: 'normal', xOffset: 0 },
-  { label: 'Hard', difficulty: 'hard', xOffset: 144 }
+  { label: 'Hard', difficulty: 'hard', xOffset: 116 }
 ];
 
 const MENU_ASSETS = {
-  background: '../../assets/runtime/art/backgrounds/background_sky_1672x941.png',
-  clouds: '../../assets/runtime/art/backgrounds/background_cloud_layer.png',
-  titlePlate: '../../assets/runtime/art/ui/ui_title_plate.png',
-  panel: '../../assets/runtime/art/ui/ui_panel_hud.png',
-  button: '../../assets/runtime/art/ui/ui_button_primary.png'
+  background: '../../assets/runtime/art/backgrounds/background_main_menu_1280x720.png'
 };
 
 const MENU_LAYOUT = {
-  titleY: 116,
-  mainMenuY: 238,
-  panelY: 424,
-  runLengthY: 330,
-  runLengthButtonY: 384,
-  difficultyY: 472,
-  difficultyButtonY: 526,
-  startButtonY: 638
+  contentX: 320,
+  titleY: 96,
+  mainMenuY: 204,
+  panelY: 438,
+  runLengthY: 300,
+  runLengthButtonY: 354,
+  difficultyY: 440,
+  difficultyButtonY: 494,
+  startButtonY: 616
 };
 
 class MainMenuScene extends Phaser.Scene {
@@ -40,45 +37,38 @@ class MainMenuScene extends Phaser.Scene {
 
   preload() {
     this.load.image('menu-background', MENU_ASSETS.background);
-    this.load.image('menu-clouds', MENU_ASSETS.clouds);
-    this.load.image('menu-title-plate', MENU_ASSETS.titlePlate);
-    this.load.image('menu-panel', MENU_ASSETS.panel);
-    this.load.image('menu-button', MENU_ASSETS.button);
   }
 
   create() {
     this.cameras.main.setBackgroundColor('#09111f');
 
+    const contentX = MENU_LAYOUT.contentX;
     const centerX = this.scale.width / 2;
     const root = document.querySelector('#game-root');
 
     this.add.image(centerX, this.scale.height / 2, 'menu-background')
       .setDisplaySize(this.scale.width, this.scale.height);
-    this.add.image(centerX, 210, 'menu-clouds')
-      .setAlpha(0.42)
-      .setDisplaySize(this.scale.width, 320);
-    this.add.rectangle(centerX, this.scale.height / 2, this.scale.width, this.scale.height, 0x06111f, 0.34);
+    this.add.rectangle(300, this.scale.height / 2, 600, this.scale.height, 0x04101d, 0.5);
+    this.add.rectangle(centerX, this.scale.height / 2, this.scale.width, this.scale.height, 0x06111f, 0.12);
+    this.add.line(0, 0, 602, 0, 602, this.scale.height, 0x3db7ff, 0.28)
+      .setOrigin(0, 0);
 
-    this.add.image(centerX, MENU_LAYOUT.titleY, 'menu-title-plate')
-      .setDisplaySize(670, 150)
-      .setAlpha(0.96);
+    this.add.rectangle(contentX, MENU_LAYOUT.titleY, 470, 94, 0x071827, 0.48)
+      .setStrokeStyle(1, 0x9ed7ff, 0.46);
 
-    this.add.text(centerX, MENU_LAYOUT.titleY - 8, 'Thunderbolt Fighter', {
+    this.add.text(contentX, MENU_LAYOUT.titleY - 6, 'Thunderbolt Fighter', {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '56px',
+      fontSize: '44px',
       color: '#f8fbff',
       align: 'center',
       stroke: '#0b1c2e',
       strokeThickness: 6
     }).setOrigin(0.5);
 
-    this.add.image(centerX, MENU_LAYOUT.panelY, 'menu-panel')
-      .setDisplaySize(700, 360)
-      .setAlpha(0.94);
-    this.add.rectangle(centerX, MENU_LAYOUT.panelY, 640, 310, 0x071827, 0.42)
-      .setStrokeStyle(1, 0x3db7ff, 0.44);
+    this.add.rectangle(contentX, MENU_LAYOUT.panelY, 500, 360, 0x071827, 0.44)
+      .setStrokeStyle(1, 0x3db7ff, 0.42);
 
-    this.add.text(centerX, MENU_LAYOUT.mainMenuY, 'Main Menu', {
+    this.add.text(contentX, MENU_LAYOUT.mainMenuY, 'Main Menu', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '30px',
       color: '#f8fbff',
@@ -87,14 +77,14 @@ class MainMenuScene extends Phaser.Scene {
       strokeThickness: 4
     }).setOrigin(0.5);
 
-    this.add.text(centerX, MENU_LAYOUT.runLengthY, 'Run Length', {
+    this.add.text(contentX, MENU_LAYOUT.runLengthY, 'Run Length', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '22px',
       color: '#9ed7ff',
       align: 'center'
     }).setOrigin(0.5);
 
-    const runLengthButtons = RUN_LENGTH_OPTIONS.map((option) => this.createOptionButton(centerX + option.xOffset, MENU_LAYOUT.runLengthButtonY, option.label));
+    const runLengthButtons = RUN_LENGTH_OPTIONS.map((option) => this.createOptionButton(contentX + option.xOffset, MENU_LAYOUT.runLengthButtonY, option.label));
 
     const updateRunLengthSelection = (runLengthMinutes) => {
       this.selectedRunLengthMinutes = runLengthMinutes;
@@ -104,14 +94,14 @@ class MainMenuScene extends Phaser.Scene {
 
     this.bindOptionButtons(runLengthButtons, RUN_LENGTH_OPTIONS, (option) => updateRunLengthSelection(option.runLengthMinutes));
 
-    this.add.text(centerX, MENU_LAYOUT.difficultyY, 'Difficulty', {
+    this.add.text(contentX, MENU_LAYOUT.difficultyY, 'Difficulty', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '22px',
       color: '#9ed7ff',
       align: 'center'
     }).setOrigin(0.5);
 
-    const difficultyButtons = DIFFICULTY_OPTIONS.map((option) => this.createOptionButton(centerX + option.xOffset, MENU_LAYOUT.difficultyButtonY, option.label));
+    const difficultyButtons = DIFFICULTY_OPTIONS.map((option) => this.createOptionButton(contentX + option.xOffset, MENU_LAYOUT.difficultyButtonY, option.label));
 
     const updateDifficultySelection = (difficulty) => {
       this.selectedDifficulty = difficulty;
@@ -121,7 +111,7 @@ class MainMenuScene extends Phaser.Scene {
 
     this.bindOptionButtons(difficultyButtons, DIFFICULTY_OPTIONS, (option) => updateDifficultySelection(option.difficulty));
 
-    const startRunButton = this.createActionButton(centerX, MENU_LAYOUT.startButtonY, 'Start Run');
+    const startRunButton = this.createActionButton(contentX, MENU_LAYOUT.startButtonY, 'Start Run');
 
     const startRun = () => {
       this.scene.start('gameplay', {
@@ -142,15 +132,14 @@ class MainMenuScene extends Phaser.Scene {
   }
 
   createOptionButton(x, y, labelText) {
-    const plate = this.add.image(x, y, 'menu-button')
-      .setDisplaySize(124, 56)
-      .setAlpha(0.84);
-    const hitArea = this.add.rectangle(x, y, 124, 56, 0x000000, 0)
+    const plate = this.add.rectangle(x, y, 106, 50, 0x0b2234, 0.72)
+      .setStrokeStyle(1, 0x3db7ff, 0.6);
+    const hitArea = this.add.rectangle(x, y, 106, 50, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
 
     const label = this.add.text(x, y, labelText, {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '22px',
+      fontSize: '20px',
       color: '#9ed7ff',
       align: 'center',
       stroke: '#071827',
@@ -161,14 +150,13 @@ class MainMenuScene extends Phaser.Scene {
   }
 
   createActionButton(x, y, labelText) {
-    const plate = this.add.image(x, y, 'menu-button')
-      .setDisplaySize(238, 72)
-      .setAlpha(0.96);
-    const hitArea = this.add.rectangle(x, y, 238, 72, 0x000000, 0)
+    const plate = this.add.rectangle(x, y, 220, 62, 0x12334a, 0.82)
+      .setStrokeStyle(2, 0xffd166, 0.78);
+    const hitArea = this.add.rectangle(x, y, 220, 62, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
     const label = this.add.text(x, y - 1, labelText, {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '32px',
+      fontSize: '30px',
       color: '#ffd166',
       align: 'center',
       stroke: '#0b1c2e',
@@ -189,8 +177,8 @@ class MainMenuScene extends Phaser.Scene {
   updateSelectedButton(buttons, isSelectedOption) {
     buttons.forEach(({ option, plate, label }) => {
       const isSelected = isSelectedOption(option);
-      plate.setAlpha(isSelected ? 1 : 0.74);
-      plate.setTint(isSelected ? 0xffffff : 0x79b8d9);
+      plate.setFillStyle(isSelected ? 0x1d5a78 : 0x0b2234, isSelected ? 0.9 : 0.72);
+      plate.setStrokeStyle(isSelected ? 2 : 1, isSelected ? 0xf8fbff : 0x3db7ff, isSelected ? 0.9 : 0.6);
       label.setColor(isSelected ? '#f8fbff' : '#9ed7ff');
     });
   }
