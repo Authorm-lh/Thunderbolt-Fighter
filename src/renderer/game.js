@@ -278,7 +278,7 @@ class GameplayScene extends Phaser.Scene {
   }
 
   createBackgroundStarfield() {
-    const starColumns = [72, 156, 248, 336, 448, 560, 648];
+    const starColumns = [72, 156, 248, 336, 448, 560, 648, 760, 872, 984, 1096, 1208];
     const tileRows = Math.ceil(GAMEPLAY_PLAYFIELD.height / BACKGROUND_SCROLL.tileHeight) + 2;
 
     for (let row = -1; row < tileRows; row += 1) {
