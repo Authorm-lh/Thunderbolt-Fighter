@@ -44,3 +44,9 @@ export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFi
 export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeight }) => (
   currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds
 ) % tileHeight;
+
+export const createRunBaseline = () => ({
+  player: { ...PLAYER_FLIGHT },
+  weapon: { ...PLAYER_WEAPON },
+  background: { ...BACKGROUND_SCROLL }
+});

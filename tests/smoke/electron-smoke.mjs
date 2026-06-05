@@ -16,8 +16,8 @@ try {
   assert.ok(canvasBox);
 
   const clickGamePoint = (x, y) => window.mouse.click(
-    canvasBox.x + canvasBox.width * (x / 1280),
-    canvasBox.y + canvasBox.height * (y / 720)
+    canvasBox.x + canvasBox.width * (x / 720),
+    canvasBox.y + canvasBox.height * (y / 1280)
   );
 
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '1');

@@ -5,6 +5,7 @@ import {
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
   advanceBackgroundOffset,
+  createRunBaseline,
   resolvePlayerVelocity,
   shouldAutoFire
 } from './gameplay-state.js';
@@ -203,24 +204,26 @@ class GameplayScene extends Phaser.Scene {
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.backgroundStars = [];
     this.backgroundOffset = 0;
+    this.runBaseline = null;
   }
 
   create(data) {
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
+    this.runBaseline = createRunBaseline();
 
     this.cameras.main.setBackgroundColor('#09111f');
     this.createBackgroundStarfield();
 
     this.player = this.add.triangle(
-      PLAYER_FLIGHT.startX,
-      PLAYER_FLIGHT.startY,
+      this.runBaseline.player.startX,
+      this.runBaseline.player.startY,
       0,
-      PLAYER_FLIGHT.radius * 1.4,
-      PLAYER_FLIGHT.radius,
+      this.runBaseline.player.radius * 1.4,
+      this.runBaseline.player.radius,
       0,
-      PLAYER_FLIGHT.radius * 2,
-      PLAYER_FLIGHT.radius * 1.4,
+      this.runBaseline.player.radius * 2,
+      this.runBaseline.player.radius * 1.4,
       0x9ed7ff,
       1
     ).setStrokeStyle(2, 0xf8fbff, 0.9);

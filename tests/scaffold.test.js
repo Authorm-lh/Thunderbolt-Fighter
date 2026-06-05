@@ -137,6 +137,20 @@ test('gameplay background scrolls slowly to communicate vertical flight', async 
   assert.match(renderer, /advanceBackgroundOffset/);
 });
 
+test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
+  const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const firstRun = createRunBaseline();
+  const laterRun = createRunBaseline({ previousRunUpgrades: { speed: 9999, fireIntervalMs: 1 } });
+
+  assert.deepEqual(firstRun, laterRun);
+  assert.deepEqual(firstRun.player, PLAYER_FLIGHT);
+  assert.deepEqual(firstRun.weapon, PLAYER_WEAPON);
+  assert.doesNotMatch(renderer, /localStorage/);
+  assert.doesNotMatch(renderer, /permanent/i);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');
