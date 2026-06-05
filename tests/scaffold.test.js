@@ -61,7 +61,7 @@ test('main menu exposes simple, normal, and hard difficulty choices', async () =
   assert.match(smokeTest, /data-difficulty/);
 });
 
-test('start run transitions to gameplay with selected options', async () => {
+test('main menu start-run path propagates selected options into gameplay', async () => {
   const renderer = await readText('src/renderer/game.js');
   const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
 

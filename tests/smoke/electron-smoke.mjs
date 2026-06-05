@@ -42,9 +42,13 @@ try {
   await clickGamePoint(640, 532);
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'normal');
 
-  await clickGamePoint(784, 408);
-  await clickGamePoint(784, 532);
-  await clickGamePoint(640, 632);
+  const startRunWithSelectedOptions = async () => {
+    await clickGamePoint(784, 408);
+    await clickGamePoint(784, 532);
+    await clickGamePoint(640, 632);
+  };
+
+  await startRunWithSelectedOptions();
 
   await window.waitForSelector('#game-root[data-screen="gameplay"]', { timeout: 15000 });
   assert.equal(await gameRoot.getAttribute('data-screen'), 'gameplay');
