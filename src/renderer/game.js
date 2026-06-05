@@ -74,12 +74,21 @@ class MainMenuScene extends Phaser.Scene {
 
     this.bindOptionButtons(difficultyButtons, DIFFICULTY_OPTIONS, (option) => updateDifficultySelection(option.difficulty));
 
-    this.add.text(centerX, centerY + 272, 'Start Run', {
+    const startRunButton = this.add.text(centerX, centerY + 272, 'Start Run', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '32px',
       color: '#ffd166',
       align: 'center'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    startRunButton.on('pointerdown', () => {
+      this.scene.start('gameplay', {
+        runOptions: {
+          runLengthMinutes: this.selectedRunLengthMinutes,
+          difficulty: this.selectedDifficulty
+        }
+      });
+    });
 
     root.dataset.screen = 'main-menu';
     root.dataset.title = 'Thunderbolt Fighter';
@@ -120,13 +129,47 @@ class MainMenuScene extends Phaser.Scene {
   }
 }
 
+class GameplayScene extends Phaser.Scene {
+  constructor() {
+    super('gameplay');
+  }
+
+  create(data) {
+    const runOptions = data.runOptions;
+    const root = document.querySelector('#game-root');
+
+    this.cameras.main.setBackgroundColor('#09111f');
+
+    const centerX = this.scale.width / 2;
+    const centerY = this.scale.height / 2;
+
+    this.add.text(centerX, centerY - 52, 'Run In Progress', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '42px',
+      color: '#f8fbff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.add.text(centerX, centerY + 24, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '26px',
+      color: '#9ed7ff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    root.dataset.screen = 'gameplay';
+    root.dataset.runLengthMinutes = String(runOptions.runLengthMinutes);
+    root.dataset.difficulty = runOptions.difficulty;
+  }
+}
+
 const config = {
   type: Phaser.AUTO,
   parent: 'game-root',
   width: 1280,
   height: 720,
   backgroundColor: '#09111f',
-  scene: [MainMenuScene],
+  scene: [MainMenuScene, GameplayScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH

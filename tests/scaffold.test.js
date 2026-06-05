@@ -61,6 +61,19 @@ test('main menu exposes simple, normal, and hard difficulty choices', async () =
   assert.match(smokeTest, /data-difficulty/);
 });
 
+test('start run transitions to gameplay with selected options', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /class GameplayScene/);
+  assert.match(renderer, /this\.scene\.start\('gameplay'/);
+  assert.match(renderer, /runOptions/);
+  assert.match(renderer, /dataset\.screen = 'gameplay'/);
+  assert.match(smokeTest, /getAttribute\('data-screen'\), 'gameplay'/);
+  assert.match(smokeTest, /data-run-length-minutes'\), '5'/);
+  assert.match(smokeTest, /data-difficulty'\), 'hard'/);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');

@@ -42,6 +42,15 @@ try {
   await clickGamePoint(640, 532);
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'normal');
 
+  await clickGamePoint(784, 408);
+  await clickGamePoint(784, 532);
+  await clickGamePoint(640, 632);
+
+  await window.waitForSelector('#game-root[data-screen="gameplay"]', { timeout: 15000 });
+  assert.equal(await gameRoot.getAttribute('data-screen'), 'gameplay');
+  assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '5');
+  assert.equal(await gameRoot.getAttribute('data-difficulty'), 'hard');
+
   const windowTitle = await window.title();
   assert.equal(windowTitle, 'Thunderbolt Fighter');
 } finally {
