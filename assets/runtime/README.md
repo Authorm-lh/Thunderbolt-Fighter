@@ -19,6 +19,7 @@ Keep runtime paths stable once code starts loading them. If a file is renamed or
 | File | Purpose |
 | --- | --- |
 | `art/backgrounds/background_sky_1672x941.png` | Main gameplay sky backdrop. Use as the base scrolling or fixed playfield background. |
+| `art/backgrounds/background_main_menu_1280x720.png` | Dedicated main menu background. Use behind the title and menu controls before gameplay starts. |
 | `art/backgrounds/background_cloud_layer.png` | Transparent parallax cloud layer. Render above the sky background but behind gameplay objects. |
 
 ### Player
