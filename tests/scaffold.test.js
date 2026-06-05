@@ -80,6 +80,19 @@ test('main menu start-run path propagates selected options into gameplay', async
   assert.match(smokeTest, /data-difficulty'\), 'hard'/);
 });
 
+test('gameplay scene uses a vertical 9:16 logical playfield', async () => {
+  const { GAMEPLAY_PLAYFIELD } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.deepEqual(GAMEPLAY_PLAYFIELD, {
+    width: 720,
+    height: 1280
+  });
+  assert.match(renderer, /width: GAMEPLAY_PLAYFIELD\.width/);
+  assert.match(renderer, /height: GAMEPLAY_PLAYFIELD\.height/);
+  assert.match(renderer, /Phaser\.Scale\.FIT/);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');

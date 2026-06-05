@@ -1,4 +1,5 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
+import { GAMEPLAY_PLAYFIELD } from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
   { label: '1 min', runLengthMinutes: 1, xOffset: -116 },
@@ -221,8 +222,8 @@ class GameplayScene extends Phaser.Scene {
 const config = {
   type: Phaser.AUTO,
   parent: 'game-root',
-  width: 1280,
-  height: 720,
+  width: GAMEPLAY_PLAYFIELD.width,
+  height: GAMEPLAY_PLAYFIELD.height,
   backgroundColor: '#09111f',
   scene: [MainMenuScene, GameplayScene],
   scale: {
