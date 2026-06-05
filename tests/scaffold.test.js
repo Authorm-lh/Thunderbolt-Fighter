@@ -93,6 +93,26 @@ test('gameplay scene uses a vertical 9:16 logical playfield', async () => {
   assert.match(renderer, /Phaser\.Scale\.FIT/);
 });
 
+test('player movement accepts arrow keys and WASD continuously', async () => {
+  const { PLAYER_FLIGHT, resolvePlayerVelocity } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.deepEqual(resolvePlayerVelocity({ ArrowLeft: true }), { x: -PLAYER_FLIGHT.speed, y: 0 });
+  assert.deepEqual(resolvePlayerVelocity({ KeyA: true }), { x: -PLAYER_FLIGHT.speed, y: 0 });
+  assert.deepEqual(resolvePlayerVelocity({ ArrowRight: true }), { x: PLAYER_FLIGHT.speed, y: 0 });
+  assert.deepEqual(resolvePlayerVelocity({ KeyD: true }), { x: PLAYER_FLIGHT.speed, y: 0 });
+  assert.deepEqual(resolvePlayerVelocity({ ArrowUp: true }), { x: 0, y: -PLAYER_FLIGHT.speed });
+  assert.deepEqual(resolvePlayerVelocity({ KeyW: true }), { x: 0, y: -PLAYER_FLIGHT.speed });
+  assert.deepEqual(resolvePlayerVelocity({ ArrowDown: true }), { x: 0, y: PLAYER_FLIGHT.speed });
+  assert.deepEqual(resolvePlayerVelocity({ KeyS: true }), { x: 0, y: PLAYER_FLIGHT.speed });
+
+  const diagonal = resolvePlayerVelocity({ ArrowUp: true, KeyD: true });
+  assert.equal(Math.round(Math.hypot(diagonal.x, diagonal.y)), PLAYER_FLIGHT.speed);
+  assert.match(renderer, /this\.input\.keyboard\.createCursorKeys\(\)/);
+  assert.match(renderer, /this\.input\.keyboard\.addKeys/);
+  assert.match(renderer, /resolvePlayerVelocity/);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');

@@ -1,5 +1,5 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
-import { GAMEPLAY_PLAYFIELD } from './gameplay-state.js';
+import { GAMEPLAY_PLAYFIELD, PLAYER_FLIGHT, resolvePlayerVelocity } from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
   { label: '1 min', runLengthMinutes: 1, xOffset: -116 },
@@ -188,6 +188,9 @@ class MainMenuScene extends Phaser.Scene {
 class GameplayScene extends Phaser.Scene {
   constructor() {
     super('gameplay');
+    this.player = null;
+    this.cursorKeys = null;
+    this.wasdKeys = null;
   }
 
   create(data) {
@@ -196,26 +199,57 @@ class GameplayScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#09111f');
 
-    const centerX = this.scale.width / 2;
-    const centerY = this.scale.height / 2;
+    this.player = this.add.triangle(
+      PLAYER_FLIGHT.startX,
+      PLAYER_FLIGHT.startY,
+      0,
+      PLAYER_FLIGHT.radius * 1.4,
+      PLAYER_FLIGHT.radius,
+      0,
+      PLAYER_FLIGHT.radius * 2,
+      PLAYER_FLIGHT.radius * 1.4,
+      0x9ed7ff,
+      1
+    ).setStrokeStyle(2, 0xf8fbff, 0.9);
 
-    this.add.text(centerX, centerY - 52, 'Run In Progress', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '42px',
-      color: '#f8fbff',
-      align: 'center'
-    }).setOrigin(0.5);
+    this.cursorKeys = this.input.keyboard.createCursorKeys();
+    this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
 
-    this.add.text(centerX, centerY + 24, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
+    this.add.text(24, 24, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '26px',
+      fontSize: '24px',
       color: '#9ed7ff',
-      align: 'center'
-    }).setOrigin(0.5);
+      align: 'left'
+    });
 
     root.dataset.screen = 'gameplay';
     root.dataset.runLengthMinutes = String(runOptions.runLengthMinutes);
     root.dataset.difficulty = runOptions.difficulty;
+  }
+
+  update(_time, delta) {
+    if (!this.player || !this.cursorKeys || !this.wasdKeys) {
+      return;
+    }
+
+    const velocity = resolvePlayerVelocity({
+      ArrowLeft: this.cursorKeys.left.isDown,
+      ArrowRight: this.cursorKeys.right.isDown,
+      ArrowUp: this.cursorKeys.up.isDown,
+      ArrowDown: this.cursorKeys.down.isDown,
+      KeyA: this.wasdKeys.A.isDown,
+      KeyD: this.wasdKeys.D.isDown,
+      KeyW: this.wasdKeys.W.isDown,
+      KeyS: this.wasdKeys.S.isDown
+    });
+    const deltaSeconds = delta / 1000;
+    const minX = PLAYER_FLIGHT.radius;
+    const maxX = GAMEPLAY_PLAYFIELD.width - PLAYER_FLIGHT.radius;
+    const minY = PLAYER_FLIGHT.radius;
+    const maxY = GAMEPLAY_PLAYFIELD.height - PLAYER_FLIGHT.radius;
+
+    this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
+    this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
   }
 }
 
