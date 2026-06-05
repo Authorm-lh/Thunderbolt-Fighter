@@ -20,6 +20,7 @@ test('project exposes an offline Electron and Phaser app scaffold', async () => 
 
   const indexHtml = await readText('src/renderer/index.html');
   assert.match(indexHtml, /Content-Security-Policy/);
+  assert.match(indexHtml, /img-src 'self' data: blob:/);
   assert.match(indexHtml, /game-root/);
   assert.match(indexHtml, /\.\/game\.js/);
 
@@ -29,14 +30,54 @@ test('project exposes an offline Electron and Phaser app scaffold', async () => 
   assert.match(renderer, /new Phaser\.Game/);
 });
 
-test('desktop shell opens to a Thunderbolt Fighter first screen', async () => {
+test('desktop shell opens to a polished Thunderbolt Fighter main menu', async () => {
   const mainProcess = await readText('src/main/main.js');
   const renderer = await readText('src/renderer/game.js');
 
   assert.match(mainProcess, /title: 'Thunderbolt Fighter'/);
   assert.match(renderer, /Thunderbolt Fighter/);
-  assert.match(renderer, /Press Start/);
-  assert.match(renderer, /FirstPlayableScene/);
+  assert.match(renderer, /Start Run/);
+  assert.match(renderer, /MainMenuScene/);
+  assert.match(renderer, /background_main_menu_1280x720/);
+  assert.doesNotMatch(renderer, /background_sky_1672x941/);
+  assert.match(renderer, /contentX: 320/);
+  assert.match(renderer, /mainMenuY: 204/);
+  assert.match(renderer, /runLengthY: 300/);
+});
+
+test('main menu exposes 1, 3, and 5 minute run length choices', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /runLengthMinutes: 1/);
+  assert.match(renderer, /runLengthMinutes: 3/);
+  assert.match(renderer, /runLengthMinutes: 5/);
+  assert.match(renderer, /dataset\.runLengthMinutes/);
+  assert.match(smokeTest, /data-run-length-minutes/);
+});
+
+test('main menu exposes simple, normal, and hard difficulty choices', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /difficulty: 'simple'/);
+  assert.match(renderer, /difficulty: 'normal'/);
+  assert.match(renderer, /difficulty: 'hard'/);
+  assert.match(renderer, /dataset\.difficulty/);
+  assert.match(smokeTest, /data-difficulty/);
+});
+
+test('main menu start-run path propagates selected options into gameplay', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /class GameplayScene/);
+  assert.match(renderer, /this\.scene\.start\('gameplay'/);
+  assert.match(renderer, /runOptions/);
+  assert.match(renderer, /dataset\.screen = 'gameplay'/);
+  assert.match(smokeTest, /getAttribute\('data-screen'\), 'gameplay'/);
+  assert.match(smokeTest, /data-run-length-minutes'\), '5'/);
+  assert.match(smokeTest, /data-difficulty'\), 'hard'/);
 });
 
 test('project exposes a Windows desktop packaging command', async () => {
@@ -58,17 +99,17 @@ test('project exposes a Windows desktop packaging command', async () => {
   assert.match(packageScript, /node_modules', 'phaser/);
 });
 
-test('desktop smoke test launches the shell and reaches the first screen', async () => {
+test('desktop smoke test launches the shell and reaches the main menu', async () => {
   const packageJson = await readJson('package.json');
   const renderer = await readText('src/renderer/game.js');
   const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
 
   assert.equal(packageJson.scripts['test:smoke'], 'node tests/smoke/electron-smoke.mjs');
   assert.equal(packageJson.devDependencies['@playwright/test'], '^1.57.0');
-  assert.match(renderer, /dataset\.screen = 'first-playable'/);
+  assert.match(renderer, /dataset\.screen = 'main-menu'/);
   assert.match(renderer, /dataset\.title = 'Thunderbolt Fighter'/);
   assert.match(smokeTest, /_electron/);
-  assert.match(smokeTest, /#game-root\[data-screen="first-playable"\]/);
+  assert.match(smokeTest, /#game-root\[data-screen="main-menu"\]/);
   assert.match(smokeTest, /Thunderbolt Fighter/);
 });
 
