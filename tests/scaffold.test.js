@@ -29,7 +29,7 @@ test('project exposes an offline Electron and Phaser app scaffold', async () => 
   assert.match(renderer, /new Phaser\.Game/);
 });
 
-test('desktop shell opens to a Thunderbolt Fighter main menu', async () => {
+test('desktop shell opens to a polished Thunderbolt Fighter main menu', async () => {
   const mainProcess = await readText('src/main/main.js');
   const renderer = await readText('src/renderer/game.js');
 
@@ -37,6 +37,12 @@ test('desktop shell opens to a Thunderbolt Fighter main menu', async () => {
   assert.match(renderer, /Thunderbolt Fighter/);
   assert.match(renderer, /Start Run/);
   assert.match(renderer, /MainMenuScene/);
+  assert.match(renderer, /background_sky_1672x941/);
+  assert.match(renderer, /ui_title_plate/);
+  assert.match(renderer, /ui_panel_hud/);
+  assert.match(renderer, /ui_button_primary/);
+  assert.match(renderer, /mainMenuY: 238/);
+  assert.match(renderer, /runLengthY: 330/);
 });
 
 test('main menu exposes 1, 3, and 5 minute run length choices', async () => {
