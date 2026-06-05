@@ -29,14 +29,14 @@ test('project exposes an offline Electron and Phaser app scaffold', async () => 
   assert.match(renderer, /new Phaser\.Game/);
 });
 
-test('desktop shell opens to a Thunderbolt Fighter first screen', async () => {
+test('desktop shell opens to a Thunderbolt Fighter main menu', async () => {
   const mainProcess = await readText('src/main/main.js');
   const renderer = await readText('src/renderer/game.js');
 
   assert.match(mainProcess, /title: 'Thunderbolt Fighter'/);
   assert.match(renderer, /Thunderbolt Fighter/);
-  assert.match(renderer, /Press Start/);
-  assert.match(renderer, /FirstPlayableScene/);
+  assert.match(renderer, /Start Run/);
+  assert.match(renderer, /MainMenuScene/);
 });
 
 test('project exposes a Windows desktop packaging command', async () => {
@@ -58,17 +58,17 @@ test('project exposes a Windows desktop packaging command', async () => {
   assert.match(packageScript, /node_modules', 'phaser/);
 });
 
-test('desktop smoke test launches the shell and reaches the first screen', async () => {
+test('desktop smoke test launches the shell and reaches the main menu', async () => {
   const packageJson = await readJson('package.json');
   const renderer = await readText('src/renderer/game.js');
   const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
 
   assert.equal(packageJson.scripts['test:smoke'], 'node tests/smoke/electron-smoke.mjs');
   assert.equal(packageJson.devDependencies['@playwright/test'], '^1.57.0');
-  assert.match(renderer, /dataset\.screen = 'first-playable'/);
+  assert.match(renderer, /dataset\.screen = 'main-menu'/);
   assert.match(renderer, /dataset\.title = 'Thunderbolt Fighter'/);
   assert.match(smokeTest, /_electron/);
-  assert.match(smokeTest, /#game-root\[data-screen="first-playable"\]/);
+  assert.match(smokeTest, /#game-root\[data-screen="main-menu"\]/);
   assert.match(smokeTest, /Thunderbolt Fighter/);
 });
 

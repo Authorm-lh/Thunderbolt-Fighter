@@ -5,7 +5,7 @@ const app = await electron.launch({ args: ['.'] });
 
 try {
   const window = await app.firstWindow();
-  await window.waitForSelector('#game-root[data-screen="first-playable"]', { timeout: 15000 });
+  await window.waitForSelector('#game-root[data-screen="main-menu"]', { timeout: 15000 });
   await window.waitForSelector('#game-root canvas', { timeout: 15000 });
 
   const title = await window.locator('#game-root').getAttribute('data-title');
