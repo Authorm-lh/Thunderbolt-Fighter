@@ -1,5 +1,5 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
-import { GAMEPLAY_PLAYFIELD, PLAYER_FLIGHT, resolvePlayerVelocity } from './gameplay-state.js';
+import { GAMEPLAY_PLAYFIELD, PLAYER_FLIGHT, PLAYER_WEAPON, resolvePlayerVelocity, shouldAutoFire } from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
   { label: '1 min', runLengthMinutes: 1, xOffset: -116 },
@@ -191,6 +191,8 @@ class GameplayScene extends Phaser.Scene {
     this.player = null;
     this.cursorKeys = null;
     this.wasdKeys = null;
+    this.projectiles = [];
+    this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
   }
 
   create(data) {
@@ -250,6 +252,38 @@ class GameplayScene extends Phaser.Scene {
 
     this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
     this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
+
+    if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs })) {
+      this.spawnPlayerProjectile();
+      this.lastFiredMs = _time;
+    }
+
+    this.updateProjectiles(deltaSeconds);
+  }
+
+  spawnPlayerProjectile() {
+    const projectile = this.add.circle(
+      this.player.x,
+      this.player.y - PLAYER_FLIGHT.radius,
+      PLAYER_WEAPON.projectileRadius,
+      0xffd166,
+      1
+    );
+
+    this.projectiles.push(projectile);
+  }
+
+  updateProjectiles(deltaSeconds) {
+    this.projectiles = this.projectiles.filter((projectile) => {
+      projectile.y -= PLAYER_WEAPON.projectileSpeed * deltaSeconds;
+
+      if (projectile.y < -PLAYER_WEAPON.projectileRadius) {
+        projectile.destroy();
+        return false;
+      }
+
+      return true;
+    });
   }
 }
 

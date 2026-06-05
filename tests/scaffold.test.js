@@ -113,6 +113,19 @@ test('player movement accepts arrow keys and WASD continuously', async () => {
   assert.match(renderer, /resolvePlayerVelocity/);
 });
 
+test('player ship fires automatically on a fixed cadence', async () => {
+  const { PLAYER_WEAPON, shouldAutoFire } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(PLAYER_WEAPON.fireIntervalMs, 260);
+  assert.equal(shouldAutoFire({ elapsedMs: 0, lastFiredMs: -PLAYER_WEAPON.fireIntervalMs }), true);
+  assert.equal(shouldAutoFire({ elapsedMs: 120, lastFiredMs: 0 }), false);
+  assert.equal(shouldAutoFire({ elapsedMs: 260, lastFiredMs: 0 }), true);
+  assert.doesNotMatch(renderer, /Space/);
+  assert.doesNotMatch(renderer, /shoot/i);
+  assert.match(renderer, /shouldAutoFire/);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');

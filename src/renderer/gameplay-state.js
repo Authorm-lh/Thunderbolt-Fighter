@@ -10,6 +10,12 @@ export const PLAYER_FLIGHT = {
   radius: 28
 };
 
+export const PLAYER_WEAPON = {
+  fireIntervalMs: 260,
+  projectileSpeed: 880,
+  projectileRadius: 5
+};
+
 const isPressed = (inputState, codes) => codes.some((code) => Boolean(inputState[code]));
 
 export const resolvePlayerVelocity = (inputState) => {
@@ -27,3 +33,5 @@ export const resolvePlayerVelocity = (inputState) => {
     y: (yAxis / magnitude) * PLAYER_FLIGHT.speed
   };
 };
+
+export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= PLAYER_WEAPON.fireIntervalMs;
