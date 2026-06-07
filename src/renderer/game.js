@@ -8,6 +8,7 @@ import {
   advanceRunClock,
   applyPlayerDamage,
   createHudValues,
+  createResultsValues,
   createRunBaseline,
   createRunClock,
   createRunStats,
@@ -400,16 +401,31 @@ class ResultsScene extends Phaser.Scene {
   create(data) {
     const root = document.querySelector('#game-root');
 
+    const resultsValues = createResultsValues({ clock: data.runClock, stats: data.runStats });
+
     this.cameras.main.setBackgroundColor('#09111f');
-    this.add.text(this.scale.width / 2, this.scale.height / 2, 'Run Complete', {
+    this.add.text(this.scale.width / 2, 150, 'Run Complete', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '42px',
       color: '#f8fbff',
       align: 'center'
     }).setOrigin(0.5);
+    this.add.text(this.scale.width / 2, 250, Object.values(resultsValues).join('\n'), {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '28px',
+      color: '#9ed7ff',
+      align: 'center',
+      lineSpacing: 8
+    }).setOrigin(0.5, 0);
 
     root.dataset.screen = 'results';
     root.dataset.endReason = data.endReason;
+    root.dataset.resultsScore = String(data.runStats.score);
+    root.dataset.resultsKills = String(data.runStats.kills);
+    root.dataset.resultsTimeSurvived = resultsValues.timeSurvived.replace('Time Survived ', '');
+    root.dataset.resultsPickups = String(data.runStats.pickups);
+    root.dataset.resultsShotsFired = String(data.runStats.shotsFired);
+    root.dataset.resultsDamageDealt = String(data.runStats.damageDealt);
   }
 }
 

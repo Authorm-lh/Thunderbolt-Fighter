@@ -222,6 +222,27 @@ test('the run ends when the selected timer expires', async () => {
   assert.match(renderer, /endRunIfNeeded/);
 });
 
+test('results screen shows baseline run performance stats', async () => {
+  const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const clock = advanceRunClock({
+    clock: createRunClock({ runLengthMinutes: 3 }),
+    deltaMs: 75_000
+  });
+
+  assert.deepEqual(createResultsValues({ clock, stats: createRunStats() }), {
+    score: 'Score 0',
+    kills: 'Kills 0',
+    timeSurvived: 'Time Survived 1:15',
+    pickups: 'Pickups 0',
+    shotsFired: 'Shots Fired 0',
+    damageDealt: 'Damage Dealt 0'
+  });
+  assert.match(renderer, /ResultsScene/);
+  assert.match(renderer, /createResultsValues/);
+});
+
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
   const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

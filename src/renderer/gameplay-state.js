@@ -72,7 +72,9 @@ export const createRunStats = () => ({
   activeBuffName: 'None',
   bestScore: null,
   kills: 0,
-  pickups: 0
+  pickups: 0,
+  shotsFired: 0,
+  damageDealt: 0
 });
 
 export const createHudValues = ({ clock, stats }) => ({
@@ -82,6 +84,15 @@ export const createHudValues = ({ clock, stats }) => ({
   weapon: `Weapon ${stats.weaponName}`,
   buff: `Buff ${stats.activeBuffName}`,
   bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
+});
+
+export const createResultsValues = ({ clock, stats }) => ({
+  score: `Score ${stats.score}`,
+  kills: `Kills ${stats.kills}`,
+  timeSurvived: `Time Survived ${formatRunTimer(clock.durationMs - clock.remainingMs)}`,
+  pickups: `Pickups ${stats.pickups}`,
+  shotsFired: `Shots Fired ${stats.shotsFired}`,
+  damageDealt: `Damage Dealt ${stats.damageDealt}`
 });
 
 export const applyPlayerDamage = ({ stats, damage }) => ({
