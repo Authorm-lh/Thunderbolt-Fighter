@@ -140,6 +140,20 @@ test('player ship fires automatically on a fixed cadence', async () => {
   assert.match(renderer, /shouldAutoFire/);
 });
 
+test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
+  const { ENEMY_CLASSES } = await import('../src/renderer/gameplay-state.js');
+
+  assert.equal(ENEMY_CLASSES.basic.type, 'basic');
+  assert.equal(ENEMY_CLASSES.elite.type, 'elite');
+  assert.ok(ENEMY_CLASSES.elite.maxHealth > ENEMY_CLASSES.basic.maxHealth);
+  assert.ok(ENEMY_CLASSES.elite.projectileDamage > ENEMY_CLASSES.basic.projectileDamage);
+  assert.ok(ENEMY_CLASSES.elite.contactDamage > ENEMY_CLASSES.basic.contactDamage);
+  assert.ok(ENEMY_CLASSES.elite.fireIntervalMs < ENEMY_CLASSES.basic.fireIntervalMs);
+  assert.ok(ENEMY_CLASSES.elite.speed > ENEMY_CLASSES.basic.speed);
+  assert.notEqual(ENEMY_CLASSES.elite.movementPattern, ENEMY_CLASSES.basic.movementPattern);
+  assert.ok(ENEMY_CLASSES.elite.scoreValue > ENEMY_CLASSES.basic.scoreValue);
+});
+
 test('basic enemies spawn from the top and descend in readable lanes', async () => {
   const { BASIC_ENEMY, createBasicEnemySpawn, advanceBasicEnemies } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -154,7 +168,8 @@ test('basic enemies spawn from the top and descend in readable lanes', async () 
     x: BASIC_ENEMY.lanes[0],
     y: -BASIC_ENEMY.radius,
     health: BASIC_ENEMY.maxHealth,
-    lastFiredMs: -BASIC_ENEMY.fireIntervalMs
+    lastFiredMs: -BASIC_ENEMY.fireIntervalMs,
+    movementOriginX: BASIC_ENEMY.lanes[0]
   });
   assert.equal(secondEnemy.x, BASIC_ENEMY.lanes[1]);
   assert.equal(advancedEnemies[0].y, BASIC_ENEMY.speed - BASIC_ENEMY.radius);
@@ -177,7 +192,8 @@ test('basic enemies shoot downward on a fixed cadence', async () => {
     x: 420,
     y: 96 + BASIC_ENEMY.radius,
     radius: BASIC_ENEMY.projectileRadius,
-    damage: BASIC_ENEMY.projectileDamage
+    damage: BASIC_ENEMY.projectileDamage,
+    speed: BASIC_ENEMY.projectileSpeed
   });
   assert.equal(advancedProjectiles[0].y, projectile.y + BASIC_ENEMY.projectileSpeed);
   assert.match(renderer, /createBasicEnemyProjectile/);

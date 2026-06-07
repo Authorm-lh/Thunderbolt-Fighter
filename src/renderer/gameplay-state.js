@@ -22,20 +22,42 @@ export const PLAYER_SURVIVAL = {
   maxHealth: 100
 };
 
-export const BASIC_ENEMY = {
-  type: 'basic',
-  spawnIntervalMs: 1200,
-  speed: 96,
-  radius: 24,
-  maxHealth: 30,
-  fireIntervalMs: 1500,
-  projectileSpeed: 360,
-  projectileRadius: 6,
-  projectileDamage: 12,
-  contactDamage: 20,
-  scoreValue: 100,
-  lanes: [220, 420, 640, 860, 1060]
+export const ENEMY_CLASSES = {
+  basic: {
+    type: 'basic',
+    spawnIntervalMs: 1200,
+    speed: 96,
+    radius: 24,
+    maxHealth: 30,
+    fireIntervalMs: 1500,
+    projectileSpeed: 360,
+    projectileRadius: 6,
+    projectileDamage: 12,
+    contactDamage: 20,
+    scoreValue: 100,
+    movementPattern: 'straight',
+    lanes: [220, 420, 640, 860, 1060]
+  },
+  elite: {
+    type: 'elite',
+    spawnIntervalMs: 2400,
+    speed: 132,
+    radius: 28,
+    maxHealth: 60,
+    fireIntervalMs: 950,
+    projectileSpeed: 420,
+    projectileRadius: 7,
+    projectileDamage: 18,
+    contactDamage: 30,
+    scoreValue: 260,
+    movementPattern: 'sway',
+    lanes: [300, 540, 780, 1020]
+  }
 };
+
+export const BASIC_ENEMY = ENEMY_CLASSES.basic;
+
+export const getEnemyClass = (enemyType = 'basic') => ENEMY_CLASSES[enemyType] ?? ENEMY_CLASSES.basic;
 
 export const DIFFICULTY_TUNING = {
   simple: {
@@ -88,33 +110,58 @@ export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs, difficulty = '
   elapsedMs - lastSpawnedMs >= getDifficultyTuning(difficulty).enemySpawnIntervalMs
 );
 
-export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= BASIC_ENEMY.fireIntervalMs;
+export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basic' }) => {
+  const enemyClass = getEnemyClass(enemyType);
 
-export const createBasicEnemySpawn = ({ spawnIndex }) => ({
-  id: `basic-${spawnIndex}`,
-  type: BASIC_ENEMY.type,
-  x: BASIC_ENEMY.lanes[spawnIndex % BASIC_ENEMY.lanes.length],
-  y: -BASIC_ENEMY.radius,
-  health: BASIC_ENEMY.maxHealth,
-  lastFiredMs: -BASIC_ENEMY.fireIntervalMs
+  return elapsedMs - lastFiredMs >= enemyClass.fireIntervalMs;
+};
+
+export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic' }) => {
+  const enemyClass = getEnemyClass(enemyType);
+
+  return {
+    id: `${enemyClass.type}-${spawnIndex}`,
+    type: enemyClass.type,
+    x: enemyClass.lanes[spawnIndex % enemyClass.lanes.length],
+    y: -enemyClass.radius,
+    health: enemyClass.maxHealth,
+    lastFiredMs: -enemyClass.fireIntervalMs,
+    movementOriginX: enemyClass.lanes[spawnIndex % enemyClass.lanes.length]
+  };
+};
+
+export const createBasicEnemySpawn = ({ spawnIndex }) => createEnemySpawn({ spawnIndex, enemyType: 'basic' });
+
+export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => {
+  const enemyClass = getEnemyClass(enemy.type);
+  const y = enemy.y + enemyClass.speed * deltaSeconds;
+  const x = enemyClass.movementPattern === 'sway'
+    ? enemy.movementOriginX + Math.sin((y + enemyClass.radius) / 80) * 42
+    : enemy.x;
+
+  return {
+    ...enemy,
+    x,
+    y
+  };
 });
 
-export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => ({
-  ...enemy,
-  y: enemy.y + BASIC_ENEMY.speed * deltaSeconds
-}));
+export const createBasicEnemyProjectile = ({ enemyId, x, y, enemyType = 'basic', difficulty = 'normal' }) => {
+  const enemyClass = getEnemyClass(enemyType);
 
-export const createBasicEnemyProjectile = ({ enemyId, x, y, difficulty = 'normal' }) => ({
-  sourceEnemyId: enemyId,
-  x,
-  y: y + BASIC_ENEMY.radius,
-  radius: BASIC_ENEMY.projectileRadius,
-  damage: Math.round(BASIC_ENEMY.projectileDamage * getDifficultyTuning(difficulty).enemyDamageMultiplier)
-});
+  return {
+    sourceEnemyId: enemyId,
+    x,
+    y: y + enemyClass.radius,
+    radius: enemyClass.projectileRadius,
+    damage: Math.round(enemyClass.projectileDamage * getDifficultyTuning(difficulty).enemyDamageMultiplier),
+    speed: enemyClass.projectileSpeed
+  };
+};
 
 export const advanceEnemyProjectiles = ({ projectiles, deltaSeconds }) => projectiles.map((projectile) => ({
   ...projectile,
-  y: projectile.y + BASIC_ENEMY.projectileSpeed * deltaSeconds
+  y: projectile.y + (projectile.speed ?? BASIC_ENEMY.projectileSpeed) * deltaSeconds
 }));
 
 export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
@@ -126,7 +173,7 @@ export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
   projectiles.forEach((projectile) => {
     const hitEnemy = remainingEnemies.find((enemy) => doCirclesOverlap(
       { x: projectile.x, y: projectile.y, radius: projectile.radius },
-      { x: enemy.x, y: enemy.y, radius: BASIC_ENEMY.radius }
+      { x: enemy.x, y: enemy.y, radius: getEnemyClass(enemy.type).radius }
     ));
 
     if (!hitEnemy) {
@@ -184,7 +231,10 @@ export const createRunStats = () => ({
 
 export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDealt, difficulty = 'normal' }) => ({
   ...stats,
-  score: stats.score + Math.round(destroyedEnemies.length * BASIC_ENEMY.scoreValue * getDifficultyTuning(difficulty).scoreMultiplier),
+  score: stats.score + destroyedEnemies.reduce(
+    (score, enemy) => score + Math.round(getEnemyClass(enemy.type).scoreValue * getDifficultyTuning(difficulty).scoreMultiplier),
+    0
+  ),
   kills: stats.kills + destroyedEnemies.length,
   damageDealt: stats.damageDealt + damageDealt
 });
@@ -227,8 +277,10 @@ export const resolveEnemyPlayerHits = ({ stats, player, enemyProjectiles, enemie
   });
 
   enemies.forEach((enemy) => {
-    if (doCirclesOverlap({ x: enemy.x, y: enemy.y, radius: BASIC_ENEMY.radius }, player)) {
-      damage += Math.round(BASIC_ENEMY.contactDamage * getDifficultyTuning(difficulty).enemyDamageMultiplier);
+    const enemyClass = getEnemyClass(enemy.type);
+
+    if (doCirclesOverlap({ x: enemy.x, y: enemy.y, radius: enemyClass.radius }, player)) {
+      damage += Math.round(enemyClass.contactDamage * getDifficultyTuning(difficulty).enemyDamageMultiplier);
       contactEnemies.push(enemy);
     }
   });

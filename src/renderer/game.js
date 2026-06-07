@@ -467,6 +467,7 @@ class GameplayScene extends Phaser.Scene {
     const advancedEnemies = advanceBasicEnemies({ enemies: this.enemies, deltaSeconds });
 
     this.enemies = advancedEnemies.filter((enemy) => {
+      enemy.sprite.x = enemy.x;
       enemy.sprite.y = enemy.y;
 
       if (enemy.y > GAMEPLAY_PLAYFIELD.height + BASIC_ENEMY.radius) {
@@ -474,7 +475,7 @@ class GameplayScene extends Phaser.Scene {
         return false;
       }
 
-      if (enemy.y >= 0 && shouldBasicEnemyFire({ elapsedMs, lastFiredMs: enemy.lastFiredMs })) {
+      if (enemy.y >= 0 && shouldBasicEnemyFire({ elapsedMs, lastFiredMs: enemy.lastFiredMs, enemyType: enemy.type })) {
         this.spawnEnemyProjectile(enemy);
         enemy.lastFiredMs = elapsedMs;
       }
@@ -485,7 +486,13 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnEnemyProjectile(enemy) {
-    const projectile = createBasicEnemyProjectile({ enemyId: enemy.id, x: enemy.x, y: enemy.y, difficulty: this.selectedDifficulty });
+    const projectile = createBasicEnemyProjectile({
+      enemyId: enemy.id,
+      x: enemy.x,
+      y: enemy.y,
+      enemyType: enemy.type,
+      difficulty: this.selectedDifficulty
+    });
     const sprite = this.add.circle(projectile.x, projectile.y, projectile.radius, 0xff8a65, 1);
 
     this.enemyProjectiles.push({ ...projectile, sprite });
