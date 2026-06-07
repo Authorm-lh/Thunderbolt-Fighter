@@ -33,6 +33,7 @@ export const BASIC_ENEMY = {
   projectileRadius: 6,
   projectileDamage: 12,
   contactDamage: 20,
+  scoreValue: 100,
   lanes: [220, 420, 640, 860, 1060]
 };
 
@@ -98,6 +99,7 @@ export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
   const remainingEnemies = enemies.map((enemy) => ({ ...enemy }));
   const destroyedEnemies = [];
   const remainingProjectiles = [];
+  let damageDealt = 0;
 
   projectiles.forEach((projectile) => {
     const hitEnemy = remainingEnemies.find((enemy) => doCirclesOverlap(
@@ -110,6 +112,7 @@ export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
       return;
     }
 
+    damageDealt += Math.min(hitEnemy.health, PLAYER_WEAPON.damage);
     hitEnemy.health = Math.max(0, hitEnemy.health - PLAYER_WEAPON.damage);
 
     if (hitEnemy.health === 0) {
@@ -121,7 +124,8 @@ export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
   return {
     enemies: remainingEnemies,
     projectiles: remainingProjectiles,
-    destroyedEnemies
+    destroyedEnemies,
+    damageDealt
   };
 };
 
@@ -154,6 +158,13 @@ export const createRunStats = () => ({
   pickups: 0,
   shotsFired: 0,
   damageDealt: 0
+});
+
+export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDealt }) => ({
+  ...stats,
+  score: stats.score + destroyedEnemies.length * BASIC_ENEMY.scoreValue,
+  kills: stats.kills + destroyedEnemies.length,
+  damageDealt: stats.damageDealt + damageDealt
 });
 
 export const createHudValues = ({ clock, stats }) => ({

@@ -9,6 +9,7 @@ import {
   advanceBasicEnemies,
   advanceEnemyProjectiles,
   advanceRunClock,
+  applyDestroyedEnemyRewards,
   applyPlayerDamage,
   createBasicEnemyProjectile,
   createBasicEnemySpawn,
@@ -361,6 +362,7 @@ class GameplayScene extends Phaser.Scene {
 
     this.hudText.setText(Object.values(hudValues).join('\n'));
     this.root.dataset.score = String(this.runStats.score);
+    this.root.dataset.kills = String(this.runStats.kills);
     this.root.dataset.timer = hudValues.timer.replace('Timer ', '');
     this.root.dataset.health = `${this.runStats.health}/${this.runStats.maxHealth}`;
     this.root.dataset.weapon = this.runStats.weaponName;
@@ -435,6 +437,16 @@ class GameplayScene extends Phaser.Scene {
 
     this.projectiles = result.projectiles;
     this.enemies = result.enemies;
+
+    if (result.destroyedEnemies.length > 0) {
+      this.runStats = applyDestroyedEnemyRewards({
+        stats: this.runStats,
+        destroyedEnemies: result.destroyedEnemies,
+        damageDealt: result.damageDealt
+      });
+      this.updateHud();
+    }
+
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
 

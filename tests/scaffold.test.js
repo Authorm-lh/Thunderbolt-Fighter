@@ -194,6 +194,7 @@ test('player shots damage and destroy basic enemies', async () => {
   assert.equal(firstHit.enemies[0].health, BASIC_ENEMY.maxHealth - PLAYER_WEAPON.damage);
   assert.equal(firstHit.projectiles.length, 0);
   assert.equal(firstHit.destroyedEnemies.length, 0);
+  assert.equal(firstHit.damageDealt, PLAYER_WEAPON.damage);
   assert.equal(finalHit.enemies.length, 0);
   assert.deepEqual(finalHit.destroyedEnemies, [{ ...firstHit.enemies[0], health: 0 }]);
   assert.match(renderer, /resolvePlayerProjectileEnemyHits/);
@@ -229,6 +230,23 @@ test('enemy shots and contact damage the player', async () => {
   assert.equal(result.enemyProjectiles.length, 0);
   assert.deepEqual(result.contactEnemies, [contactEnemy]);
   assert.match(renderer, /resolveEnemyPlayerHits/);
+});
+
+test('destroying basic enemies increases score, kills, and damage dealt', async () => {
+  const { BASIC_ENEMY, PLAYER_WEAPON, applyDestroyedEnemyRewards, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const stats = applyDestroyedEnemyRewards({
+    stats: createRunStats(),
+    destroyedEnemies: [{ id: 'basic-0', type: BASIC_ENEMY.type, health: 0 }],
+    damageDealt: PLAYER_WEAPON.damage
+  });
+
+  assert.equal(stats.score, BASIC_ENEMY.scoreValue);
+  assert.equal(stats.kills, 1);
+  assert.equal(stats.damageDealt, PLAYER_WEAPON.damage);
+  assert.match(renderer, /applyDestroyedEnemyRewards/);
+  assert.match(renderer, /dataset\.kills/);
 });
 
 test('gameplay background scrolls slowly to communicate vertical flight', async () => {
