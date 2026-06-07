@@ -207,6 +207,25 @@ test('weapon shape pickups replace the currently active weapon shape', async () 
   assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats })[0].piercing, true);
 });
 
+test('support buffs coexist while weapon shapes remain exclusive', async () => {
+  const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const damagedStats = applyPlayerDamage({ stats: createRunStats(), damage: 40 });
+  const healedStats = applyPickupBuff({ stats: damagedStats, pickupType: 'healing' });
+  const shieldedStats = applyPickupBuff({ stats: healedStats, pickupType: 'shield' });
+  const poweredStats = applyPickupBuff({ stats: shieldedStats, pickupType: 'attack-power' });
+  const fastStats = applyPickupBuff({ stats: poweredStats, pickupType: 'attack-speed' });
+  const shapedStats = applyPickupBuff({ stats: fastStats, pickupType: 'dual-shot' });
+  const replacedShapeStats = applyPickupBuff({ stats: shapedStats, pickupType: 'spread-shot' });
+
+  assert.equal(replacedShapeStats.health, 85);
+  assert.equal(replacedShapeStats.shield, 35);
+  assert.ok(replacedShapeStats.activeBuffs.attackPower.remainingMs > 0);
+  assert.ok(replacedShapeStats.activeBuffs.attackSpeed.remainingMs > 0);
+  assert.equal(replacedShapeStats.weaponShape, 'spread-shot');
+  assert.equal(replacedShapeStats.pickups, 6);
+});
+
 test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
   const { ENEMY_CLASSES } = await import('../src/renderer/gameplay-state.js');
 
