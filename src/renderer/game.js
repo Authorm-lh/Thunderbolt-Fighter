@@ -626,6 +626,9 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.resultsPickups = String(data.runStats.pickups);
     root.dataset.resultsShotsFired = String(data.runStats.shotsFired);
     root.dataset.resultsDamageDealt = String(data.runStats.damageDealt);
+    root.dataset.resultsDamageBoosted = String(data.runStats.damageBoosted);
+    root.dataset.resultsShieldBlocked = String(data.runStats.shieldBlocked);
+    root.dataset.resultsWeaponShape = data.runStats.weaponName;
   }
 }
 

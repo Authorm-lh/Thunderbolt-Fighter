@@ -568,10 +568,28 @@ test('results screen shows baseline run performance stats', async () => {
     timeSurvived: 'Time Survived 1:15',
     pickups: 'Pickups 0',
     shotsFired: 'Shots Fired 0',
-    damageDealt: 'Damage Dealt 0'
+    damageDealt: 'Damage Dealt 0',
+    damageBoosted: 'Damage Boosted 0',
+    shieldBlocked: 'Shield Blocked 0',
+    weaponShape: 'Weapon Shape Blaster'
   });
   assert.match(renderer, /ResultsScene/);
   assert.match(renderer, /createResultsValues/);
+});
+
+test('results stats include pickup counts and combat stat changes', async () => {
+  const { applyPlayerDamage, applyPickupBuff, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const pickedUpStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-power' });
+  const shapedStats = applyPickupBuff({ stats: pickedUpStats, pickupType: 'spread-shot' });
+  const shieldedStats = applyPickupBuff({ stats: shapedStats, pickupType: 'shield' });
+  const damagedStats = applyPlayerDamage({ stats: shieldedStats, damage: 20 });
+  const resultsValues = createResultsValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats: damagedStats });
+
+  assert.equal(resultsValues.pickups, 'Pickups 3');
+  assert.equal(resultsValues.damageBoosted, 'Damage Boosted 10');
+  assert.equal(resultsValues.shieldBlocked, 'Shield Blocked 20');
+  assert.equal(resultsValues.weaponShape, 'Weapon Shape Spread Shot');
 });
 
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {

@@ -321,7 +321,9 @@ export const createRunStats = () => ({
   kills: 0,
   pickups: 0,
   shotsFired: 0,
-  damageDealt: 0
+  damageDealt: 0,
+  damageBoosted: 0,
+  shieldBlocked: 0
 });
 
 export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDealt, difficulty = 'normal' }) => ({
@@ -362,7 +364,10 @@ export const createResultsValues = ({ clock, stats }) => ({
   timeSurvived: `Time Survived ${formatRunTimer(clock.durationMs - clock.remainingMs)}`,
   pickups: `Pickups ${stats.pickups}`,
   shotsFired: `Shots Fired ${stats.shotsFired}`,
-  damageDealt: `Damage Dealt ${stats.damageDealt}`
+  damageDealt: `Damage Dealt ${stats.damageDealt}`,
+  damageBoosted: `Damage Boosted ${stats.damageBoosted}`,
+  shieldBlocked: `Shield Blocked ${stats.shieldBlocked}`,
+  weaponShape: `Weapon Shape ${stats.weaponName}`
 });
 
 export const applyPlayerDamage = ({ stats, damage }) => {
@@ -372,6 +377,7 @@ export const applyPlayerDamage = ({ stats, damage }) => {
   return {
     ...stats,
     shield: stats.shield - blockedDamage,
+    shieldBlocked: stats.shieldBlocked + blockedDamage,
     health: Math.max(0, stats.health - remainingDamage)
   };
 };
@@ -403,6 +409,7 @@ export const applyPickupBuff = ({ stats, pickupType }) => {
         attackPower: { remainingMs: pickup.durationMs }
       },
       activeBuffName: pickup.label,
+      damageBoosted: stats.damageBoosted + (pickup.damage - PLAYER_WEAPON.damage),
       pickups: stats.pickups + 1
     };
   }
