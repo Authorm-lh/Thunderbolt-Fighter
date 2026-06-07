@@ -10,6 +10,7 @@ import {
   advanceEnemyProjectiles,
   advanceRunClock,
   applyDestroyedEnemyRewards,
+  applyPickupBuff,
   applyPlayerDamage,
   createBasicEnemyProjectile,
   createEnemySpawn,
@@ -386,6 +387,11 @@ class GameplayScene extends Phaser.Scene {
     this.runStats = applyPlayerDamage({ stats: this.runStats, damage });
     this.updateHud();
     this.endRunIfNeeded();
+  }
+
+  applyPickup(pickupType) {
+    this.runStats = applyPickupBuff({ stats: this.runStats, pickupType });
+    this.updateHud();
   }
 
   endRunIfNeeded() {

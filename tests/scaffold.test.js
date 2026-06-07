@@ -419,6 +419,21 @@ test('player health decreases when damage is applied', async () => {
   assert.match(renderer, /applyPlayerDamage/);
 });
 
+test('healing pickups restore player health without exceeding maximum health', async () => {
+  const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const damagedStats = applyPlayerDamage({ stats: createRunStats(), damage: 45 });
+  const healedStats = applyPickupBuff({ stats: damagedStats, pickupType: 'healing' });
+  const cappedStats = applyPickupBuff({ stats: healedStats, pickupType: 'healing' });
+
+  assert.equal(healedStats.health, 80);
+  assert.equal(healedStats.pickups, 1);
+  assert.equal(cappedStats.health, healedStats.maxHealth);
+  assert.equal(cappedStats.pickups, 2);
+  assert.match(renderer, /applyPickupBuff/);
+});
+
 test('the run ends immediately when player health reaches zero', async () => {
   const { applyPlayerDamage, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

@@ -22,6 +22,14 @@ export const PLAYER_SURVIVAL = {
   maxHealth: 100
 };
 
+export const PICKUP_BUFFS = {
+  healing: {
+    type: 'healing',
+    label: 'Repair',
+    healAmount: 25
+  }
+};
+
 export const ENEMY_CLASSES = {
   basic: {
     type: 'basic',
@@ -279,6 +287,20 @@ export const applyPlayerDamage = ({ stats, damage }) => ({
   ...stats,
   health: Math.max(0, stats.health - damage)
 });
+
+export const applyPickupBuff = ({ stats, pickupType }) => {
+  const pickup = PICKUP_BUFFS[pickupType];
+
+  if (pickupType === 'healing') {
+    return {
+      ...stats,
+      health: Math.min(stats.maxHealth, stats.health + pickup.healAmount),
+      pickups: stats.pickups + 1
+    };
+  }
+
+  return stats;
+};
 
 export const resolveEscapedEnemyHits = ({ stats, enemies, difficulty = 'normal' }) => {
   let damage = 0;
