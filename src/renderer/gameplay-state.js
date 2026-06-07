@@ -84,6 +84,11 @@ export const createHudValues = ({ clock, stats }) => ({
   bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
 });
 
+export const applyPlayerDamage = ({ stats, damage }) => ({
+  ...stats,
+  health: Math.max(0, stats.health - damage)
+});
+
 export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeight }) => (
   currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds
 ) % tileHeight;

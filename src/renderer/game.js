@@ -6,6 +6,7 @@ import {
   PLAYER_WEAPON,
   advanceBackgroundOffset,
   advanceRunClock,
+  applyPlayerDamage,
   createHudValues,
   createRunBaseline,
   createRunClock,
@@ -343,6 +344,11 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.hudWeapon = hudValues.weapon;
     this.root.dataset.hudBuff = hudValues.buff;
     this.root.dataset.hudBestScore = hudValues.bestScore;
+  }
+
+  applyDamage(damage) {
+    this.runStats = applyPlayerDamage({ stats: this.runStats, damage });
+    this.updateHud();
   }
 
   spawnPlayerProjectile() {

@@ -182,6 +182,17 @@ test('HUD shows baseline survival and scoring values', async () => {
   assert.match(renderer, /Best/);
 });
 
+test('player health decreases when damage is applied', async () => {
+  const { applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const damagedStats = applyPlayerDamage({ stats: createRunStats(), damage: 35 });
+
+  assert.equal(damagedStats.health, 65);
+  assert.equal(applyPlayerDamage({ stats: damagedStats, damage: 90 }).health, 0);
+  assert.match(renderer, /applyPlayerDamage/);
+});
+
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
   const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
