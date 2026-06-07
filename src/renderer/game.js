@@ -1,12 +1,15 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
 import {
   BACKGROUND_SCROLL,
+  BASIC_ENEMY,
   GAMEPLAY_PLAYFIELD,
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
   advanceBackgroundOffset,
+  advanceBasicEnemies,
   advanceRunClock,
   applyPlayerDamage,
+  createBasicEnemySpawn,
   createHudValues,
   createResultsValues,
   createRunBaseline,
@@ -14,7 +17,8 @@ import {
   createRunStats,
   getRunEndReason,
   resolvePlayerVelocity,
-  shouldAutoFire
+  shouldAutoFire,
+  shouldSpawnBasicEnemy
 } from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
@@ -208,7 +212,10 @@ class GameplayScene extends Phaser.Scene {
     this.cursorKeys = null;
     this.wasdKeys = null;
     this.projectiles = [];
+    this.enemies = [];
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
+    this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
+    this.enemySpawnCount = 0;
     this.backgroundStars = [];
     this.backgroundOffset = 0;
     this.runBaseline = null;
@@ -297,7 +304,13 @@ class GameplayScene extends Phaser.Scene {
       this.lastFiredMs = _time;
     }
 
+    if (shouldSpawnBasicEnemy({ elapsedMs: _time, lastSpawnedMs: this.lastEnemySpawnedMs })) {
+      this.spawnBasicEnemy();
+      this.lastEnemySpawnedMs = _time;
+    }
+
     this.updateProjectiles(deltaSeconds);
+    this.updateEnemies(deltaSeconds);
   }
 
   createBackgroundStarfield() {
@@ -390,6 +403,32 @@ class GameplayScene extends Phaser.Scene {
 
       return true;
     });
+  }
+
+  spawnBasicEnemy() {
+    const enemy = createBasicEnemySpawn({ spawnIndex: this.enemySpawnCount });
+    const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, 0xff5f6d, 1)
+      .setStrokeStyle(2, 0xffd166, 0.8);
+
+    this.enemies.push({ ...enemy, sprite });
+    this.enemySpawnCount += 1;
+    this.root.dataset.enemyCount = String(this.enemies.length);
+  }
+
+  updateEnemies(deltaSeconds) {
+    const advancedEnemies = advanceBasicEnemies({ enemies: this.enemies, deltaSeconds });
+
+    this.enemies = advancedEnemies.filter((enemy) => {
+      enemy.sprite.y = enemy.y;
+
+      if (enemy.y > GAMEPLAY_PLAYFIELD.height + BASIC_ENEMY.radius) {
+        enemy.sprite.destroy();
+        return false;
+      }
+
+      return true;
+    });
+    this.root.dataset.enemyCount = String(this.enemies.length);
   }
 }
 

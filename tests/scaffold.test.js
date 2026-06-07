@@ -126,6 +126,28 @@ test('player ship fires automatically on a fixed cadence', async () => {
   assert.match(renderer, /shouldAutoFire/);
 });
 
+test('basic enemies spawn from the top and descend in readable lanes', async () => {
+  const { BASIC_ENEMY, createBasicEnemySpawn, advanceBasicEnemies } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const firstEnemy = createBasicEnemySpawn({ spawnIndex: 0 });
+  const secondEnemy = createBasicEnemySpawn({ spawnIndex: 1 });
+  const advancedEnemies = advanceBasicEnemies({ enemies: [firstEnemy], deltaSeconds: 1 });
+
+  assert.deepEqual(firstEnemy, {
+    id: 'basic-0',
+    type: 'basic',
+    x: BASIC_ENEMY.lanes[0],
+    y: -BASIC_ENEMY.radius,
+    health: BASIC_ENEMY.maxHealth,
+    lastFiredMs: -BASIC_ENEMY.fireIntervalMs
+  });
+  assert.equal(secondEnemy.x, BASIC_ENEMY.lanes[1]);
+  assert.equal(advancedEnemies[0].y, BASIC_ENEMY.speed - BASIC_ENEMY.radius);
+  assert.match(renderer, /createBasicEnemySpawn/);
+  assert.match(renderer, /advanceBasicEnemies/);
+});
+
 test('gameplay background scrolls slowly to communicate vertical flight', async () => {
   const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

@@ -21,6 +21,16 @@ export const PLAYER_SURVIVAL = {
   maxHealth: 100
 };
 
+export const BASIC_ENEMY = {
+  type: 'basic',
+  spawnIntervalMs: 1200,
+  speed: 96,
+  radius: 24,
+  maxHealth: 30,
+  fireIntervalMs: 1500,
+  lanes: [220, 420, 640, 860, 1060]
+};
+
 export const BACKGROUND_SCROLL = {
   speed: 36,
   tileHeight: 240
@@ -45,6 +55,22 @@ export const resolvePlayerVelocity = (inputState) => {
 };
 
 export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= PLAYER_WEAPON.fireIntervalMs;
+
+export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs }) => elapsedMs - lastSpawnedMs >= BASIC_ENEMY.spawnIntervalMs;
+
+export const createBasicEnemySpawn = ({ spawnIndex }) => ({
+  id: `basic-${spawnIndex}`,
+  type: BASIC_ENEMY.type,
+  x: BASIC_ENEMY.lanes[spawnIndex % BASIC_ENEMY.lanes.length],
+  y: -BASIC_ENEMY.radius,
+  health: BASIC_ENEMY.maxHealth,
+  lastFiredMs: -BASIC_ENEMY.fireIntervalMs
+});
+
+export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => ({
+  ...enemy,
+  y: enemy.y + BASIC_ENEMY.speed * deltaSeconds
+}));
 
 export const createRunClock = ({ runLengthMinutes }) => ({
   durationMs: runLengthMinutes * 60_000,
