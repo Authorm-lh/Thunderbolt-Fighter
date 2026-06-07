@@ -334,12 +334,25 @@ export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDeal
   damageDealt: stats.damageDealt + damageDealt
 });
 
+export const formatActiveBuffs = (stats) => {
+  const activeBuffs = [
+    stats.activeBuffs.attackPower.remainingMs > 0
+      ? `${PICKUP_BUFFS['attack-power'].label} ${Math.ceil(stats.activeBuffs.attackPower.remainingMs / 1000)}s`
+      : null,
+    stats.activeBuffs.attackSpeed.remainingMs > 0
+      ? `${PICKUP_BUFFS['attack-speed'].label} ${Math.ceil(stats.activeBuffs.attackSpeed.remainingMs / 1000)}s`
+      : null
+  ].filter(Boolean);
+
+  return activeBuffs.length > 0 ? activeBuffs.join(' + ') : 'None';
+};
+
 export const createHudValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
   health: `Health ${stats.health}/${stats.maxHealth}`,
   weapon: `Weapon ${stats.weaponName}`,
-  buff: `Buff ${stats.activeBuffName}`,
+  buff: `Buff ${formatActiveBuffs(stats)}`,
   bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
 });
 

@@ -472,6 +472,17 @@ test('HUD shows baseline survival and scoring values', async () => {
   assert.match(renderer, /Best/);
 });
 
+test('HUD shows readable remaining durations for timed buffs', async () => {
+  const { advanceTimedBuffs, applyPickupBuff, createHudValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const poweredStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-power' });
+  const fastStats = applyPickupBuff({ stats: poweredStats, pickupType: 'attack-speed' });
+  const advancedStats = advanceTimedBuffs({ stats: fastStats, deltaMs: 3_200 });
+  const hudValues = createHudValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats: advancedStats });
+
+  assert.equal(hudValues.buff, 'Buff Power 5s + Rapid 5s');
+});
+
 test('player health decreases when damage is applied', async () => {
   const { applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
