@@ -148,6 +148,28 @@ test('basic enemies spawn from the top and descend in readable lanes', async () 
   assert.match(renderer, /advanceBasicEnemies/);
 });
 
+test('basic enemies shoot downward on a fixed cadence', async () => {
+  const { BASIC_ENEMY, createBasicEnemyProjectile, advanceEnemyProjectiles, shouldBasicEnemyFire } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const projectile = createBasicEnemyProjectile({ enemyId: 'basic-0', x: 420, y: 96 });
+  const advancedProjectiles = advanceEnemyProjectiles({ projectiles: [projectile], deltaSeconds: 1 });
+
+  assert.equal(shouldBasicEnemyFire({ elapsedMs: 0, lastFiredMs: -BASIC_ENEMY.fireIntervalMs }), true);
+  assert.equal(shouldBasicEnemyFire({ elapsedMs: 400, lastFiredMs: 0 }), false);
+  assert.equal(shouldBasicEnemyFire({ elapsedMs: BASIC_ENEMY.fireIntervalMs, lastFiredMs: 0 }), true);
+  assert.deepEqual(projectile, {
+    sourceEnemyId: 'basic-0',
+    x: 420,
+    y: 96 + BASIC_ENEMY.radius,
+    radius: BASIC_ENEMY.projectileRadius,
+    damage: BASIC_ENEMY.projectileDamage
+  });
+  assert.equal(advancedProjectiles[0].y, projectile.y + BASIC_ENEMY.projectileSpeed);
+  assert.match(renderer, /createBasicEnemyProjectile/);
+  assert.match(renderer, /advanceEnemyProjectiles/);
+});
+
 test('gameplay background scrolls slowly to communicate vertical flight', async () => {
   const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

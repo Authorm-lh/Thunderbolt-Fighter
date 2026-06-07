@@ -7,8 +7,10 @@ import {
   PLAYER_WEAPON,
   advanceBackgroundOffset,
   advanceBasicEnemies,
+  advanceEnemyProjectiles,
   advanceRunClock,
   applyPlayerDamage,
+  createBasicEnemyProjectile,
   createBasicEnemySpawn,
   createHudValues,
   createResultsValues,
@@ -18,6 +20,7 @@ import {
   getRunEndReason,
   resolvePlayerVelocity,
   shouldAutoFire,
+  shouldBasicEnemyFire,
   shouldSpawnBasicEnemy
 } from './gameplay-state.js';
 
@@ -213,6 +216,7 @@ class GameplayScene extends Phaser.Scene {
     this.wasdKeys = null;
     this.projectiles = [];
     this.enemies = [];
+    this.enemyProjectiles = [];
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
     this.enemySpawnCount = 0;
@@ -310,7 +314,8 @@ class GameplayScene extends Phaser.Scene {
     }
 
     this.updateProjectiles(deltaSeconds);
-    this.updateEnemies(deltaSeconds);
+    this.updateEnemies(deltaSeconds, _time);
+    this.updateEnemyProjectiles(deltaSeconds);
   }
 
   createBackgroundStarfield() {
@@ -415,7 +420,7 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
 
-  updateEnemies(deltaSeconds) {
+  updateEnemies(deltaSeconds, elapsedMs) {
     const advancedEnemies = advanceBasicEnemies({ enemies: this.enemies, deltaSeconds });
 
     this.enemies = advancedEnemies.filter((enemy) => {
@@ -426,9 +431,38 @@ class GameplayScene extends Phaser.Scene {
         return false;
       }
 
+      if (enemy.y >= 0 && shouldBasicEnemyFire({ elapsedMs, lastFiredMs: enemy.lastFiredMs })) {
+        this.spawnEnemyProjectile(enemy);
+        enemy.lastFiredMs = elapsedMs;
+      }
+
       return true;
     });
     this.root.dataset.enemyCount = String(this.enemies.length);
+  }
+
+  spawnEnemyProjectile(enemy) {
+    const projectile = createBasicEnemyProjectile({ enemyId: enemy.id, x: enemy.x, y: enemy.y });
+    const sprite = this.add.circle(projectile.x, projectile.y, projectile.radius, 0xff8a65, 1);
+
+    this.enemyProjectiles.push({ ...projectile, sprite });
+    this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
+  }
+
+  updateEnemyProjectiles(deltaSeconds) {
+    const advancedProjectiles = advanceEnemyProjectiles({ projectiles: this.enemyProjectiles, deltaSeconds });
+
+    this.enemyProjectiles = advancedProjectiles.filter((projectile) => {
+      projectile.sprite.y = projectile.y;
+
+      if (projectile.y > GAMEPLAY_PLAYFIELD.height + projectile.radius) {
+        projectile.sprite.destroy();
+        return false;
+      }
+
+      return true;
+    });
+    this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
   }
 }
 

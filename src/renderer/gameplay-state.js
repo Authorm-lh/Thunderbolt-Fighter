@@ -28,6 +28,9 @@ export const BASIC_ENEMY = {
   radius: 24,
   maxHealth: 30,
   fireIntervalMs: 1500,
+  projectileSpeed: 360,
+  projectileRadius: 6,
+  projectileDamage: 12,
   lanes: [220, 420, 640, 860, 1060]
 };
 
@@ -58,6 +61,8 @@ export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFi
 
 export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs }) => elapsedMs - lastSpawnedMs >= BASIC_ENEMY.spawnIntervalMs;
 
+export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= BASIC_ENEMY.fireIntervalMs;
+
 export const createBasicEnemySpawn = ({ spawnIndex }) => ({
   id: `basic-${spawnIndex}`,
   type: BASIC_ENEMY.type,
@@ -70,6 +75,19 @@ export const createBasicEnemySpawn = ({ spawnIndex }) => ({
 export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => ({
   ...enemy,
   y: enemy.y + BASIC_ENEMY.speed * deltaSeconds
+}));
+
+export const createBasicEnemyProjectile = ({ enemyId, x, y }) => ({
+  sourceEnemyId: enemyId,
+  x,
+  y: y + BASIC_ENEMY.radius,
+  radius: BASIC_ENEMY.projectileRadius,
+  damage: BASIC_ENEMY.projectileDamage
+});
+
+export const advanceEnemyProjectiles = ({ projectiles, deltaSeconds }) => projectiles.map((projectile) => ({
+  ...projectile,
+  y: projectile.y + BASIC_ENEMY.projectileSpeed * deltaSeconds
 }));
 
 export const createRunClock = ({ runLengthMinutes }) => ({
