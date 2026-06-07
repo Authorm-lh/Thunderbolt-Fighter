@@ -1,20 +1,30 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
 import {
   BACKGROUND_SCROLL,
+  BASIC_ENEMY,
   GAMEPLAY_PLAYFIELD,
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
   advanceBackgroundOffset,
+  advanceBasicEnemies,
+  advanceEnemyProjectiles,
   advanceRunClock,
+  applyDestroyedEnemyRewards,
   applyPlayerDamage,
+  createBasicEnemyProjectile,
+  createBasicEnemySpawn,
   createHudValues,
   createResultsValues,
   createRunBaseline,
   createRunClock,
   createRunStats,
   getRunEndReason,
+  resolveEnemyPlayerHits,
+  resolvePlayerProjectileEnemyHits,
   resolvePlayerVelocity,
-  shouldAutoFire
+  shouldAutoFire,
+  shouldBasicEnemyFire,
+  shouldSpawnBasicEnemy
 } from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
@@ -208,7 +218,11 @@ class GameplayScene extends Phaser.Scene {
     this.cursorKeys = null;
     this.wasdKeys = null;
     this.projectiles = [];
+    this.enemies = [];
+    this.enemyProjectiles = [];
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
+    this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
+    this.enemySpawnCount = 0;
     this.backgroundStars = [];
     this.backgroundOffset = 0;
     this.runBaseline = null;
@@ -297,7 +311,16 @@ class GameplayScene extends Phaser.Scene {
       this.lastFiredMs = _time;
     }
 
+    if (shouldSpawnBasicEnemy({ elapsedMs: _time, lastSpawnedMs: this.lastEnemySpawnedMs })) {
+      this.spawnBasicEnemy();
+      this.lastEnemySpawnedMs = _time;
+    }
+
     this.updateProjectiles(deltaSeconds);
+    this.resolvePlayerProjectileHits();
+    this.updateEnemies(deltaSeconds, _time);
+    this.updateEnemyProjectiles(deltaSeconds);
+    this.resolveEnemyPlayerHits();
   }
 
   createBackgroundStarfield() {
@@ -339,6 +362,7 @@ class GameplayScene extends Phaser.Scene {
 
     this.hudText.setText(Object.values(hudValues).join('\n'));
     this.root.dataset.score = String(this.runStats.score);
+    this.root.dataset.kills = String(this.runStats.kills);
     this.root.dataset.timer = hudValues.timer.replace('Timer ', '');
     this.root.dataset.health = `${this.runStats.health}/${this.runStats.maxHealth}`;
     this.root.dataset.weapon = this.runStats.weaponName;
@@ -390,6 +414,126 @@ class GameplayScene extends Phaser.Scene {
 
       return true;
     });
+  }
+
+  resolvePlayerProjectileHits() {
+    const result = resolvePlayerProjectileEnemyHits({
+      enemies: this.enemies,
+      projectiles: this.projectiles
+    });
+    const remainingEnemyIds = new Set(result.enemies.map((enemy) => enemy.id));
+    const remainingProjectiles = new Set(result.projectiles);
+
+    this.projectiles.forEach((projectile) => {
+      if (!remainingProjectiles.has(projectile)) {
+        projectile.destroy();
+      }
+    });
+    this.enemies.forEach((enemy) => {
+      if (!remainingEnemyIds.has(enemy.id)) {
+        enemy.sprite.destroy();
+      }
+    });
+
+    this.projectiles = result.projectiles;
+    this.enemies = result.enemies;
+
+    if (result.destroyedEnemies.length > 0) {
+      this.runStats = applyDestroyedEnemyRewards({
+        stats: this.runStats,
+        destroyedEnemies: result.destroyedEnemies,
+        damageDealt: result.damageDealt
+      });
+      this.updateHud();
+    }
+
+    this.root.dataset.enemyCount = String(this.enemies.length);
+  }
+
+  spawnBasicEnemy() {
+    const enemy = createBasicEnemySpawn({ spawnIndex: this.enemySpawnCount });
+    const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, 0xff5f6d, 1)
+      .setStrokeStyle(2, 0xffd166, 0.8);
+
+    this.enemies.push({ ...enemy, sprite });
+    this.enemySpawnCount += 1;
+    this.root.dataset.enemyCount = String(this.enemies.length);
+  }
+
+  updateEnemies(deltaSeconds, elapsedMs) {
+    const advancedEnemies = advanceBasicEnemies({ enemies: this.enemies, deltaSeconds });
+
+    this.enemies = advancedEnemies.filter((enemy) => {
+      enemy.sprite.y = enemy.y;
+
+      if (enemy.y > GAMEPLAY_PLAYFIELD.height + BASIC_ENEMY.radius) {
+        enemy.sprite.destroy();
+        return false;
+      }
+
+      if (enemy.y >= 0 && shouldBasicEnemyFire({ elapsedMs, lastFiredMs: enemy.lastFiredMs })) {
+        this.spawnEnemyProjectile(enemy);
+        enemy.lastFiredMs = elapsedMs;
+      }
+
+      return true;
+    });
+    this.root.dataset.enemyCount = String(this.enemies.length);
+  }
+
+  spawnEnemyProjectile(enemy) {
+    const projectile = createBasicEnemyProjectile({ enemyId: enemy.id, x: enemy.x, y: enemy.y });
+    const sprite = this.add.circle(projectile.x, projectile.y, projectile.radius, 0xff8a65, 1);
+
+    this.enemyProjectiles.push({ ...projectile, sprite });
+    this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
+  }
+
+  updateEnemyProjectiles(deltaSeconds) {
+    const advancedProjectiles = advanceEnemyProjectiles({ projectiles: this.enemyProjectiles, deltaSeconds });
+
+    this.enemyProjectiles = advancedProjectiles.filter((projectile) => {
+      projectile.sprite.y = projectile.y;
+
+      if (projectile.y > GAMEPLAY_PLAYFIELD.height + projectile.radius) {
+        projectile.sprite.destroy();
+        return false;
+      }
+
+      return true;
+    });
+    this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
+  }
+
+  resolveEnemyPlayerHits() {
+    const result = resolveEnemyPlayerHits({
+      stats: this.runStats,
+      player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
+      enemyProjectiles: this.enemyProjectiles,
+      enemies: this.enemies
+    });
+    const remainingProjectiles = new Set(result.enemyProjectiles);
+    const contactEnemyIds = new Set(result.contactEnemies.map((enemy) => enemy.id));
+
+    this.enemyProjectiles.forEach((projectile) => {
+      if (!remainingProjectiles.has(projectile)) {
+        projectile.sprite.destroy();
+      }
+    });
+    this.enemies = this.enemies.filter((enemy) => {
+      if (contactEnemyIds.has(enemy.id)) {
+        enemy.sprite.destroy();
+        return false;
+      }
+
+      return true;
+    });
+    this.enemyProjectiles = result.enemyProjectiles;
+    this.runStats = result.stats;
+    this.updateHud();
+    this.endRunIfNeeded();
+    this.root.dataset.enemyCount = String(this.enemies.length);
+    this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
   }
 }
 

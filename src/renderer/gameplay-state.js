@@ -14,11 +14,27 @@ export const PLAYER_WEAPON = {
   name: 'Blaster',
   fireIntervalMs: 260,
   projectileSpeed: 880,
-  projectileRadius: 5
+  projectileRadius: 5,
+  damage: 15
 };
 
 export const PLAYER_SURVIVAL = {
   maxHealth: 100
+};
+
+export const BASIC_ENEMY = {
+  type: 'basic',
+  spawnIntervalMs: 1200,
+  speed: 96,
+  radius: 24,
+  maxHealth: 30,
+  fireIntervalMs: 1500,
+  projectileSpeed: 360,
+  projectileRadius: 6,
+  projectileDamage: 12,
+  contactDamage: 20,
+  scoreValue: 100,
+  lanes: [220, 420, 640, 860, 1060]
 };
 
 export const BACKGROUND_SCROLL = {
@@ -27,6 +43,8 @@ export const BACKGROUND_SCROLL = {
 };
 
 const isPressed = (inputState, codes) => codes.some((code) => Boolean(inputState[code]));
+
+export const doCirclesOverlap = (first, second) => Math.hypot(first.x - second.x, first.y - second.y) <= first.radius + second.radius;
 
 export const resolvePlayerVelocity = (inputState) => {
   const xAxis = Number(isPressed(inputState, ['ArrowRight', 'KeyD'])) - Number(isPressed(inputState, ['ArrowLeft', 'KeyA']));
@@ -45,6 +63,71 @@ export const resolvePlayerVelocity = (inputState) => {
 };
 
 export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= PLAYER_WEAPON.fireIntervalMs;
+
+export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs }) => elapsedMs - lastSpawnedMs >= BASIC_ENEMY.spawnIntervalMs;
+
+export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= BASIC_ENEMY.fireIntervalMs;
+
+export const createBasicEnemySpawn = ({ spawnIndex }) => ({
+  id: `basic-${spawnIndex}`,
+  type: BASIC_ENEMY.type,
+  x: BASIC_ENEMY.lanes[spawnIndex % BASIC_ENEMY.lanes.length],
+  y: -BASIC_ENEMY.radius,
+  health: BASIC_ENEMY.maxHealth,
+  lastFiredMs: -BASIC_ENEMY.fireIntervalMs
+});
+
+export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => ({
+  ...enemy,
+  y: enemy.y + BASIC_ENEMY.speed * deltaSeconds
+}));
+
+export const createBasicEnemyProjectile = ({ enemyId, x, y }) => ({
+  sourceEnemyId: enemyId,
+  x,
+  y: y + BASIC_ENEMY.radius,
+  radius: BASIC_ENEMY.projectileRadius,
+  damage: BASIC_ENEMY.projectileDamage
+});
+
+export const advanceEnemyProjectiles = ({ projectiles, deltaSeconds }) => projectiles.map((projectile) => ({
+  ...projectile,
+  y: projectile.y + BASIC_ENEMY.projectileSpeed * deltaSeconds
+}));
+
+export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
+  const remainingEnemies = enemies.map((enemy) => ({ ...enemy }));
+  const destroyedEnemies = [];
+  const remainingProjectiles = [];
+  let damageDealt = 0;
+
+  projectiles.forEach((projectile) => {
+    const hitEnemy = remainingEnemies.find((enemy) => doCirclesOverlap(
+      { x: projectile.x, y: projectile.y, radius: projectile.radius },
+      { x: enemy.x, y: enemy.y, radius: BASIC_ENEMY.radius }
+    ));
+
+    if (!hitEnemy) {
+      remainingProjectiles.push(projectile);
+      return;
+    }
+
+    damageDealt += Math.min(hitEnemy.health, PLAYER_WEAPON.damage);
+    hitEnemy.health = Math.max(0, hitEnemy.health - PLAYER_WEAPON.damage);
+
+    if (hitEnemy.health === 0) {
+      destroyedEnemies.push({ ...hitEnemy });
+      remainingEnemies.splice(remainingEnemies.indexOf(hitEnemy), 1);
+    }
+  });
+
+  return {
+    enemies: remainingEnemies,
+    projectiles: remainingProjectiles,
+    destroyedEnemies,
+    damageDealt
+  };
+};
 
 export const createRunClock = ({ runLengthMinutes }) => ({
   durationMs: runLengthMinutes * 60_000,
@@ -77,6 +160,13 @@ export const createRunStats = () => ({
   damageDealt: 0
 });
 
+export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDealt }) => ({
+  ...stats,
+  score: stats.score + destroyedEnemies.length * BASIC_ENEMY.scoreValue,
+  kills: stats.kills + destroyedEnemies.length,
+  damageDealt: stats.damageDealt + damageDealt
+});
+
 export const createHudValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
@@ -99,6 +189,34 @@ export const applyPlayerDamage = ({ stats, damage }) => ({
   ...stats,
   health: Math.max(0, stats.health - damage)
 });
+
+export const resolveEnemyPlayerHits = ({ stats, player, enemyProjectiles, enemies }) => {
+  let damage = 0;
+  const remainingProjectiles = [];
+  const contactEnemies = [];
+
+  enemyProjectiles.forEach((projectile) => {
+    if (doCirclesOverlap(projectile, player)) {
+      damage += projectile.damage;
+      return;
+    }
+
+    remainingProjectiles.push(projectile);
+  });
+
+  enemies.forEach((enemy) => {
+    if (doCirclesOverlap({ x: enemy.x, y: enemy.y, radius: BASIC_ENEMY.radius }, player)) {
+      damage += BASIC_ENEMY.contactDamage;
+      contactEnemies.push(enemy);
+    }
+  });
+
+  return {
+    stats: damage === 0 ? stats : applyPlayerDamage({ stats, damage }),
+    enemyProjectiles: remainingProjectiles,
+    contactEnemies
+  };
+};
 
 export const getRunEndReason = ({ clock, stats }) => {
   if (stats.health <= 0) {

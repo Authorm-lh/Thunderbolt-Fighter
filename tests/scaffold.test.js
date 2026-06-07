@@ -126,6 +126,129 @@ test('player ship fires automatically on a fixed cadence', async () => {
   assert.match(renderer, /shouldAutoFire/);
 });
 
+test('basic enemies spawn from the top and descend in readable lanes', async () => {
+  const { BASIC_ENEMY, createBasicEnemySpawn, advanceBasicEnemies } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const firstEnemy = createBasicEnemySpawn({ spawnIndex: 0 });
+  const secondEnemy = createBasicEnemySpawn({ spawnIndex: 1 });
+  const advancedEnemies = advanceBasicEnemies({ enemies: [firstEnemy], deltaSeconds: 1 });
+
+  assert.deepEqual(firstEnemy, {
+    id: 'basic-0',
+    type: 'basic',
+    x: BASIC_ENEMY.lanes[0],
+    y: -BASIC_ENEMY.radius,
+    health: BASIC_ENEMY.maxHealth,
+    lastFiredMs: -BASIC_ENEMY.fireIntervalMs
+  });
+  assert.equal(secondEnemy.x, BASIC_ENEMY.lanes[1]);
+  assert.equal(advancedEnemies[0].y, BASIC_ENEMY.speed - BASIC_ENEMY.radius);
+  assert.match(renderer, /createBasicEnemySpawn/);
+  assert.match(renderer, /advanceBasicEnemies/);
+});
+
+test('basic enemies shoot downward on a fixed cadence', async () => {
+  const { BASIC_ENEMY, createBasicEnemyProjectile, advanceEnemyProjectiles, shouldBasicEnemyFire } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const projectile = createBasicEnemyProjectile({ enemyId: 'basic-0', x: 420, y: 96 });
+  const advancedProjectiles = advanceEnemyProjectiles({ projectiles: [projectile], deltaSeconds: 1 });
+
+  assert.equal(shouldBasicEnemyFire({ elapsedMs: 0, lastFiredMs: -BASIC_ENEMY.fireIntervalMs }), true);
+  assert.equal(shouldBasicEnemyFire({ elapsedMs: 400, lastFiredMs: 0 }), false);
+  assert.equal(shouldBasicEnemyFire({ elapsedMs: BASIC_ENEMY.fireIntervalMs, lastFiredMs: 0 }), true);
+  assert.deepEqual(projectile, {
+    sourceEnemyId: 'basic-0',
+    x: 420,
+    y: 96 + BASIC_ENEMY.radius,
+    radius: BASIC_ENEMY.projectileRadius,
+    damage: BASIC_ENEMY.projectileDamage
+  });
+  assert.equal(advancedProjectiles[0].y, projectile.y + BASIC_ENEMY.projectileSpeed);
+  assert.match(renderer, /createBasicEnemyProjectile/);
+  assert.match(renderer, /advanceEnemyProjectiles/);
+});
+
+test('player shots damage and destroy basic enemies', async () => {
+  const { BASIC_ENEMY, PLAYER_WEAPON, resolvePlayerProjectileEnemyHits } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const enemy = {
+    id: 'basic-0',
+    type: 'basic',
+    x: 420,
+    y: 120,
+    health: BASIC_ENEMY.maxHealth,
+    lastFiredMs: 0
+  };
+  const firstHit = resolvePlayerProjectileEnemyHits({
+    enemies: [enemy],
+    projectiles: [{ x: 420, y: 120, radius: PLAYER_WEAPON.projectileRadius }]
+  });
+  const finalHit = resolvePlayerProjectileEnemyHits({
+    enemies: firstHit.enemies,
+    projectiles: [{ x: 420, y: firstHit.enemies[0].y, radius: PLAYER_WEAPON.projectileRadius }]
+  });
+
+  assert.equal(firstHit.enemies[0].health, BASIC_ENEMY.maxHealth - PLAYER_WEAPON.damage);
+  assert.equal(firstHit.projectiles.length, 0);
+  assert.equal(firstHit.destroyedEnemies.length, 0);
+  assert.equal(firstHit.damageDealt, PLAYER_WEAPON.damage);
+  assert.equal(finalHit.enemies.length, 0);
+  assert.deepEqual(finalHit.destroyedEnemies, [{ ...firstHit.enemies[0], health: 0 }]);
+  assert.match(renderer, /resolvePlayerProjectileEnemyHits/);
+});
+
+test('enemy shots and contact damage the player', async () => {
+  const { BASIC_ENEMY, PLAYER_FLIGHT, createRunStats, resolveEnemyPlayerHits } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const player = { x: PLAYER_FLIGHT.startX, y: PLAYER_FLIGHT.startY, radius: PLAYER_FLIGHT.radius };
+  const enemyProjectile = {
+    x: player.x,
+    y: player.y,
+    radius: BASIC_ENEMY.projectileRadius,
+    damage: BASIC_ENEMY.projectileDamage
+  };
+  const contactEnemy = {
+    id: 'basic-0',
+    type: 'basic',
+    x: player.x,
+    y: player.y,
+    health: BASIC_ENEMY.maxHealth,
+    lastFiredMs: 0
+  };
+  const result = resolveEnemyPlayerHits({
+    stats: createRunStats(),
+    player,
+    enemyProjectiles: [enemyProjectile],
+    enemies: [contactEnemy]
+  });
+
+  assert.equal(result.stats.health, 100 - BASIC_ENEMY.projectileDamage - BASIC_ENEMY.contactDamage);
+  assert.equal(result.enemyProjectiles.length, 0);
+  assert.deepEqual(result.contactEnemies, [contactEnemy]);
+  assert.match(renderer, /resolveEnemyPlayerHits/);
+});
+
+test('destroying basic enemies increases score, kills, and damage dealt', async () => {
+  const { BASIC_ENEMY, PLAYER_WEAPON, applyDestroyedEnemyRewards, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const stats = applyDestroyedEnemyRewards({
+    stats: createRunStats(),
+    destroyedEnemies: [{ id: 'basic-0', type: BASIC_ENEMY.type, health: 0 }],
+    damageDealt: PLAYER_WEAPON.damage
+  });
+
+  assert.equal(stats.score, BASIC_ENEMY.scoreValue);
+  assert.equal(stats.kills, 1);
+  assert.equal(stats.damageDealt, PLAYER_WEAPON.damage);
+  assert.match(renderer, /applyDestroyedEnemyRewards/);
+  assert.match(renderer, /dataset\.kills/);
+});
+
 test('gameplay background scrolls slowly to communicate vertical flight', async () => {
   const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
