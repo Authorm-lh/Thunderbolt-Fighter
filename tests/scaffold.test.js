@@ -81,6 +81,9 @@ test('simple, normal, and hard difficulty tune enemy pressure, damage, and score
   assert.ok(getDifficultyTuning('hard').enemyProjectileDamageMultiplier > getDifficultyTuning('normal').enemyProjectileDamageMultiplier);
   assert.ok(getDifficultyTuning('simple').enemyContactDamageMultiplier < getDifficultyTuning('normal').enemyContactDamageMultiplier);
   assert.ok(getDifficultyTuning('hard').enemyContactDamageMultiplier > getDifficultyTuning('normal').enemyContactDamageMultiplier);
+  assert.equal(getDifficultyTuning('simple').escapedEnemyDamage, 5);
+  assert.equal(getDifficultyTuning('normal').escapedEnemyDamage, 10);
+  assert.equal(getDifficultyTuning('hard').escapedEnemyDamage, 15);
   assert.ok(getDifficultyTuning('simple').scoreMultiplier < getDifficultyTuning('normal').scoreMultiplier);
   assert.ok(getDifficultyTuning('hard').scoreMultiplier > getDifficultyTuning('normal').scoreMultiplier);
   assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, activeEnemyCount: 0, difficulty: 'simple' }), false);
@@ -174,6 +177,8 @@ test('basic and elite enemies differ in durability, damage, firing, movement, an
   assert.ok(ENEMY_CLASSES.elite.projectileDamage > ENEMY_CLASSES.basic.projectileDamage);
   assert.ok(ENEMY_CLASSES.elite.contactDamage > ENEMY_CLASSES.basic.contactDamage);
   assert.ok(ENEMY_CLASSES.elite.fireIntervalMs < ENEMY_CLASSES.basic.fireIntervalMs);
+  assert.equal(ENEMY_CLASSES.basic.speed, 48);
+  assert.equal(ENEMY_CLASSES.elite.speed, 66);
   assert.ok(ENEMY_CLASSES.elite.speed > ENEMY_CLASSES.basic.speed);
   assert.notEqual(ENEMY_CLASSES.elite.movementPattern, ENEMY_CLASSES.basic.movementPattern);
   assert.ok(ENEMY_CLASSES.elite.scoreValue > ENEMY_CLASSES.basic.scoreValue);
@@ -214,6 +219,7 @@ test('basic enemies spawn from the top and descend in readable lanes', async () 
     movementOriginX: BASIC_ENEMY.lanes[0]
   });
   assert.equal(secondEnemy.x, BASIC_ENEMY.lanes[1]);
+  assert.equal(BASIC_ENEMY.speed, 48);
   assert.equal(advancedEnemies[0].y, BASIC_ENEMY.speed - BASIC_ENEMY.radius);
   assert.match(renderer, /createEnemySpawn/);
   assert.match(renderer, /advanceBasicEnemies/);
@@ -284,10 +290,23 @@ test('enemies that reach the bottom damage the player if they are not eliminated
   const activeEnemy = createBasicEnemySpawn({ spawnIndex: 1 });
   const result = resolveEscapedEnemyHits({
     stats: createRunStats(),
-    enemies: [activeEnemy, escapedEnemy]
+    enemies: [activeEnemy, escapedEnemy],
+    difficulty: 'normal'
+  });
+  const simpleResult = resolveEscapedEnemyHits({
+    stats: createRunStats(),
+    enemies: [escapedEnemy],
+    difficulty: 'simple'
+  });
+  const hardResult = resolveEscapedEnemyHits({
+    stats: createRunStats(),
+    enemies: [escapedEnemy],
+    difficulty: 'hard'
   });
 
-  assert.equal(result.stats.health, 100 - BASIC_ENEMY.contactDamage);
+  assert.equal(simpleResult.stats.health, 95);
+  assert.equal(result.stats.health, 90);
+  assert.equal(hardResult.stats.health, 85);
   assert.deepEqual(result.enemies, [activeEnemy]);
   assert.deepEqual(result.escapedEnemies, [escapedEnemy]);
   assert.match(renderer, /resolveEscapedEnemyHits/);
