@@ -12,14 +12,16 @@ import {
   applyDestroyedEnemyRewards,
   applyPlayerDamage,
   createBasicEnemyProjectile,
-  createBasicEnemySpawn,
+  createEnemySpawn,
   createHudValues,
   createResultsValues,
   createRunBaseline,
   createRunClock,
   createRunStats,
   getRunEndReason,
+  resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
+  resolveEnemyTypeForSpawn,
   resolvePlayerProjectileEnemyHits,
   resolvePlayerVelocity,
   shouldAutoFire,
@@ -230,13 +232,15 @@ class GameplayScene extends Phaser.Scene {
     this.runStats = null;
     this.hudText = null;
     this.root = null;
+    this.selectedDifficulty = 'normal';
   }
 
   create(data) {
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
     this.root = root;
-    this.runBaseline = createRunBaseline();
+    this.selectedDifficulty = runOptions.difficulty;
+    this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = createRunStats();
 
@@ -311,7 +315,12 @@ class GameplayScene extends Phaser.Scene {
       this.lastFiredMs = _time;
     }
 
-    if (shouldSpawnBasicEnemy({ elapsedMs: _time, lastSpawnedMs: this.lastEnemySpawnedMs })) {
+    if (shouldSpawnBasicEnemy({
+      elapsedMs: _time,
+      lastSpawnedMs: this.lastEnemySpawnedMs,
+      activeEnemyCount: this.enemies.length,
+      difficulty: this.selectedDifficulty
+    })) {
       this.spawnBasicEnemy();
       this.lastEnemySpawnedMs = _time;
     }
@@ -442,7 +451,8 @@ class GameplayScene extends Phaser.Scene {
       this.runStats = applyDestroyedEnemyRewards({
         stats: this.runStats,
         destroyedEnemies: result.destroyedEnemies,
-        damageDealt: result.damageDealt
+        damageDealt: result.damageDealt,
+        difficulty: this.selectedDifficulty
       });
       this.updateHud();
     }
@@ -451,8 +461,10 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnBasicEnemy() {
-    const enemy = createBasicEnemySpawn({ spawnIndex: this.enemySpawnCount });
-    const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, 0xff5f6d, 1)
+    const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount });
+    const enemy = createEnemySpawn({ spawnIndex: this.enemySpawnCount, enemyType });
+    const enemyColor = enemy.type === 'elite' ? 0xc084fc : 0xff5f6d;
+    const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, enemyColor, 1)
       .setStrokeStyle(2, 0xffd166, 0.8);
 
     this.enemies.push({ ...enemy, sprite });
@@ -463,26 +475,51 @@ class GameplayScene extends Phaser.Scene {
   updateEnemies(deltaSeconds, elapsedMs) {
     const advancedEnemies = advanceBasicEnemies({ enemies: this.enemies, deltaSeconds });
 
-    this.enemies = advancedEnemies.filter((enemy) => {
+    advancedEnemies.forEach((enemy) => {
+      enemy.sprite.x = enemy.x;
       enemy.sprite.y = enemy.y;
+    });
 
-      if (enemy.y > GAMEPLAY_PLAYFIELD.height + BASIC_ENEMY.radius) {
+    const escapedResult = resolveEscapedEnemyHits({
+      stats: this.runStats,
+      enemies: advancedEnemies,
+      difficulty: this.selectedDifficulty
+    });
+    const escapedEnemyIds = new Set(escapedResult.escapedEnemies.map((enemy) => enemy.id));
+
+    advancedEnemies.forEach((enemy) => {
+      if (escapedEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
-        return false;
       }
+    });
 
-      if (enemy.y >= 0 && shouldBasicEnemyFire({ elapsedMs, lastFiredMs: enemy.lastFiredMs })) {
+    this.runStats = escapedResult.stats;
+    this.enemies = escapedResult.enemies.filter((enemy) => {
+      if (enemy.y >= 0 && shouldBasicEnemyFire({
+        elapsedMs,
+        lastFiredMs: enemy.lastFiredMs,
+        enemyType: enemy.type,
+        difficulty: this.selectedDifficulty
+      })) {
         this.spawnEnemyProjectile(enemy);
         enemy.lastFiredMs = elapsedMs;
       }
 
       return true;
     });
+    this.updateHud();
+    this.endRunIfNeeded();
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
 
   spawnEnemyProjectile(enemy) {
-    const projectile = createBasicEnemyProjectile({ enemyId: enemy.id, x: enemy.x, y: enemy.y });
+    const projectile = createBasicEnemyProjectile({
+      enemyId: enemy.id,
+      x: enemy.x,
+      y: enemy.y,
+      enemyType: enemy.type,
+      difficulty: this.selectedDifficulty
+    });
     const sprite = this.add.circle(projectile.x, projectile.y, projectile.radius, 0xff8a65, 1);
 
     this.enemyProjectiles.push({ ...projectile, sprite });
@@ -510,7 +547,8 @@ class GameplayScene extends Phaser.Scene {
       stats: this.runStats,
       player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
       enemyProjectiles: this.enemyProjectiles,
-      enemies: this.enemies
+      enemies: this.enemies,
+      difficulty: this.selectedDifficulty
     });
     const remainingProjectiles = new Set(result.enemyProjectiles);
     const contactEnemyIds = new Set(result.contactEnemies.map((enemy) => enemy.id));
