@@ -230,12 +230,14 @@ class GameplayScene extends Phaser.Scene {
     this.runStats = null;
     this.hudText = null;
     this.root = null;
+    this.selectedDifficulty = 'normal';
   }
 
   create(data) {
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
     this.root = root;
+    this.selectedDifficulty = runOptions.difficulty;
     this.runBaseline = createRunBaseline();
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = createRunStats();
@@ -311,7 +313,7 @@ class GameplayScene extends Phaser.Scene {
       this.lastFiredMs = _time;
     }
 
-    if (shouldSpawnBasicEnemy({ elapsedMs: _time, lastSpawnedMs: this.lastEnemySpawnedMs })) {
+    if (shouldSpawnBasicEnemy({ elapsedMs: _time, lastSpawnedMs: this.lastEnemySpawnedMs, difficulty: this.selectedDifficulty })) {
       this.spawnBasicEnemy();
       this.lastEnemySpawnedMs = _time;
     }
@@ -442,7 +444,8 @@ class GameplayScene extends Phaser.Scene {
       this.runStats = applyDestroyedEnemyRewards({
         stats: this.runStats,
         destroyedEnemies: result.destroyedEnemies,
-        damageDealt: result.damageDealt
+        damageDealt: result.damageDealt,
+        difficulty: this.selectedDifficulty
       });
       this.updateHud();
     }
@@ -482,7 +485,7 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnEnemyProjectile(enemy) {
-    const projectile = createBasicEnemyProjectile({ enemyId: enemy.id, x: enemy.x, y: enemy.y });
+    const projectile = createBasicEnemyProjectile({ enemyId: enemy.id, x: enemy.x, y: enemy.y, difficulty: this.selectedDifficulty });
     const sprite = this.add.circle(projectile.x, projectile.y, projectile.radius, 0xff8a65, 1);
 
     this.enemyProjectiles.push({ ...projectile, sprite });
@@ -510,7 +513,8 @@ class GameplayScene extends Phaser.Scene {
       stats: this.runStats,
       player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
       enemyProjectiles: this.enemyProjectiles,
-      enemies: this.enemies
+      enemies: this.enemies,
+      difficulty: this.selectedDifficulty
     });
     const remainingProjectiles = new Set(result.enemyProjectiles);
     const contactEnemyIds = new Set(result.contactEnemies.map((enemy) => enemy.id));

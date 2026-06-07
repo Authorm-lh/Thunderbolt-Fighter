@@ -67,6 +67,20 @@ test('main menu exposes simple, normal, and hard difficulty choices', async () =
   assert.match(smokeTest, /data-difficulty/);
 });
 
+test('simple, normal, and hard difficulty tune enemy pressure, damage, and score pacing', async () => {
+  const { DIFFICULTY_TUNING, getDifficultyTuning, shouldSpawnBasicEnemy } = await import('../src/renderer/gameplay-state.js');
+
+  assert.deepEqual(Object.keys(DIFFICULTY_TUNING), ['simple', 'normal', 'hard']);
+  assert.ok(getDifficultyTuning('simple').enemySpawnIntervalMs > getDifficultyTuning('normal').enemySpawnIntervalMs);
+  assert.ok(getDifficultyTuning('hard').enemySpawnIntervalMs < getDifficultyTuning('normal').enemySpawnIntervalMs);
+  assert.ok(getDifficultyTuning('simple').enemyDamageMultiplier < getDifficultyTuning('normal').enemyDamageMultiplier);
+  assert.ok(getDifficultyTuning('hard').enemyDamageMultiplier > getDifficultyTuning('normal').enemyDamageMultiplier);
+  assert.ok(getDifficultyTuning('simple').scoreMultiplier < getDifficultyTuning('normal').scoreMultiplier);
+  assert.ok(getDifficultyTuning('hard').scoreMultiplier > getDifficultyTuning('normal').scoreMultiplier);
+  assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, difficulty: 'simple' }), false);
+  assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, difficulty: 'hard' }), true);
+});
+
 test('main menu start-run path propagates selected options into gameplay', async () => {
   const renderer = await readText('src/renderer/game.js');
   const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
