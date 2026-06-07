@@ -27,6 +27,11 @@ export const PICKUP_BUFFS = {
     type: 'healing',
     label: 'Repair',
     healAmount: 25
+  },
+  shield: {
+    type: 'shield',
+    label: 'Shield',
+    shieldAmount: 35
   }
 };
 
@@ -246,6 +251,7 @@ export const createRunStats = () => ({
   score: 0,
   health: PLAYER_SURVIVAL.maxHealth,
   maxHealth: PLAYER_SURVIVAL.maxHealth,
+  shield: 0,
   weaponName: PLAYER_WEAPON.name,
   activeBuffName: 'None',
   bestScore: null,
@@ -283,10 +289,16 @@ export const createResultsValues = ({ clock, stats }) => ({
   damageDealt: `Damage Dealt ${stats.damageDealt}`
 });
 
-export const applyPlayerDamage = ({ stats, damage }) => ({
-  ...stats,
-  health: Math.max(0, stats.health - damage)
-});
+export const applyPlayerDamage = ({ stats, damage }) => {
+  const blockedDamage = Math.min(stats.shield, damage);
+  const remainingDamage = damage - blockedDamage;
+
+  return {
+    ...stats,
+    shield: stats.shield - blockedDamage,
+    health: Math.max(0, stats.health - remainingDamage)
+  };
+};
 
 export const applyPickupBuff = ({ stats, pickupType }) => {
   const pickup = PICKUP_BUFFS[pickupType];
@@ -295,6 +307,14 @@ export const applyPickupBuff = ({ stats, pickupType }) => {
     return {
       ...stats,
       health: Math.min(stats.maxHealth, stats.health + pickup.healAmount),
+      pickups: stats.pickups + 1
+    };
+  }
+
+  if (pickupType === 'shield') {
+    return {
+      ...stats,
+      shield: stats.shield + pickup.shieldAmount,
       pickups: stats.pickups + 1
     };
   }

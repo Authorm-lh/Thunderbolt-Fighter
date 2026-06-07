@@ -434,6 +434,21 @@ test('healing pickups restore player health without exceeding maximum health', a
   assert.match(renderer, /applyPickupBuff/);
 });
 
+test('shield pickups add shield that absorbs damage before health', async () => {
+  const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const shieldedStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'shield' });
+  const partiallyBlockedStats = applyPlayerDamage({ stats: shieldedStats, damage: 20 });
+  const overflowDamageStats = applyPlayerDamage({ stats: partiallyBlockedStats, damage: 30 });
+
+  assert.equal(shieldedStats.shield, 35);
+  assert.equal(shieldedStats.pickups, 1);
+  assert.equal(partiallyBlockedStats.shield, 15);
+  assert.equal(partiallyBlockedStats.health, 100);
+  assert.equal(overflowDamageStats.shield, 0);
+  assert.equal(overflowDamageStats.health, 85);
+});
+
 test('the run ends immediately when player health reaches zero', async () => {
   const { applyPlayerDamage, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
