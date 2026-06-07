@@ -34,6 +34,7 @@ export const ENEMY_CLASSES = {
     projectileRadius: 6,
     projectileDamage: 12,
     contactDamage: 20,
+    escapedDamage: 5,
     scoreValue: 100,
     movementPattern: 'straight',
     maxHorizontalOffset: 0,
@@ -50,6 +51,7 @@ export const ENEMY_CLASSES = {
     projectileRadius: 7,
     projectileDamage: 18,
     contactDamage: 30,
+    escapedDamage: 10,
     scoreValue: 260,
     movementPattern: 'sway',
     maxHorizontalOffset: 42,
@@ -70,7 +72,6 @@ export const DIFFICULTY_TUNING = {
     enemyFireIntervalMultiplier: 3.2,
     enemyProjectileDamageMultiplier: 0.5,
     enemyContactDamageMultiplier: 0.75,
-    escapedEnemyDamage: 5,
     scoreMultiplier: 0.8
   },
   normal: {
@@ -79,7 +80,6 @@ export const DIFFICULTY_TUNING = {
     enemyFireIntervalMultiplier: 2,
     enemyProjectileDamageMultiplier: 1,
     enemyContactDamageMultiplier: 1,
-    escapedEnemyDamage: 10,
     scoreMultiplier: 1
   },
   hard: {
@@ -88,7 +88,6 @@ export const DIFFICULTY_TUNING = {
     enemyFireIntervalMultiplier: 1.5,
     enemyProjectileDamageMultiplier: 1.25,
     enemyContactDamageMultiplier: 1.25,
-    escapedEnemyDamage: 15,
     scoreMultiplier: 1.25
   }
 };
@@ -290,7 +289,7 @@ export const resolveEscapedEnemyHits = ({ stats, enemies, difficulty = 'normal' 
     const enemyClass = getEnemyClass(enemy.type);
 
     if (enemy.y > GAMEPLAY_PLAYFIELD.height + enemyClass.radius) {
-      damage += getDifficultyTuning(difficulty).escapedEnemyDamage;
+      damage += enemyClass.escapedDamage;
       escapedEnemies.push(enemy);
       return;
     }

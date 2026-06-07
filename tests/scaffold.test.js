@@ -81,9 +81,6 @@ test('simple, normal, and hard difficulty tune enemy pressure, damage, and score
   assert.ok(getDifficultyTuning('hard').enemyProjectileDamageMultiplier > getDifficultyTuning('normal').enemyProjectileDamageMultiplier);
   assert.ok(getDifficultyTuning('simple').enemyContactDamageMultiplier < getDifficultyTuning('normal').enemyContactDamageMultiplier);
   assert.ok(getDifficultyTuning('hard').enemyContactDamageMultiplier > getDifficultyTuning('normal').enemyContactDamageMultiplier);
-  assert.equal(getDifficultyTuning('simple').escapedEnemyDamage, 5);
-  assert.equal(getDifficultyTuning('normal').escapedEnemyDamage, 10);
-  assert.equal(getDifficultyTuning('hard').escapedEnemyDamage, 15);
   assert.ok(getDifficultyTuning('simple').scoreMultiplier < getDifficultyTuning('normal').scoreMultiplier);
   assert.ok(getDifficultyTuning('hard').scoreMultiplier > getDifficultyTuning('normal').scoreMultiplier);
   assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, activeEnemyCount: 0, difficulty: 'simple' }), false);
@@ -176,6 +173,8 @@ test('basic and elite enemies differ in durability, damage, firing, movement, an
   assert.ok(ENEMY_CLASSES.elite.maxHealth > ENEMY_CLASSES.basic.maxHealth);
   assert.ok(ENEMY_CLASSES.elite.projectileDamage > ENEMY_CLASSES.basic.projectileDamage);
   assert.ok(ENEMY_CLASSES.elite.contactDamage > ENEMY_CLASSES.basic.contactDamage);
+  assert.equal(ENEMY_CLASSES.basic.escapedDamage, 5);
+  assert.equal(ENEMY_CLASSES.elite.escapedDamage, 10);
   assert.ok(ENEMY_CLASSES.elite.fireIntervalMs < ENEMY_CLASSES.basic.fireIntervalMs);
   assert.equal(ENEMY_CLASSES.basic.speed, 48);
   assert.equal(ENEMY_CLASSES.elite.speed, 66);
@@ -280,35 +279,27 @@ test('player shots damage and destroy basic enemies', async () => {
 });
 
 test('enemies that reach the bottom damage the player if they are not eliminated', async () => {
-  const { BASIC_ENEMY, GAMEPLAY_PLAYFIELD, createBasicEnemySpawn, createRunStats, resolveEscapedEnemyHits } = await import('../src/renderer/gameplay-state.js');
+  const { BASIC_ENEMY, ENEMY_CLASSES, GAMEPLAY_PLAYFIELD, createBasicEnemySpawn, createEnemySpawn, createRunStats, resolveEscapedEnemyHits } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
-  const escapedEnemy = {
+  const escapedBasicEnemy = {
     ...createBasicEnemySpawn({ spawnIndex: 0 }),
     y: GAMEPLAY_PLAYFIELD.height + BASIC_ENEMY.radius + 1
+  };
+  const escapedEliteEnemy = {
+    ...createEnemySpawn({ spawnIndex: 3, enemyType: 'elite' }),
+    y: GAMEPLAY_PLAYFIELD.height + ENEMY_CLASSES.elite.radius + 1
   };
   const activeEnemy = createBasicEnemySpawn({ spawnIndex: 1 });
   const result = resolveEscapedEnemyHits({
     stats: createRunStats(),
-    enemies: [activeEnemy, escapedEnemy],
-    difficulty: 'normal'
-  });
-  const simpleResult = resolveEscapedEnemyHits({
-    stats: createRunStats(),
-    enemies: [escapedEnemy],
-    difficulty: 'simple'
-  });
-  const hardResult = resolveEscapedEnemyHits({
-    stats: createRunStats(),
-    enemies: [escapedEnemy],
+    enemies: [activeEnemy, escapedBasicEnemy, escapedEliteEnemy],
     difficulty: 'hard'
   });
 
-  assert.equal(simpleResult.stats.health, 95);
-  assert.equal(result.stats.health, 90);
-  assert.equal(hardResult.stats.health, 85);
+  assert.equal(result.stats.health, 100 - ENEMY_CLASSES.basic.escapedDamage - ENEMY_CLASSES.elite.escapedDamage);
   assert.deepEqual(result.enemies, [activeEnemy]);
-  assert.deepEqual(result.escapedEnemies, [escapedEnemy]);
+  assert.deepEqual(result.escapedEnemies, [escapedBasicEnemy, escapedEliteEnemy]);
   assert.match(renderer, /resolveEscapedEnemyHits/);
 });
 
