@@ -11,9 +11,14 @@ export const PLAYER_FLIGHT = {
 };
 
 export const PLAYER_WEAPON = {
+  name: 'Blaster',
   fireIntervalMs: 260,
   projectileSpeed: 880,
   projectileRadius: 5
+};
+
+export const PLAYER_SURVIVAL = {
+  maxHealth: 100
 };
 
 export const BACKGROUND_SCROLL = {
@@ -58,6 +63,26 @@ export const formatRunTimer = (remainingMs) => {
 
   return `${minutes}:${seconds}`;
 };
+
+export const createRunStats = () => ({
+  score: 0,
+  health: PLAYER_SURVIVAL.maxHealth,
+  maxHealth: PLAYER_SURVIVAL.maxHealth,
+  weaponName: PLAYER_WEAPON.name,
+  activeBuffName: 'None',
+  bestScore: null,
+  kills: 0,
+  pickups: 0
+});
+
+export const createHudValues = ({ clock, stats }) => ({
+  score: `Score ${stats.score}`,
+  timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
+  health: `Health ${stats.health}/${stats.maxHealth}`,
+  weapon: `Weapon ${stats.weaponName}`,
+  buff: `Buff ${stats.activeBuffName}`,
+  bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
+});
 
 export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeight }) => (
   currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds

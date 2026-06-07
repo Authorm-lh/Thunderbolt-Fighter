@@ -6,9 +6,10 @@ import {
   PLAYER_WEAPON,
   advanceBackgroundOffset,
   advanceRunClock,
+  createHudValues,
   createRunBaseline,
   createRunClock,
-  formatRunTimer,
+  createRunStats,
   resolvePlayerVelocity,
   shouldAutoFire
 } from './gameplay-state.js';
@@ -209,7 +210,8 @@ class GameplayScene extends Phaser.Scene {
     this.backgroundOffset = 0;
     this.runBaseline = null;
     this.runClock = null;
-    this.timerText = null;
+    this.runStats = null;
+    this.hudText = null;
     this.root = null;
   }
 
@@ -219,6 +221,7 @@ class GameplayScene extends Phaser.Scene {
     this.root = root;
     this.runBaseline = createRunBaseline();
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
+    this.runStats = createRunStats();
 
     this.cameras.main.setBackgroundColor('#09111f');
     this.createBackgroundStarfield();
@@ -245,17 +248,18 @@ class GameplayScene extends Phaser.Scene {
       color: '#9ed7ff',
       align: 'left'
     });
-    this.timerText = this.add.text(24, 58, `Timer ${formatRunTimer(this.runClock.remainingMs)}`, {
+    this.hudText = this.add.text(24, 58, '', {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '24px',
+      fontSize: '22px',
       color: '#f8fbff',
-      align: 'left'
+      align: 'left',
+      lineSpacing: 6
     });
 
     root.dataset.screen = 'gameplay';
     root.dataset.runLengthMinutes = String(runOptions.runLengthMinutes);
     root.dataset.difficulty = runOptions.difficulty;
-    root.dataset.timer = formatRunTimer(this.runClock.remainingMs);
+    this.updateHud();
   }
 
   update(_time, delta) {
@@ -323,10 +327,22 @@ class GameplayScene extends Phaser.Scene {
 
   updateRunClock(deltaMs) {
     this.runClock = advanceRunClock({ clock: this.runClock, deltaMs });
-    const timer = formatRunTimer(this.runClock.remainingMs);
+    this.updateHud();
+  }
 
-    this.timerText.setText(`Timer ${timer}`);
-    this.root.dataset.timer = timer;
+  updateHud() {
+    const hudValues = createHudValues({ clock: this.runClock, stats: this.runStats });
+
+    this.hudText.setText(Object.values(hudValues).join('\n'));
+    this.root.dataset.score = String(this.runStats.score);
+    this.root.dataset.timer = hudValues.timer.replace('Timer ', '');
+    this.root.dataset.health = `${this.runStats.health}/${this.runStats.maxHealth}`;
+    this.root.dataset.weapon = this.runStats.weaponName;
+    this.root.dataset.buff = this.runStats.activeBuffName;
+    this.root.dataset.bestScore = this.runStats.bestScore === null ? '' : String(this.runStats.bestScore);
+    this.root.dataset.hudWeapon = hudValues.weapon;
+    this.root.dataset.hudBuff = hudValues.buff;
+    this.root.dataset.hudBestScore = hudValues.bestScore;
   }
 
   spawnPlayerProjectile() {

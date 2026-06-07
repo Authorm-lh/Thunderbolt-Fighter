@@ -157,6 +157,31 @@ test('runs count down from the selected duration', async () => {
   assert.match(renderer, /advanceRunClock/);
 });
 
+test('HUD shows baseline survival and scoring values', async () => {
+  const { createRunClock, createRunStats, createHudValues } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const hudValues = createHudValues({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    stats: createRunStats()
+  });
+
+  assert.deepEqual(hudValues, {
+    score: 'Score 0',
+    timer: 'Timer 1:00',
+    health: 'Health 100/100',
+    weapon: 'Weapon Blaster',
+    buff: 'Buff None',
+    bestScore: 'Best —'
+  });
+  assert.match(renderer, /createHudValues/);
+  assert.match(renderer, /Score/);
+  assert.match(renderer, /Health/);
+  assert.match(renderer, /Weapon/);
+  assert.match(renderer, /Buff/);
+  assert.match(renderer, /Best/);
+});
+
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
   const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
