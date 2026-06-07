@@ -54,6 +54,12 @@ try {
   assert.equal(await gameRoot.getAttribute('data-screen'), 'gameplay');
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '5');
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'hard');
+  assert.equal(await gameRoot.getAttribute('data-score'), '0');
+  assert.match(await gameRoot.getAttribute('data-timer'), /^[0-5]:[0-5][0-9]$/);
+  assert.equal(await gameRoot.getAttribute('data-health'), '100/100');
+  assert.equal(await gameRoot.getAttribute('data-weapon'), 'Blaster');
+  assert.equal(await gameRoot.getAttribute('data-buff'), 'None');
+  assert.equal(await gameRoot.getAttribute('data-best-score'), '');
 
   const windowTitle = await window.title();
   assert.equal(windowTitle, 'Thunderbolt Fighter');

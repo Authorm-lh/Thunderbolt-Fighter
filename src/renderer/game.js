@@ -5,7 +5,14 @@ import {
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
   advanceBackgroundOffset,
+  advanceRunClock,
+  applyPlayerDamage,
+  createHudValues,
+  createResultsValues,
   createRunBaseline,
+  createRunClock,
+  createRunStats,
+  getRunEndReason,
   resolvePlayerVelocity,
   shouldAutoFire
 } from './gameplay-state.js';
@@ -205,12 +212,19 @@ class GameplayScene extends Phaser.Scene {
     this.backgroundStars = [];
     this.backgroundOffset = 0;
     this.runBaseline = null;
+    this.runClock = null;
+    this.runStats = null;
+    this.hudText = null;
+    this.root = null;
   }
 
   create(data) {
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
+    this.root = root;
     this.runBaseline = createRunBaseline();
+    this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
+    this.runStats = createRunStats();
 
     this.cameras.main.setBackgroundColor('#09111f');
     this.createBackgroundStarfield();
@@ -237,10 +251,18 @@ class GameplayScene extends Phaser.Scene {
       color: '#9ed7ff',
       align: 'left'
     });
+    this.hudText = this.add.text(24, 58, '', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '22px',
+      color: '#f8fbff',
+      align: 'left',
+      lineSpacing: 6
+    });
 
     root.dataset.screen = 'gameplay';
     root.dataset.runLengthMinutes = String(runOptions.runLengthMinutes);
     root.dataset.difficulty = runOptions.difficulty;
+    this.updateHud();
   }
 
   update(_time, delta) {
@@ -249,6 +271,7 @@ class GameplayScene extends Phaser.Scene {
     }
 
     this.updateBackground(delta / 1000);
+    this.updateRunClock(delta);
 
     const velocity = resolvePlayerVelocity({
       ArrowLeft: this.cursorKeys.left.isDown,
@@ -305,6 +328,45 @@ class GameplayScene extends Phaser.Scene {
     });
   }
 
+  updateRunClock(deltaMs) {
+    this.runClock = advanceRunClock({ clock: this.runClock, deltaMs });
+    this.updateHud();
+    this.endRunIfNeeded();
+  }
+
+  updateHud() {
+    const hudValues = createHudValues({ clock: this.runClock, stats: this.runStats });
+
+    this.hudText.setText(Object.values(hudValues).join('\n'));
+    this.root.dataset.score = String(this.runStats.score);
+    this.root.dataset.timer = hudValues.timer.replace('Timer ', '');
+    this.root.dataset.health = `${this.runStats.health}/${this.runStats.maxHealth}`;
+    this.root.dataset.weapon = this.runStats.weaponName;
+    this.root.dataset.buff = this.runStats.activeBuffName;
+    this.root.dataset.bestScore = this.runStats.bestScore === null ? '' : String(this.runStats.bestScore);
+    this.root.dataset.hudWeapon = hudValues.weapon;
+    this.root.dataset.hudBuff = hudValues.buff;
+    this.root.dataset.hudBestScore = hudValues.bestScore;
+  }
+
+  applyDamage(damage) {
+    this.runStats = applyPlayerDamage({ stats: this.runStats, damage });
+    this.updateHud();
+    this.endRunIfNeeded();
+  }
+
+  endRunIfNeeded() {
+    const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats });
+
+    if (endReason) {
+      this.scene.start('results', {
+        endReason,
+        runClock: this.runClock,
+        runStats: this.runStats
+      });
+    }
+  }
+
   spawnPlayerProjectile() {
     const projectile = this.add.circle(
       this.player.x,
@@ -331,13 +393,49 @@ class GameplayScene extends Phaser.Scene {
   }
 }
 
+class ResultsScene extends Phaser.Scene {
+  constructor() {
+    super('results');
+  }
+
+  create(data) {
+    const root = document.querySelector('#game-root');
+
+    const resultsValues = createResultsValues({ clock: data.runClock, stats: data.runStats });
+
+    this.cameras.main.setBackgroundColor('#09111f');
+    this.add.text(this.scale.width / 2, 150, 'Run Complete', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '42px',
+      color: '#f8fbff',
+      align: 'center'
+    }).setOrigin(0.5);
+    this.add.text(this.scale.width / 2, 250, Object.values(resultsValues).join('\n'), {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '28px',
+      color: '#9ed7ff',
+      align: 'center',
+      lineSpacing: 8
+    }).setOrigin(0.5, 0);
+
+    root.dataset.screen = 'results';
+    root.dataset.endReason = data.endReason;
+    root.dataset.resultsScore = String(data.runStats.score);
+    root.dataset.resultsKills = String(data.runStats.kills);
+    root.dataset.resultsTimeSurvived = resultsValues.timeSurvived.replace('Time Survived ', '');
+    root.dataset.resultsPickups = String(data.runStats.pickups);
+    root.dataset.resultsShotsFired = String(data.runStats.shotsFired);
+    root.dataset.resultsDamageDealt = String(data.runStats.damageDealt);
+  }
+}
+
 const config = {
   type: Phaser.AUTO,
   parent: 'game-root',
   width: GAMEPLAY_PLAYFIELD.width,
   height: GAMEPLAY_PLAYFIELD.height,
   backgroundColor: '#09111f',
-  scene: [MainMenuScene, GameplayScene],
+  scene: [MainMenuScene, GameplayScene, ResultsScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH

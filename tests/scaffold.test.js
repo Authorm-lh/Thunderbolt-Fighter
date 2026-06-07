@@ -137,6 +137,112 @@ test('gameplay background scrolls slowly to communicate vertical flight', async 
   assert.match(renderer, /advanceBackgroundOffset/);
 });
 
+test('runs count down from the selected duration', async () => {
+  const { createRunClock, advanceRunClock, formatRunTimer } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const oneMinuteRun = createRunClock({ runLengthMinutes: 1 });
+  const threeMinuteRun = createRunClock({ runLengthMinutes: 3 });
+  const fiveMinuteRun = createRunClock({ runLengthMinutes: 5 });
+
+  assert.equal(oneMinuteRun.remainingMs, 60_000);
+  assert.equal(threeMinuteRun.remainingMs, 180_000);
+  assert.equal(fiveMinuteRun.remainingMs, 300_000);
+
+  const advancedRun = advanceRunClock({ clock: threeMinuteRun, deltaMs: 61_000 });
+
+  assert.equal(advancedRun.remainingMs, 119_000);
+  assert.equal(formatRunTimer(advancedRun.remainingMs), '1:59');
+  assert.match(renderer, /createRunClock/);
+  assert.match(renderer, /advanceRunClock/);
+});
+
+test('HUD shows baseline survival and scoring values', async () => {
+  const { createRunClock, createRunStats, createHudValues } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const hudValues = createHudValues({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    stats: createRunStats()
+  });
+
+  assert.deepEqual(hudValues, {
+    score: 'Score 0',
+    timer: 'Timer 1:00',
+    health: 'Health 100/100',
+    weapon: 'Weapon Blaster',
+    buff: 'Buff None',
+    bestScore: 'Best —'
+  });
+  assert.match(renderer, /createHudValues/);
+  assert.match(renderer, /Score/);
+  assert.match(renderer, /Health/);
+  assert.match(renderer, /Weapon/);
+  assert.match(renderer, /Buff/);
+  assert.match(renderer, /Best/);
+});
+
+test('player health decreases when damage is applied', async () => {
+  const { applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const damagedStats = applyPlayerDamage({ stats: createRunStats(), damage: 35 });
+
+  assert.equal(damagedStats.health, 65);
+  assert.equal(applyPlayerDamage({ stats: damagedStats, damage: 90 }).health, 0);
+  assert.match(renderer, /applyPlayerDamage/);
+});
+
+test('the run ends immediately when player health reaches zero', async () => {
+  const { applyPlayerDamage, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const depletedStats = applyPlayerDamage({ stats: createRunStats(), damage: 100 });
+
+  assert.equal(getRunEndReason({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    stats: depletedStats
+  }), 'health-depleted');
+  assert.match(renderer, /this\.scene\.start\('results'/);
+});
+
+test('the run ends when the selected timer expires', async () => {
+  const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const expiredClock = advanceRunClock({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    deltaMs: 60_000
+  });
+
+  assert.equal(getRunEndReason({
+    clock: expiredClock,
+    stats: createRunStats()
+  }), 'timer-expired');
+  assert.match(renderer, /endRunIfNeeded/);
+});
+
+test('results screen shows baseline run performance stats', async () => {
+  const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const clock = advanceRunClock({
+    clock: createRunClock({ runLengthMinutes: 3 }),
+    deltaMs: 75_000
+  });
+
+  assert.deepEqual(createResultsValues({ clock, stats: createRunStats() }), {
+    score: 'Score 0',
+    kills: 'Kills 0',
+    timeSurvived: 'Time Survived 1:15',
+    pickups: 'Pickups 0',
+    shotsFired: 'Shots Fired 0',
+    damageDealt: 'Damage Dealt 0'
+  });
+  assert.match(renderer, /ResultsScene/);
+  assert.match(renderer, /createResultsValues/);
+});
+
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
   const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
