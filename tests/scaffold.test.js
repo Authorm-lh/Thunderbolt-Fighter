@@ -193,6 +193,19 @@ test('player health decreases when damage is applied', async () => {
   assert.match(renderer, /applyPlayerDamage/);
 });
 
+test('the run ends immediately when player health reaches zero', async () => {
+  const { applyPlayerDamage, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const depletedStats = applyPlayerDamage({ stats: createRunStats(), damage: 100 });
+
+  assert.equal(getRunEndReason({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    stats: depletedStats
+  }), 'health-depleted');
+  assert.match(renderer, /this\.scene\.start\('results'/);
+});
+
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
   const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

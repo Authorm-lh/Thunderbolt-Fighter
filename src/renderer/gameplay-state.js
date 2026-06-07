@@ -89,6 +89,14 @@ export const applyPlayerDamage = ({ stats, damage }) => ({
   health: Math.max(0, stats.health - damage)
 });
 
+export const getRunEndReason = ({ clock: _clock, stats }) => {
+  if (stats.health <= 0) {
+    return 'health-depleted';
+  }
+
+  return null;
+};
+
 export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeight }) => (
   currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds
 ) % tileHeight;

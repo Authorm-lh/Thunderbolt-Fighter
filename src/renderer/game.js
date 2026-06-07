@@ -11,6 +11,7 @@ import {
   createRunBaseline,
   createRunClock,
   createRunStats,
+  getRunEndReason,
   resolvePlayerVelocity,
   shouldAutoFire
 } from './gameplay-state.js';
@@ -349,6 +350,19 @@ class GameplayScene extends Phaser.Scene {
   applyDamage(damage) {
     this.runStats = applyPlayerDamage({ stats: this.runStats, damage });
     this.updateHud();
+    this.endRunIfNeeded();
+  }
+
+  endRunIfNeeded() {
+    const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats });
+
+    if (endReason) {
+      this.scene.start('results', {
+        endReason,
+        runClock: this.runClock,
+        runStats: this.runStats
+      });
+    }
   }
 
   spawnPlayerProjectile() {
@@ -377,13 +391,34 @@ class GameplayScene extends Phaser.Scene {
   }
 }
 
+class ResultsScene extends Phaser.Scene {
+  constructor() {
+    super('results');
+  }
+
+  create(data) {
+    const root = document.querySelector('#game-root');
+
+    this.cameras.main.setBackgroundColor('#09111f');
+    this.add.text(this.scale.width / 2, this.scale.height / 2, 'Run Complete', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '42px',
+      color: '#f8fbff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    root.dataset.screen = 'results';
+    root.dataset.endReason = data.endReason;
+  }
+}
+
 const config = {
   type: Phaser.AUTO,
   parent: 'game-root',
   width: GAMEPLAY_PLAYFIELD.width,
   height: GAMEPLAY_PLAYFIELD.height,
   backgroundColor: '#09111f',
-  scene: [MainMenuScene, GameplayScene],
+  scene: [MainMenuScene, GameplayScene, ResultsScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
