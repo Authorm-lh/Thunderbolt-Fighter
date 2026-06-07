@@ -18,6 +18,7 @@ import {
   createRunClock,
   createRunStats,
   getRunEndReason,
+  resolvePlayerProjectileEnemyHits,
   resolvePlayerVelocity,
   shouldAutoFire,
   shouldBasicEnemyFire,
@@ -314,6 +315,7 @@ class GameplayScene extends Phaser.Scene {
     }
 
     this.updateProjectiles(deltaSeconds);
+    this.resolvePlayerProjectileHits();
     this.updateEnemies(deltaSeconds, _time);
     this.updateEnemyProjectiles(deltaSeconds);
   }
@@ -408,6 +410,30 @@ class GameplayScene extends Phaser.Scene {
 
       return true;
     });
+  }
+
+  resolvePlayerProjectileHits() {
+    const result = resolvePlayerProjectileEnemyHits({
+      enemies: this.enemies,
+      projectiles: this.projectiles
+    });
+    const remainingEnemyIds = new Set(result.enemies.map((enemy) => enemy.id));
+    const remainingProjectiles = new Set(result.projectiles);
+
+    this.projectiles.forEach((projectile) => {
+      if (!remainingProjectiles.has(projectile)) {
+        projectile.destroy();
+      }
+    });
+    this.enemies.forEach((enemy) => {
+      if (!remainingEnemyIds.has(enemy.id)) {
+        enemy.sprite.destroy();
+      }
+    });
+
+    this.projectiles = result.projectiles;
+    this.enemies = result.enemies;
+    this.root.dataset.enemyCount = String(this.enemies.length);
   }
 
   spawnBasicEnemy() {

@@ -14,7 +14,8 @@ export const PLAYER_WEAPON = {
   name: 'Blaster',
   fireIntervalMs: 260,
   projectileSpeed: 880,
-  projectileRadius: 5
+  projectileRadius: 5,
+  damage: 15
 };
 
 export const PLAYER_SURVIVAL = {
@@ -40,6 +41,8 @@ export const BACKGROUND_SCROLL = {
 };
 
 const isPressed = (inputState, codes) => codes.some((code) => Boolean(inputState[code]));
+
+export const doCirclesOverlap = (first, second) => Math.hypot(first.x - second.x, first.y - second.y) <= first.radius + second.radius;
 
 export const resolvePlayerVelocity = (inputState) => {
   const xAxis = Number(isPressed(inputState, ['ArrowRight', 'KeyD'])) - Number(isPressed(inputState, ['ArrowLeft', 'KeyA']));
@@ -89,6 +92,37 @@ export const advanceEnemyProjectiles = ({ projectiles, deltaSeconds }) => projec
   ...projectile,
   y: projectile.y + BASIC_ENEMY.projectileSpeed * deltaSeconds
 }));
+
+export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
+  const remainingEnemies = enemies.map((enemy) => ({ ...enemy }));
+  const destroyedEnemies = [];
+  const remainingProjectiles = [];
+
+  projectiles.forEach((projectile) => {
+    const hitEnemy = remainingEnemies.find((enemy) => doCirclesOverlap(
+      { x: projectile.x, y: projectile.y, radius: projectile.radius },
+      { x: enemy.x, y: enemy.y, radius: BASIC_ENEMY.radius }
+    ));
+
+    if (!hitEnemy) {
+      remainingProjectiles.push(projectile);
+      return;
+    }
+
+    hitEnemy.health = Math.max(0, hitEnemy.health - PLAYER_WEAPON.damage);
+
+    if (hitEnemy.health === 0) {
+      destroyedEnemies.push({ ...hitEnemy });
+      remainingEnemies.splice(remainingEnemies.indexOf(hitEnemy), 1);
+    }
+  });
+
+  return {
+    enemies: remainingEnemies,
+    projectiles: remainingProjectiles,
+    destroyedEnemies
+  };
+};
 
 export const createRunClock = ({ runLengthMinutes }) => ({
   durationMs: runLengthMinutes * 60_000,
