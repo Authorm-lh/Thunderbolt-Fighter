@@ -312,7 +312,7 @@ class GameplayScene extends Phaser.Scene {
     this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
     this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
 
-    if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs })) {
+    if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs, stats: this.runStats })) {
       this.spawnPlayerProjectile();
       this.lastFiredMs = _time;
     }

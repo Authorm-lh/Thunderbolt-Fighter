@@ -165,6 +165,17 @@ test('player ship fires automatically on a fixed cadence', async () => {
   assert.match(renderer, /shouldAutoFire/);
 });
 
+test('attack-speed buffs temporarily increase player firing rate', async () => {
+  const { PLAYER_WEAPON, advanceTimedBuffs, applyPickupBuff, createRunStats, shouldAutoFire } = await import('../src/renderer/gameplay-state.js');
+
+  const fastStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-speed' });
+  const expiredStats = advanceTimedBuffs({ stats: fastStats, deltaMs: 10_000 });
+
+  assert.equal(shouldAutoFire({ elapsedMs: 140, lastFiredMs: 0, stats: fastStats }), true);
+  assert.equal(shouldAutoFire({ elapsedMs: 140, lastFiredMs: 0, stats: expiredStats }), false);
+  assert.equal(shouldAutoFire({ elapsedMs: PLAYER_WEAPON.fireIntervalMs, lastFiredMs: 0, stats: expiredStats }), true);
+});
+
 test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
   const { ENEMY_CLASSES } = await import('../src/renderer/gameplay-state.js');
 

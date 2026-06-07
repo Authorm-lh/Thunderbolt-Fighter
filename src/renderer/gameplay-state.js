@@ -38,6 +38,12 @@ export const PICKUP_BUFFS = {
     label: 'Power',
     damage: 25,
     durationMs: 8_000
+  },
+  'attack-speed': {
+    type: 'attack-speed',
+    label: 'Rapid',
+    fireIntervalMs: 130,
+    durationMs: 8_000
   }
 };
 
@@ -138,7 +144,11 @@ export const resolvePlayerVelocity = (inputState) => {
   };
 };
 
-export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= PLAYER_WEAPON.fireIntervalMs;
+export const getPlayerFireIntervalMs = (stats = createRunStats()) => (
+  stats.activeBuffs.attackSpeed.remainingMs > 0 ? PICKUP_BUFFS['attack-speed'].fireIntervalMs : PLAYER_WEAPON.fireIntervalMs
+);
+
+export const shouldAutoFire = ({ elapsedMs, lastFiredMs, stats }) => elapsedMs - lastFiredMs >= getPlayerFireIntervalMs(stats);
 
 export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs, activeEnemyCount = 0, difficulty = 'normal' }) => {
   const tuning = getDifficultyTuning(difficulty);
@@ -264,7 +274,8 @@ export const createRunStats = () => ({
   maxHealth: PLAYER_SURVIVAL.maxHealth,
   shield: 0,
   activeBuffs: {
-    attackPower: { remainingMs: 0 }
+    attackPower: { remainingMs: 0 },
+    attackSpeed: { remainingMs: 0 }
   },
   weaponName: PLAYER_WEAPON.name,
   activeBuffName: 'None',
@@ -345,19 +356,37 @@ export const applyPickupBuff = ({ stats, pickupType }) => {
     };
   }
 
+  if (pickupType === 'attack-speed') {
+    return {
+      ...stats,
+      activeBuffs: {
+        ...stats.activeBuffs,
+        attackSpeed: { remainingMs: pickup.durationMs }
+      },
+      activeBuffName: pickup.label,
+      pickups: stats.pickups + 1
+    };
+  }
+
   return stats;
 };
 
 export const advanceTimedBuffs = ({ stats, deltaMs }) => {
   const attackPowerRemainingMs = Math.max(0, stats.activeBuffs.attackPower.remainingMs - deltaMs);
+  const attackSpeedRemainingMs = Math.max(0, stats.activeBuffs.attackSpeed.remainingMs - deltaMs);
+  const activeBuffName = [
+    attackPowerRemainingMs > 0 ? PICKUP_BUFFS['attack-power'].label : null,
+    attackSpeedRemainingMs > 0 ? PICKUP_BUFFS['attack-speed'].label : null
+  ].filter(Boolean).join(' + ');
 
   return {
     ...stats,
     activeBuffs: {
       ...stats.activeBuffs,
-      attackPower: { remainingMs: attackPowerRemainingMs }
+      attackPower: { remainingMs: attackPowerRemainingMs },
+      attackSpeed: { remainingMs: attackSpeedRemainingMs }
     },
-    activeBuffName: attackPowerRemainingMs > 0 ? PICKUP_BUFFS['attack-power'].label : 'None'
+    activeBuffName: activeBuffName || 'None'
   };
 };
 
