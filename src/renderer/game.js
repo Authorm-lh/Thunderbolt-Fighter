@@ -19,6 +19,7 @@ import {
   createRunClock,
   createRunStats,
   getRunEndReason,
+  resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
   resolveEnemyTypeForSpawn,
   resolvePlayerProjectileEnemyHits,
@@ -474,15 +475,26 @@ class GameplayScene extends Phaser.Scene {
   updateEnemies(deltaSeconds, elapsedMs) {
     const advancedEnemies = advanceBasicEnemies({ enemies: this.enemies, deltaSeconds });
 
-    this.enemies = advancedEnemies.filter((enemy) => {
+    advancedEnemies.forEach((enemy) => {
       enemy.sprite.x = enemy.x;
       enemy.sprite.y = enemy.y;
+    });
 
-      if (enemy.y > GAMEPLAY_PLAYFIELD.height + BASIC_ENEMY.radius) {
+    const escapedResult = resolveEscapedEnemyHits({
+      stats: this.runStats,
+      enemies: advancedEnemies,
+      difficulty: this.selectedDifficulty
+    });
+    const escapedEnemyIds = new Set(escapedResult.escapedEnemies.map((enemy) => enemy.id));
+
+    advancedEnemies.forEach((enemy) => {
+      if (escapedEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
-        return false;
       }
+    });
 
+    this.runStats = escapedResult.stats;
+    this.enemies = escapedResult.enemies.filter((enemy) => {
       if (enemy.y >= 0 && shouldBasicEnemyFire({
         elapsedMs,
         lastFiredMs: enemy.lastFiredMs,
@@ -495,6 +507,8 @@ class GameplayScene extends Phaser.Scene {
 
       return true;
     });
+    this.updateHud();
+    this.endRunIfNeeded();
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
 

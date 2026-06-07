@@ -67,7 +67,7 @@ export const DIFFICULTY_TUNING = {
   simple: {
     enemySpawnIntervalMs: 2200,
     maxActiveEnemies: 4,
-    enemyFireIntervalMultiplier: 1.6,
+    enemyFireIntervalMultiplier: 3.2,
     enemyProjectileDamageMultiplier: 0.5,
     enemyContactDamageMultiplier: 0.75,
     scoreMultiplier: 0.8
@@ -75,7 +75,7 @@ export const DIFFICULTY_TUNING = {
   normal: {
     enemySpawnIntervalMs: BASIC_ENEMY.spawnIntervalMs,
     maxActiveEnemies: 7,
-    enemyFireIntervalMultiplier: 1,
+    enemyFireIntervalMultiplier: 2,
     enemyProjectileDamageMultiplier: 1,
     enemyContactDamageMultiplier: 1,
     scoreMultiplier: 1
@@ -83,7 +83,7 @@ export const DIFFICULTY_TUNING = {
   hard: {
     enemySpawnIntervalMs: 800,
     maxActiveEnemies: 10,
-    enemyFireIntervalMultiplier: 0.75,
+    enemyFireIntervalMultiplier: 1.5,
     enemyProjectileDamageMultiplier: 1.25,
     enemyContactDamageMultiplier: 1.25,
     scoreMultiplier: 1.25
@@ -277,6 +277,30 @@ export const applyPlayerDamage = ({ stats, damage }) => ({
   ...stats,
   health: Math.max(0, stats.health - damage)
 });
+
+export const resolveEscapedEnemyHits = ({ stats, enemies, difficulty = 'normal' }) => {
+  let damage = 0;
+  const escapedEnemies = [];
+  const remainingEnemies = [];
+
+  enemies.forEach((enemy) => {
+    const enemyClass = getEnemyClass(enemy.type);
+
+    if (enemy.y > GAMEPLAY_PLAYFIELD.height + enemyClass.radius) {
+      damage += Math.round(enemyClass.contactDamage * getDifficultyTuning(difficulty).enemyContactDamageMultiplier);
+      escapedEnemies.push(enemy);
+      return;
+    }
+
+    remainingEnemies.push(enemy);
+  });
+
+  return {
+    stats: damage === 0 ? stats : applyPlayerDamage({ stats, damage }),
+    enemies: remainingEnemies,
+    escapedEnemies
+  };
+};
 
 export const resolveEnemyPlayerHits = ({ stats, player, enemyProjectiles, enemies, difficulty = 'normal' }) => {
   let damage = 0;
