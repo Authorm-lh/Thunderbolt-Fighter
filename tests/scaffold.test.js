@@ -199,6 +199,38 @@ test('player shots damage and destroy basic enemies', async () => {
   assert.match(renderer, /resolvePlayerProjectileEnemyHits/);
 });
 
+test('enemy shots and contact damage the player', async () => {
+  const { BASIC_ENEMY, PLAYER_FLIGHT, createRunStats, resolveEnemyPlayerHits } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const player = { x: PLAYER_FLIGHT.startX, y: PLAYER_FLIGHT.startY, radius: PLAYER_FLIGHT.radius };
+  const enemyProjectile = {
+    x: player.x,
+    y: player.y,
+    radius: BASIC_ENEMY.projectileRadius,
+    damage: BASIC_ENEMY.projectileDamage
+  };
+  const contactEnemy = {
+    id: 'basic-0',
+    type: 'basic',
+    x: player.x,
+    y: player.y,
+    health: BASIC_ENEMY.maxHealth,
+    lastFiredMs: 0
+  };
+  const result = resolveEnemyPlayerHits({
+    stats: createRunStats(),
+    player,
+    enemyProjectiles: [enemyProjectile],
+    enemies: [contactEnemy]
+  });
+
+  assert.equal(result.stats.health, 100 - BASIC_ENEMY.projectileDamage - BASIC_ENEMY.contactDamage);
+  assert.equal(result.enemyProjectiles.length, 0);
+  assert.deepEqual(result.contactEnemies, [contactEnemy]);
+  assert.match(renderer, /resolveEnemyPlayerHits/);
+});
+
 test('gameplay background scrolls slowly to communicate vertical flight', async () => {
   const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

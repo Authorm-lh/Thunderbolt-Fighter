@@ -18,6 +18,7 @@ import {
   createRunClock,
   createRunStats,
   getRunEndReason,
+  resolveEnemyPlayerHits,
   resolvePlayerProjectileEnemyHits,
   resolvePlayerVelocity,
   shouldAutoFire,
@@ -318,6 +319,7 @@ class GameplayScene extends Phaser.Scene {
     this.resolvePlayerProjectileHits();
     this.updateEnemies(deltaSeconds, _time);
     this.updateEnemyProjectiles(deltaSeconds);
+    this.resolveEnemyPlayerHits();
   }
 
   createBackgroundStarfield() {
@@ -488,6 +490,37 @@ class GameplayScene extends Phaser.Scene {
 
       return true;
     });
+    this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
+  }
+
+  resolveEnemyPlayerHits() {
+    const result = resolveEnemyPlayerHits({
+      stats: this.runStats,
+      player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
+      enemyProjectiles: this.enemyProjectiles,
+      enemies: this.enemies
+    });
+    const remainingProjectiles = new Set(result.enemyProjectiles);
+    const contactEnemyIds = new Set(result.contactEnemies.map((enemy) => enemy.id));
+
+    this.enemyProjectiles.forEach((projectile) => {
+      if (!remainingProjectiles.has(projectile)) {
+        projectile.sprite.destroy();
+      }
+    });
+    this.enemies = this.enemies.filter((enemy) => {
+      if (contactEnemyIds.has(enemy.id)) {
+        enemy.sprite.destroy();
+        return false;
+      }
+
+      return true;
+    });
+    this.enemyProjectiles = result.enemyProjectiles;
+    this.runStats = result.stats;
+    this.updateHud();
+    this.endRunIfNeeded();
+    this.root.dataset.enemyCount = String(this.enemies.length);
     this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
   }
 }

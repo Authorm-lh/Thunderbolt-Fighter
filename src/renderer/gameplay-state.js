@@ -32,6 +32,7 @@ export const BASIC_ENEMY = {
   projectileSpeed: 360,
   projectileRadius: 6,
   projectileDamage: 12,
+  contactDamage: 20,
   lanes: [220, 420, 640, 860, 1060]
 };
 
@@ -177,6 +178,34 @@ export const applyPlayerDamage = ({ stats, damage }) => ({
   ...stats,
   health: Math.max(0, stats.health - damage)
 });
+
+export const resolveEnemyPlayerHits = ({ stats, player, enemyProjectiles, enemies }) => {
+  let damage = 0;
+  const remainingProjectiles = [];
+  const contactEnemies = [];
+
+  enemyProjectiles.forEach((projectile) => {
+    if (doCirclesOverlap(projectile, player)) {
+      damage += projectile.damage;
+      return;
+    }
+
+    remainingProjectiles.push(projectile);
+  });
+
+  enemies.forEach((enemy) => {
+    if (doCirclesOverlap({ x: enemy.x, y: enemy.y, radius: BASIC_ENEMY.radius }, player)) {
+      damage += BASIC_ENEMY.contactDamage;
+      contactEnemies.push(enemy);
+    }
+  });
+
+  return {
+    stats: damage === 0 ? stats : applyPlayerDamage({ stats, damage }),
+    enemyProjectiles: remainingProjectiles,
+    contactEnemies
+  };
+};
 
 export const getRunEndReason = ({ clock, stats }) => {
   if (stats.health <= 0) {
