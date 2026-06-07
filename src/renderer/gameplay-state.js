@@ -65,18 +65,27 @@ export const resolveEnemyTypeForSpawn = ({ spawnIndex }) => (spawnIndex > 0 && s
 
 export const DIFFICULTY_TUNING = {
   simple: {
-    enemySpawnIntervalMs: 1500,
-    enemyDamageMultiplier: 0.8,
+    enemySpawnIntervalMs: 2200,
+    maxActiveEnemies: 4,
+    enemyFireIntervalMultiplier: 1.6,
+    enemyProjectileDamageMultiplier: 0.5,
+    enemyContactDamageMultiplier: 0.75,
     scoreMultiplier: 0.8
   },
   normal: {
     enemySpawnIntervalMs: BASIC_ENEMY.spawnIntervalMs,
-    enemyDamageMultiplier: 1,
+    maxActiveEnemies: 7,
+    enemyFireIntervalMultiplier: 1,
+    enemyProjectileDamageMultiplier: 1,
+    enemyContactDamageMultiplier: 1,
     scoreMultiplier: 1
   },
   hard: {
-    enemySpawnIntervalMs: 850,
-    enemyDamageMultiplier: 1.25,
+    enemySpawnIntervalMs: 800,
+    maxActiveEnemies: 10,
+    enemyFireIntervalMultiplier: 0.75,
+    enemyProjectileDamageMultiplier: 1.25,
+    enemyContactDamageMultiplier: 1.25,
     scoreMultiplier: 1.25
   }
 };
@@ -110,14 +119,17 @@ export const resolvePlayerVelocity = (inputState) => {
 
 export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= PLAYER_WEAPON.fireIntervalMs;
 
-export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs, difficulty = 'normal' }) => (
-  elapsedMs - lastSpawnedMs >= getDifficultyTuning(difficulty).enemySpawnIntervalMs
-);
+export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs, activeEnemyCount = 0, difficulty = 'normal' }) => {
+  const tuning = getDifficultyTuning(difficulty);
 
-export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basic' }) => {
+  return activeEnemyCount < tuning.maxActiveEnemies && elapsedMs - lastSpawnedMs >= tuning.enemySpawnIntervalMs;
+};
+
+export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basic', difficulty = 'normal' }) => {
   const enemyClass = getEnemyClass(enemyType);
+  const fireIntervalMs = enemyClass.fireIntervalMs * getDifficultyTuning(difficulty).enemyFireIntervalMultiplier;
 
-  return elapsedMs - lastFiredMs >= enemyClass.fireIntervalMs;
+  return elapsedMs - lastFiredMs >= fireIntervalMs;
 };
 
 export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic' }) => {
@@ -158,7 +170,7 @@ export const createBasicEnemyProjectile = ({ enemyId, x, y, enemyType = 'basic',
     x,
     y: y + enemyClass.radius,
     radius: enemyClass.projectileRadius,
-    damage: Math.round(enemyClass.projectileDamage * getDifficultyTuning(difficulty).enemyDamageMultiplier),
+    damage: Math.round(enemyClass.projectileDamage * getDifficultyTuning(difficulty).enemyProjectileDamageMultiplier),
     speed: enemyClass.projectileSpeed
   };
 };
@@ -284,7 +296,7 @@ export const resolveEnemyPlayerHits = ({ stats, player, enemyProjectiles, enemie
     const enemyClass = getEnemyClass(enemy.type);
 
     if (doCirclesOverlap({ x: enemy.x, y: enemy.y, radius: enemyClass.radius }, player)) {
-      damage += Math.round(enemyClass.contactDamage * getDifficultyTuning(difficulty).enemyDamageMultiplier);
+      damage += Math.round(enemyClass.contactDamage * getDifficultyTuning(difficulty).enemyContactDamageMultiplier);
       contactEnemies.push(enemy);
     }
   });

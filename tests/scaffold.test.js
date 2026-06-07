@@ -68,17 +68,26 @@ test('main menu exposes simple, normal, and hard difficulty choices', async () =
 });
 
 test('simple, normal, and hard difficulty tune enemy pressure, damage, and score pacing', async () => {
-  const { DIFFICULTY_TUNING, getDifficultyTuning, shouldSpawnBasicEnemy } = await import('../src/renderer/gameplay-state.js');
+  const { DIFFICULTY_TUNING, getDifficultyTuning, shouldBasicEnemyFire, shouldSpawnBasicEnemy } = await import('../src/renderer/gameplay-state.js');
 
   assert.deepEqual(Object.keys(DIFFICULTY_TUNING), ['simple', 'normal', 'hard']);
   assert.ok(getDifficultyTuning('simple').enemySpawnIntervalMs > getDifficultyTuning('normal').enemySpawnIntervalMs);
   assert.ok(getDifficultyTuning('hard').enemySpawnIntervalMs < getDifficultyTuning('normal').enemySpawnIntervalMs);
-  assert.ok(getDifficultyTuning('simple').enemyDamageMultiplier < getDifficultyTuning('normal').enemyDamageMultiplier);
-  assert.ok(getDifficultyTuning('hard').enemyDamageMultiplier > getDifficultyTuning('normal').enemyDamageMultiplier);
+  assert.ok(getDifficultyTuning('simple').maxActiveEnemies < getDifficultyTuning('normal').maxActiveEnemies);
+  assert.ok(getDifficultyTuning('hard').maxActiveEnemies > getDifficultyTuning('normal').maxActiveEnemies);
+  assert.ok(getDifficultyTuning('simple').enemyFireIntervalMultiplier > getDifficultyTuning('normal').enemyFireIntervalMultiplier);
+  assert.ok(getDifficultyTuning('hard').enemyFireIntervalMultiplier < getDifficultyTuning('normal').enemyFireIntervalMultiplier);
+  assert.ok(getDifficultyTuning('simple').enemyProjectileDamageMultiplier < getDifficultyTuning('normal').enemyProjectileDamageMultiplier);
+  assert.ok(getDifficultyTuning('hard').enemyProjectileDamageMultiplier > getDifficultyTuning('normal').enemyProjectileDamageMultiplier);
+  assert.ok(getDifficultyTuning('simple').enemyContactDamageMultiplier < getDifficultyTuning('normal').enemyContactDamageMultiplier);
+  assert.ok(getDifficultyTuning('hard').enemyContactDamageMultiplier > getDifficultyTuning('normal').enemyContactDamageMultiplier);
   assert.ok(getDifficultyTuning('simple').scoreMultiplier < getDifficultyTuning('normal').scoreMultiplier);
   assert.ok(getDifficultyTuning('hard').scoreMultiplier > getDifficultyTuning('normal').scoreMultiplier);
-  assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, difficulty: 'simple' }), false);
-  assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, difficulty: 'hard' }), true);
+  assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, activeEnemyCount: 0, difficulty: 'simple' }), false);
+  assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, activeEnemyCount: 0, difficulty: 'hard' }), true);
+  assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 2500, lastSpawnedMs: 0, activeEnemyCount: getDifficultyTuning('simple').maxActiveEnemies, difficulty: 'simple' }), false);
+  assert.equal(shouldBasicEnemyFire({ elapsedMs: 1200, lastFiredMs: 0, difficulty: 'simple' }), false);
+  assert.equal(shouldBasicEnemyFire({ elapsedMs: 1200, lastFiredMs: 0, difficulty: 'hard' }), true);
 });
 
 test('main menu start-run path propagates selected options into gameplay', async () => {

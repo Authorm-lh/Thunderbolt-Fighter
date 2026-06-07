@@ -314,7 +314,12 @@ class GameplayScene extends Phaser.Scene {
       this.lastFiredMs = _time;
     }
 
-    if (shouldSpawnBasicEnemy({ elapsedMs: _time, lastSpawnedMs: this.lastEnemySpawnedMs, difficulty: this.selectedDifficulty })) {
+    if (shouldSpawnBasicEnemy({
+      elapsedMs: _time,
+      lastSpawnedMs: this.lastEnemySpawnedMs,
+      activeEnemyCount: this.enemies.length,
+      difficulty: this.selectedDifficulty
+    })) {
       this.spawnBasicEnemy();
       this.lastEnemySpawnedMs = _time;
     }
@@ -478,7 +483,12 @@ class GameplayScene extends Phaser.Scene {
         return false;
       }
 
-      if (enemy.y >= 0 && shouldBasicEnemyFire({ elapsedMs, lastFiredMs: enemy.lastFiredMs, enemyType: enemy.type })) {
+      if (enemy.y >= 0 && shouldBasicEnemyFire({
+        elapsedMs,
+        lastFiredMs: enemy.lastFiredMs,
+        enemyType: enemy.type,
+        difficulty: this.selectedDifficulty
+      })) {
         this.spawnEnemyProjectile(enemy);
         enemy.lastFiredMs = elapsedMs;
       }
