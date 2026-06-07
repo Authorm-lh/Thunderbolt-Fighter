@@ -80,6 +80,77 @@ test('main menu start-run path propagates selected options into gameplay', async
   assert.match(smokeTest, /data-difficulty'\), 'hard'/);
 });
 
+test('gameplay scene uses a 16:9 logical playfield', async () => {
+  const { GAMEPLAY_PLAYFIELD } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.deepEqual(GAMEPLAY_PLAYFIELD, {
+    width: 1280,
+    height: 720
+  });
+  assert.match(renderer, /width: GAMEPLAY_PLAYFIELD\.width/);
+  assert.match(renderer, /height: GAMEPLAY_PLAYFIELD\.height/);
+  assert.match(renderer, /Phaser\.Scale\.FIT/);
+});
+
+test('player movement accepts arrow keys and WASD continuously', async () => {
+  const { PLAYER_FLIGHT, resolvePlayerVelocity } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.deepEqual(resolvePlayerVelocity({ ArrowLeft: true }), { x: -PLAYER_FLIGHT.speed, y: 0 });
+  assert.deepEqual(resolvePlayerVelocity({ KeyA: true }), { x: -PLAYER_FLIGHT.speed, y: 0 });
+  assert.deepEqual(resolvePlayerVelocity({ ArrowRight: true }), { x: PLAYER_FLIGHT.speed, y: 0 });
+  assert.deepEqual(resolvePlayerVelocity({ KeyD: true }), { x: PLAYER_FLIGHT.speed, y: 0 });
+  assert.deepEqual(resolvePlayerVelocity({ ArrowUp: true }), { x: 0, y: -PLAYER_FLIGHT.speed });
+  assert.deepEqual(resolvePlayerVelocity({ KeyW: true }), { x: 0, y: -PLAYER_FLIGHT.speed });
+  assert.deepEqual(resolvePlayerVelocity({ ArrowDown: true }), { x: 0, y: PLAYER_FLIGHT.speed });
+  assert.deepEqual(resolvePlayerVelocity({ KeyS: true }), { x: 0, y: PLAYER_FLIGHT.speed });
+
+  const diagonal = resolvePlayerVelocity({ ArrowUp: true, KeyD: true });
+  assert.equal(Math.round(Math.hypot(diagonal.x, diagonal.y)), PLAYER_FLIGHT.speed);
+  assert.match(renderer, /this\.input\.keyboard\.createCursorKeys\(\)/);
+  assert.match(renderer, /this\.input\.keyboard\.addKeys/);
+  assert.match(renderer, /resolvePlayerVelocity/);
+});
+
+test('player ship fires automatically on a fixed cadence', async () => {
+  const { PLAYER_WEAPON, shouldAutoFire } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(PLAYER_WEAPON.fireIntervalMs, 260);
+  assert.equal(shouldAutoFire({ elapsedMs: 0, lastFiredMs: -PLAYER_WEAPON.fireIntervalMs }), true);
+  assert.equal(shouldAutoFire({ elapsedMs: 120, lastFiredMs: 0 }), false);
+  assert.equal(shouldAutoFire({ elapsedMs: 260, lastFiredMs: 0 }), true);
+  assert.doesNotMatch(renderer, /Space/);
+  assert.doesNotMatch(renderer, /shoot/i);
+  assert.match(renderer, /shouldAutoFire/);
+});
+
+test('gameplay background scrolls slowly to communicate vertical flight', async () => {
+  const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(BACKGROUND_SCROLL.speed, 36);
+  assert.equal(advanceBackgroundOffset({ currentOffset: 0, deltaSeconds: 1, tileHeight: 240 }), 36);
+  assert.equal(advanceBackgroundOffset({ currentOffset: 230, deltaSeconds: 1, tileHeight: 240 }), 26);
+  assert.match(renderer, /createBackgroundStarfield/);
+  assert.match(renderer, /advanceBackgroundOffset/);
+});
+
+test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
+  const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const firstRun = createRunBaseline();
+  const laterRun = createRunBaseline({ previousRunUpgrades: { speed: 9999, fireIntervalMs: 1 } });
+
+  assert.deepEqual(firstRun, laterRun);
+  assert.deepEqual(firstRun.player, PLAYER_FLIGHT);
+  assert.deepEqual(firstRun.weapon, PLAYER_WEAPON);
+  assert.doesNotMatch(renderer, /localStorage/);
+  assert.doesNotMatch(renderer, /permanent/i);
+});
+
 test('project exposes a Windows desktop packaging command', async () => {
   const packageJson = await readJson('package.json');
   const packageScript = await readText('scripts/package-win.js');

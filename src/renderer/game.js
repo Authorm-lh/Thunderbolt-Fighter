@@ -1,4 +1,14 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
+import {
+  BACKGROUND_SCROLL,
+  GAMEPLAY_PLAYFIELD,
+  PLAYER_FLIGHT,
+  PLAYER_WEAPON,
+  advanceBackgroundOffset,
+  createRunBaseline,
+  resolvePlayerVelocity,
+  shouldAutoFire
+} from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
   { label: '1 min', runLengthMinutes: 1, xOffset: -116 },
@@ -187,42 +197,145 @@ class MainMenuScene extends Phaser.Scene {
 class GameplayScene extends Phaser.Scene {
   constructor() {
     super('gameplay');
+    this.player = null;
+    this.cursorKeys = null;
+    this.wasdKeys = null;
+    this.projectiles = [];
+    this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
+    this.backgroundStars = [];
+    this.backgroundOffset = 0;
+    this.runBaseline = null;
   }
 
   create(data) {
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
+    this.runBaseline = createRunBaseline();
 
     this.cameras.main.setBackgroundColor('#09111f');
+    this.createBackgroundStarfield();
 
-    const centerX = this.scale.width / 2;
-    const centerY = this.scale.height / 2;
+    this.player = this.add.triangle(
+      this.runBaseline.player.startX,
+      this.runBaseline.player.startY,
+      0,
+      this.runBaseline.player.radius * 1.4,
+      this.runBaseline.player.radius,
+      0,
+      this.runBaseline.player.radius * 2,
+      this.runBaseline.player.radius * 1.4,
+      0x9ed7ff,
+      1
+    ).setStrokeStyle(2, 0xf8fbff, 0.9);
 
-    this.add.text(centerX, centerY - 52, 'Run In Progress', {
+    this.cursorKeys = this.input.keyboard.createCursorKeys();
+    this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
+
+    this.add.text(24, 24, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',
-      fontSize: '42px',
-      color: '#f8fbff',
-      align: 'center'
-    }).setOrigin(0.5);
-
-    this.add.text(centerX, centerY + 24, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '26px',
+      fontSize: '24px',
       color: '#9ed7ff',
-      align: 'center'
-    }).setOrigin(0.5);
+      align: 'left'
+    });
 
     root.dataset.screen = 'gameplay';
     root.dataset.runLengthMinutes = String(runOptions.runLengthMinutes);
     root.dataset.difficulty = runOptions.difficulty;
+  }
+
+  update(_time, delta) {
+    if (!this.player || !this.cursorKeys || !this.wasdKeys) {
+      return;
+    }
+
+    this.updateBackground(delta / 1000);
+
+    const velocity = resolvePlayerVelocity({
+      ArrowLeft: this.cursorKeys.left.isDown,
+      ArrowRight: this.cursorKeys.right.isDown,
+      ArrowUp: this.cursorKeys.up.isDown,
+      ArrowDown: this.cursorKeys.down.isDown,
+      KeyA: this.wasdKeys.A.isDown,
+      KeyD: this.wasdKeys.D.isDown,
+      KeyW: this.wasdKeys.W.isDown,
+      KeyS: this.wasdKeys.S.isDown
+    });
+    const deltaSeconds = delta / 1000;
+    const minX = PLAYER_FLIGHT.radius;
+    const maxX = GAMEPLAY_PLAYFIELD.width - PLAYER_FLIGHT.radius;
+    const minY = PLAYER_FLIGHT.radius;
+    const maxY = GAMEPLAY_PLAYFIELD.height - PLAYER_FLIGHT.radius;
+
+    this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
+    this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
+
+    if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs })) {
+      this.spawnPlayerProjectile();
+      this.lastFiredMs = _time;
+    }
+
+    this.updateProjectiles(deltaSeconds);
+  }
+
+  createBackgroundStarfield() {
+    const starColumns = [72, 156, 248, 336, 448, 560, 648, 760, 872, 984, 1096, 1208];
+    const tileRows = Math.ceil(GAMEPLAY_PLAYFIELD.height / BACKGROUND_SCROLL.tileHeight) + 2;
+
+    for (let row = -1; row < tileRows; row += 1) {
+      starColumns.forEach((x, columnIndex) => {
+        const y = row * BACKGROUND_SCROLL.tileHeight + ((columnIndex * 47) % BACKGROUND_SCROLL.tileHeight);
+        const radius = columnIndex % 3 === 0 ? 2 : 1;
+        const star = this.add.circle(x, y, radius, 0x9ed7ff, 0.48);
+
+        star.baseY = y;
+        this.backgroundStars.push(star);
+      });
+    }
+  }
+
+  updateBackground(deltaSeconds) {
+    this.backgroundOffset = advanceBackgroundOffset({
+      currentOffset: this.backgroundOffset,
+      deltaSeconds,
+      tileHeight: BACKGROUND_SCROLL.tileHeight
+    });
+
+    this.backgroundStars.forEach((star) => {
+      star.y = ((star.baseY + this.backgroundOffset + BACKGROUND_SCROLL.tileHeight) % (GAMEPLAY_PLAYFIELD.height + BACKGROUND_SCROLL.tileHeight)) - BACKGROUND_SCROLL.tileHeight;
+    });
+  }
+
+  spawnPlayerProjectile() {
+    const projectile = this.add.circle(
+      this.player.x,
+      this.player.y - PLAYER_FLIGHT.radius,
+      PLAYER_WEAPON.projectileRadius,
+      0xffd166,
+      1
+    );
+
+    this.projectiles.push(projectile);
+  }
+
+  updateProjectiles(deltaSeconds) {
+    this.projectiles = this.projectiles.filter((projectile) => {
+      projectile.y -= PLAYER_WEAPON.projectileSpeed * deltaSeconds;
+
+      if (projectile.y < -PLAYER_WEAPON.projectileRadius) {
+        projectile.destroy();
+        return false;
+      }
+
+      return true;
+    });
   }
 }
 
 const config = {
   type: Phaser.AUTO,
   parent: 'game-root',
-  width: 1280,
-  height: 720,
+  width: GAMEPLAY_PLAYFIELD.width,
+  height: GAMEPLAY_PLAYFIELD.height,
   backgroundColor: '#09111f',
   scene: [MainMenuScene, GameplayScene],
   scale: {
