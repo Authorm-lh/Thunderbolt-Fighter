@@ -94,6 +94,21 @@ test('main menu start-run path propagates selected options into gameplay', async
   assert.match(smokeTest, /data-difficulty'\), 'hard'/);
 });
 
+test('gameplay baseline carries the selected difficulty tuning', async () => {
+  const { createRunBaseline, getDifficultyTuning } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const simpleRun = createRunBaseline({ difficulty: 'simple' });
+  const hardRun = createRunBaseline({ difficulty: 'hard' });
+
+  assert.equal(simpleRun.difficulty, 'simple');
+  assert.deepEqual(simpleRun.difficultyTuning, getDifficultyTuning('simple'));
+  assert.equal(hardRun.difficulty, 'hard');
+  assert.deepEqual(hardRun.difficultyTuning, getDifficultyTuning('hard'));
+  assert.notEqual(simpleRun.difficultyTuning.enemySpawnIntervalMs, hardRun.difficultyTuning.enemySpawnIntervalMs);
+  assert.match(renderer, /createRunBaseline\(\{ difficulty: runOptions\.difficulty \}\)/);
+});
+
 test('gameplay scene uses a 16:9 logical playfield', async () => {
   const { GAMEPLAY_PLAYFIELD } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

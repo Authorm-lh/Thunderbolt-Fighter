@@ -239,7 +239,7 @@ class GameplayScene extends Phaser.Scene {
     const root = document.querySelector('#game-root');
     this.root = root;
     this.selectedDifficulty = runOptions.difficulty;
-    this.runBaseline = createRunBaseline();
+    this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = createRunStats();
 

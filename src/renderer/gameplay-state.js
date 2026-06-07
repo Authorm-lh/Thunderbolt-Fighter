@@ -312,8 +312,10 @@ export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeigh
   currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds
 ) % tileHeight;
 
-export const createRunBaseline = () => ({
+export const createRunBaseline = ({ difficulty = 'normal' } = {}) => ({
   player: { ...PLAYER_FLIGHT },
   weapon: { ...PLAYER_WEAPON },
-  background: { ...BACKGROUND_SCROLL }
+  background: { ...BACKGROUND_SCROLL },
+  difficulty,
+  difficultyTuning: { ...getDifficultyTuning(difficulty) }
 });
