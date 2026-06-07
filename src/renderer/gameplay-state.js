@@ -44,6 +44,18 @@ export const PICKUP_BUFFS = {
     label: 'Rapid',
     fireIntervalMs: 130,
     durationMs: 8_000
+  },
+  'dual-shot': {
+    type: 'dual-shot',
+    label: 'Dual Shot'
+  },
+  'spread-shot': {
+    type: 'spread-shot',
+    label: 'Spread Shot'
+  },
+  'piercing-shot': {
+    type: 'piercing-shot',
+    label: 'Piercing Shot'
   }
 };
 
@@ -149,6 +161,31 @@ export const getPlayerFireIntervalMs = (stats = createRunStats()) => (
 );
 
 export const shouldAutoFire = ({ elapsedMs, lastFiredMs, stats }) => elapsedMs - lastFiredMs >= getPlayerFireIntervalMs(stats);
+
+export const createPlayerProjectiles = ({ player, stats = createRunStats() }) => {
+  const y = player.y - player.radius;
+  const baseProjectile = {
+    y,
+    radius: PLAYER_WEAPON.projectileRadius,
+    speed: PLAYER_WEAPON.projectileSpeed,
+    velocityX: 0,
+    piercing: false
+  };
+
+  if (stats.weaponShape === 'dual-shot') {
+    return [-12, 12].map((offsetX) => ({ ...baseProjectile, x: player.x + offsetX }));
+  }
+
+  if (stats.weaponShape === 'spread-shot') {
+    return [-140, 0, 140].map((velocityX) => ({ ...baseProjectile, x: player.x, velocityX }));
+  }
+
+  if (stats.weaponShape === 'piercing-shot') {
+    return [{ ...baseProjectile, x: player.x, piercing: true }];
+  }
+
+  return [{ ...baseProjectile, x: player.x }];
+};
 
 export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs, activeEnemyCount = 0, difficulty = 'normal' }) => {
   const tuning = getDifficultyTuning(difficulty);
@@ -277,6 +314,7 @@ export const createRunStats = () => ({
     attackPower: { remainingMs: 0 },
     attackSpeed: { remainingMs: 0 }
   },
+  weaponShape: 'single-shot',
   weaponName: PLAYER_WEAPON.name,
   activeBuffName: 'None',
   bestScore: null,
@@ -364,6 +402,15 @@ export const applyPickupBuff = ({ stats, pickupType }) => {
         attackSpeed: { remainingMs: pickup.durationMs }
       },
       activeBuffName: pickup.label,
+      pickups: stats.pickups + 1
+    };
+  }
+
+  if (['dual-shot', 'spread-shot', 'piercing-shot'].includes(pickupType)) {
+    return {
+      ...stats,
+      weaponShape: pickupType,
+      weaponName: pickup.label,
       pickups: stats.pickups + 1
     };
   }

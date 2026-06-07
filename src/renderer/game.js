@@ -16,6 +16,7 @@ import {
   createBasicEnemyProjectile,
   createEnemySpawn,
   createHudValues,
+  createPlayerProjectiles,
   createResultsValues,
   createRunBaseline,
   createRunClock,
@@ -409,22 +410,30 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnPlayerProjectile() {
-    const projectile = this.add.circle(
-      this.player.x,
-      this.player.y - PLAYER_FLIGHT.radius,
-      PLAYER_WEAPON.projectileRadius,
-      0xffd166,
-      1
-    );
+    const projectiles = createPlayerProjectiles({
+      player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
+      stats: this.runStats
+    }).map((projectileState) => {
+      const projectile = this.add.circle(
+        projectileState.x,
+        projectileState.y,
+        projectileState.radius,
+        projectileState.piercing ? 0x8be9fd : 0xffd166,
+        1
+      );
 
-    this.projectiles.push(projectile);
+      return Object.assign(projectile, projectileState);
+    });
+
+    this.projectiles.push(...projectiles);
   }
 
   updateProjectiles(deltaSeconds) {
     this.projectiles = this.projectiles.filter((projectile) => {
-      projectile.y -= PLAYER_WEAPON.projectileSpeed * deltaSeconds;
+      projectile.x += (projectile.velocityX ?? 0) * deltaSeconds;
+      projectile.y -= projectile.speed * deltaSeconds;
 
-      if (projectile.y < -PLAYER_WEAPON.projectileRadius) {
+      if (projectile.y < -projectile.radius) {
         projectile.destroy();
         return false;
       }

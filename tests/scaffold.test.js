@@ -176,6 +176,22 @@ test('attack-speed buffs temporarily increase player firing rate', async () => {
   assert.equal(shouldAutoFire({ elapsedMs: PLAYER_WEAPON.fireIntervalMs, lastFiredMs: 0, stats: expiredStats }), true);
 });
 
+test('weapon shape pickups change player firing behavior', async () => {
+  const { applyPickupBuff, createPlayerProjectiles, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const basePlayer = { x: 640, y: 500, radius: 28 };
+  const dualProjectiles = createPlayerProjectiles({ player: basePlayer, stats: applyPickupBuff({ stats: createRunStats(), pickupType: 'dual-shot' }) });
+  const spreadProjectiles = createPlayerProjectiles({ player: basePlayer, stats: applyPickupBuff({ stats: createRunStats(), pickupType: 'spread-shot' }) });
+  const piercingProjectiles = createPlayerProjectiles({ player: basePlayer, stats: applyPickupBuff({ stats: createRunStats(), pickupType: 'piercing-shot' }) });
+
+  assert.equal(dualProjectiles.length, 2);
+  assert.deepEqual(dualProjectiles.map((projectile) => projectile.x), [628, 652]);
+  assert.equal(spreadProjectiles.length, 3);
+  assert.deepEqual(spreadProjectiles.map((projectile) => projectile.velocityX), [-140, 0, 140]);
+  assert.equal(piercingProjectiles.length, 1);
+  assert.equal(piercingProjectiles[0].piercing, true);
+});
+
 test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
   const { ENEMY_CLASSES } = await import('../src/renderer/gameplay-state.js');
 
