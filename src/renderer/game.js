@@ -12,7 +12,7 @@ import {
   applyDestroyedEnemyRewards,
   applyPlayerDamage,
   createBasicEnemyProjectile,
-  createBasicEnemySpawn,
+  createEnemySpawn,
   createHudValues,
   createResultsValues,
   createRunBaseline,
@@ -20,6 +20,7 @@ import {
   createRunStats,
   getRunEndReason,
   resolveEnemyPlayerHits,
+  resolveEnemyTypeForSpawn,
   resolvePlayerProjectileEnemyHits,
   resolvePlayerVelocity,
   shouldAutoFire,
@@ -454,8 +455,10 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnBasicEnemy() {
-    const enemy = createBasicEnemySpawn({ spawnIndex: this.enemySpawnCount });
-    const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, 0xff5f6d, 1)
+    const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount });
+    const enemy = createEnemySpawn({ spawnIndex: this.enemySpawnCount, enemyType });
+    const enemyColor = enemy.type === 'elite' ? 0xc084fc : 0xff5f6d;
+    const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, enemyColor, 1)
       .setStrokeStyle(2, 0xffd166, 0.8);
 
     this.enemies.push({ ...enemy, sprite });

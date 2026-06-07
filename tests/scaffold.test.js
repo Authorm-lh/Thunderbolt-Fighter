@@ -154,6 +154,23 @@ test('basic and elite enemies differ in durability, damage, firing, movement, an
   assert.ok(ENEMY_CLASSES.elite.scoreValue > ENEMY_CLASSES.basic.scoreValue);
 });
 
+test('enemy movement remains readable while elite enemies use bounded sway', async () => {
+  const { BASIC_ENEMY, ENEMY_CLASSES, advanceBasicEnemies, createEnemySpawn, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const basicEnemy = createEnemySpawn({ spawnIndex: 0, enemyType: 'basic' });
+  const eliteEnemy = createEnemySpawn({ spawnIndex: 3, enemyType: 'elite' });
+  const [advancedBasic, advancedElite] = advanceBasicEnemies({ enemies: [basicEnemy, eliteEnemy], deltaSeconds: 1 });
+
+  assert.equal(resolveEnemyTypeForSpawn({ spawnIndex: 0 }), 'basic');
+  assert.equal(resolveEnemyTypeForSpawn({ spawnIndex: 3 }), 'elite');
+  assert.equal(advancedBasic.x, basicEnemy.x);
+  assert.ok(advancedElite.y > eliteEnemy.y);
+  assert.ok(Math.abs(advancedElite.x - eliteEnemy.movementOriginX) <= ENEMY_CLASSES.elite.maxHorizontalOffset);
+  assert.ok(ENEMY_CLASSES.elite.maxHorizontalOffset < Math.min(...BASIC_ENEMY.lanes.slice(1).map((lane, index) => lane - BASIC_ENEMY.lanes[index])) / 2);
+  assert.match(renderer, /resolveEnemyTypeForSpawn/);
+});
+
 test('basic enemies spawn from the top and descend in readable lanes', async () => {
   const { BASIC_ENEMY, createBasicEnemySpawn, advanceBasicEnemies } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -173,7 +190,7 @@ test('basic enemies spawn from the top and descend in readable lanes', async () 
   });
   assert.equal(secondEnemy.x, BASIC_ENEMY.lanes[1]);
   assert.equal(advancedEnemies[0].y, BASIC_ENEMY.speed - BASIC_ENEMY.radius);
-  assert.match(renderer, /createBasicEnemySpawn/);
+  assert.match(renderer, /createEnemySpawn/);
   assert.match(renderer, /advanceBasicEnemies/);
 });
 

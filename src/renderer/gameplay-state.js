@@ -36,6 +36,7 @@ export const ENEMY_CLASSES = {
     contactDamage: 20,
     scoreValue: 100,
     movementPattern: 'straight',
+    maxHorizontalOffset: 0,
     lanes: [220, 420, 640, 860, 1060]
   },
   elite: {
@@ -51,6 +52,7 @@ export const ENEMY_CLASSES = {
     contactDamage: 30,
     scoreValue: 260,
     movementPattern: 'sway',
+    maxHorizontalOffset: 42,
     lanes: [300, 540, 780, 1020]
   }
 };
@@ -58,6 +60,8 @@ export const ENEMY_CLASSES = {
 export const BASIC_ENEMY = ENEMY_CLASSES.basic;
 
 export const getEnemyClass = (enemyType = 'basic') => ENEMY_CLASSES[enemyType] ?? ENEMY_CLASSES.basic;
+
+export const resolveEnemyTypeForSpawn = ({ spawnIndex }) => (spawnIndex > 0 && spawnIndex % 4 === 3 ? 'elite' : 'basic');
 
 export const DIFFICULTY_TUNING = {
   simple: {
@@ -136,7 +140,7 @@ export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((e
   const enemyClass = getEnemyClass(enemy.type);
   const y = enemy.y + enemyClass.speed * deltaSeconds;
   const x = enemyClass.movementPattern === 'sway'
-    ? enemy.movementOriginX + Math.sin((y + enemyClass.radius) / 80) * 42
+    ? enemy.movementOriginX + Math.sin((y + enemyClass.radius) / 80) * enemyClass.maxHorizontalOffset
     : enemy.x;
 
   return {
