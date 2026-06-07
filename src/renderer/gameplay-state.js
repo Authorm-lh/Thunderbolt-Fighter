@@ -89,9 +89,13 @@ export const applyPlayerDamage = ({ stats, damage }) => ({
   health: Math.max(0, stats.health - damage)
 });
 
-export const getRunEndReason = ({ clock: _clock, stats }) => {
+export const getRunEndReason = ({ clock, stats }) => {
   if (stats.health <= 0) {
     return 'health-depleted';
+  }
+
+  if (clock.remainingMs <= 0) {
+    return 'timer-expired';
   }
 
   return null;

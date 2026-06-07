@@ -330,6 +330,7 @@ class GameplayScene extends Phaser.Scene {
   updateRunClock(deltaMs) {
     this.runClock = advanceRunClock({ clock: this.runClock, deltaMs });
     this.updateHud();
+    this.endRunIfNeeded();
   }
 
   updateHud() {

@@ -206,6 +206,22 @@ test('the run ends immediately when player health reaches zero', async () => {
   assert.match(renderer, /this\.scene\.start\('results'/);
 });
 
+test('the run ends when the selected timer expires', async () => {
+  const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const expiredClock = advanceRunClock({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    deltaMs: 60_000
+  });
+
+  assert.equal(getRunEndReason({
+    clock: expiredClock,
+    stats: createRunStats()
+  }), 'timer-expired');
+  assert.match(renderer, /endRunIfNeeded/);
+});
+
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
   const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
