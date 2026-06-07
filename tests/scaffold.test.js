@@ -278,6 +278,28 @@ test('player shots damage and destroy basic enemies', async () => {
   assert.match(renderer, /resolvePlayerProjectileEnemyHits/);
 });
 
+test('attack-power buffs temporarily increase player projectile damage', async () => {
+  const { BASIC_ENEMY, PLAYER_WEAPON, advanceTimedBuffs, applyPickupBuff, createRunStats, resolvePlayerProjectileEnemyHits } = await import('../src/renderer/gameplay-state.js');
+
+  const poweredStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-power' });
+  const poweredHit = resolvePlayerProjectileEnemyHits({
+    enemies: [{ id: 'basic-0', type: 'basic', x: 420, y: 120, health: BASIC_ENEMY.maxHealth }],
+    projectiles: [{ x: 420, y: 120, radius: PLAYER_WEAPON.projectileRadius }],
+    stats: poweredStats
+  });
+  const expiredStats = advanceTimedBuffs({ stats: poweredStats, deltaMs: 10_000 });
+  const baselineHit = resolvePlayerProjectileEnemyHits({
+    enemies: [{ id: 'basic-1', type: 'basic', x: 420, y: 120, health: BASIC_ENEMY.maxHealth }],
+    projectiles: [{ x: 420, y: 120, radius: PLAYER_WEAPON.projectileRadius }],
+    stats: expiredStats
+  });
+
+  assert.equal(poweredHit.damageDealt, 25);
+  assert.equal(poweredHit.enemies[0].health, BASIC_ENEMY.maxHealth - 25);
+  assert.equal(expiredStats.activeBuffs.attackPower.remainingMs, 0);
+  assert.equal(baselineHit.damageDealt, PLAYER_WEAPON.damage);
+});
+
 test('enemies that reach the bottom damage the player if they are not eliminated', async () => {
   const { BASIC_ENEMY, ENEMY_CLASSES, GAMEPLAY_PLAYFIELD, createBasicEnemySpawn, createEnemySpawn, createRunStats, resolveEscapedEnemyHits } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

@@ -9,6 +9,7 @@ import {
   advanceBasicEnemies,
   advanceEnemyProjectiles,
   advanceRunClock,
+  advanceTimedBuffs,
   applyDestroyedEnemyRewards,
   applyPickupBuff,
   applyPlayerDamage,
@@ -363,6 +364,7 @@ class GameplayScene extends Phaser.Scene {
 
   updateRunClock(deltaMs) {
     this.runClock = advanceRunClock({ clock: this.runClock, deltaMs });
+    this.runStats = advanceTimedBuffs({ stats: this.runStats, deltaMs });
     this.updateHud();
     this.endRunIfNeeded();
   }
@@ -434,7 +436,8 @@ class GameplayScene extends Phaser.Scene {
   resolvePlayerProjectileHits() {
     const result = resolvePlayerProjectileEnemyHits({
       enemies: this.enemies,
-      projectiles: this.projectiles
+      projectiles: this.projectiles,
+      stats: this.runStats
     });
     const remainingEnemyIds = new Set(result.enemies.map((enemy) => enemy.id));
     const remainingProjectiles = new Set(result.projectiles);

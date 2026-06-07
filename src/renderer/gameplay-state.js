@@ -32,6 +32,12 @@ export const PICKUP_BUFFS = {
     type: 'shield',
     label: 'Shield',
     shieldAmount: 35
+  },
+  'attack-power': {
+    type: 'attack-power',
+    label: 'Power',
+    damage: 25,
+    durationMs: 8_000
   }
 };
 
@@ -195,10 +201,15 @@ export const advanceEnemyProjectiles = ({ projectiles, deltaSeconds }) => projec
   y: projectile.y + (projectile.speed ?? BASIC_ENEMY.projectileSpeed) * deltaSeconds
 }));
 
-export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
+export const getPlayerDamage = (stats = createRunStats()) => (
+  stats.activeBuffs.attackPower.remainingMs > 0 ? PICKUP_BUFFS['attack-power'].damage : PLAYER_WEAPON.damage
+);
+
+export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles, stats }) => {
   const remainingEnemies = enemies.map((enemy) => ({ ...enemy }));
   const destroyedEnemies = [];
   const remainingProjectiles = [];
+  const playerDamage = getPlayerDamage(stats);
   let damageDealt = 0;
 
   projectiles.forEach((projectile) => {
@@ -212,8 +223,8 @@ export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
       return;
     }
 
-    damageDealt += Math.min(hitEnemy.health, PLAYER_WEAPON.damage);
-    hitEnemy.health = Math.max(0, hitEnemy.health - PLAYER_WEAPON.damage);
+    damageDealt += Math.min(hitEnemy.health, playerDamage);
+    hitEnemy.health = Math.max(0, hitEnemy.health - playerDamage);
 
     if (hitEnemy.health === 0) {
       destroyedEnemies.push({ ...hitEnemy });
@@ -252,6 +263,9 @@ export const createRunStats = () => ({
   health: PLAYER_SURVIVAL.maxHealth,
   maxHealth: PLAYER_SURVIVAL.maxHealth,
   shield: 0,
+  activeBuffs: {
+    attackPower: { remainingMs: 0 }
+  },
   weaponName: PLAYER_WEAPON.name,
   activeBuffName: 'None',
   bestScore: null,
@@ -319,7 +333,32 @@ export const applyPickupBuff = ({ stats, pickupType }) => {
     };
   }
 
+  if (pickupType === 'attack-power') {
+    return {
+      ...stats,
+      activeBuffs: {
+        ...stats.activeBuffs,
+        attackPower: { remainingMs: pickup.durationMs }
+      },
+      activeBuffName: pickup.label,
+      pickups: stats.pickups + 1
+    };
+  }
+
   return stats;
+};
+
+export const advanceTimedBuffs = ({ stats, deltaMs }) => {
+  const attackPowerRemainingMs = Math.max(0, stats.activeBuffs.attackPower.remainingMs - deltaMs);
+
+  return {
+    ...stats,
+    activeBuffs: {
+      ...stats.activeBuffs,
+      attackPower: { remainingMs: attackPowerRemainingMs }
+    },
+    activeBuffName: attackPowerRemainingMs > 0 ? PICKUP_BUFFS['attack-power'].label : 'None'
+  };
 };
 
 export const resolveEscapedEnemyHits = ({ stats, enemies, difficulty = 'normal' }) => {
