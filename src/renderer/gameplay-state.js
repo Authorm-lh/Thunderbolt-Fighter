@@ -41,6 +41,24 @@ export const resolvePlayerVelocity = (inputState) => {
 
 export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= PLAYER_WEAPON.fireIntervalMs;
 
+export const createRunClock = ({ runLengthMinutes }) => ({
+  durationMs: runLengthMinutes * 60_000,
+  remainingMs: runLengthMinutes * 60_000
+});
+
+export const advanceRunClock = ({ clock, deltaMs }) => ({
+  ...clock,
+  remainingMs: Math.max(0, clock.remainingMs - deltaMs)
+});
+
+export const formatRunTimer = (remainingMs) => {
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+
+  return `${minutes}:${seconds}`;
+};
+
 export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeight }) => (
   currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds
 ) % tileHeight;

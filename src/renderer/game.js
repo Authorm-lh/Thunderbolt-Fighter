@@ -5,7 +5,10 @@ import {
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
   advanceBackgroundOffset,
+  advanceRunClock,
   createRunBaseline,
+  createRunClock,
+  formatRunTimer,
   resolvePlayerVelocity,
   shouldAutoFire
 } from './gameplay-state.js';
@@ -205,12 +208,17 @@ class GameplayScene extends Phaser.Scene {
     this.backgroundStars = [];
     this.backgroundOffset = 0;
     this.runBaseline = null;
+    this.runClock = null;
+    this.timerText = null;
+    this.root = null;
   }
 
   create(data) {
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
+    this.root = root;
     this.runBaseline = createRunBaseline();
+    this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
 
     this.cameras.main.setBackgroundColor('#09111f');
     this.createBackgroundStarfield();
@@ -237,10 +245,17 @@ class GameplayScene extends Phaser.Scene {
       color: '#9ed7ff',
       align: 'left'
     });
+    this.timerText = this.add.text(24, 58, `Timer ${formatRunTimer(this.runClock.remainingMs)}`, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '24px',
+      color: '#f8fbff',
+      align: 'left'
+    });
 
     root.dataset.screen = 'gameplay';
     root.dataset.runLengthMinutes = String(runOptions.runLengthMinutes);
     root.dataset.difficulty = runOptions.difficulty;
+    root.dataset.timer = formatRunTimer(this.runClock.remainingMs);
   }
 
   update(_time, delta) {
@@ -249,6 +264,7 @@ class GameplayScene extends Phaser.Scene {
     }
 
     this.updateBackground(delta / 1000);
+    this.updateRunClock(delta);
 
     const velocity = resolvePlayerVelocity({
       ArrowLeft: this.cursorKeys.left.isDown,
@@ -303,6 +319,14 @@ class GameplayScene extends Phaser.Scene {
     this.backgroundStars.forEach((star) => {
       star.y = ((star.baseY + this.backgroundOffset + BACKGROUND_SCROLL.tileHeight) % (GAMEPLAY_PLAYFIELD.height + BACKGROUND_SCROLL.tileHeight)) - BACKGROUND_SCROLL.tileHeight;
     });
+  }
+
+  updateRunClock(deltaMs) {
+    this.runClock = advanceRunClock({ clock: this.runClock, deltaMs });
+    const timer = formatRunTimer(this.runClock.remainingMs);
+
+    this.timerText.setText(`Timer ${timer}`);
+    this.root.dataset.timer = timer;
   }
 
   spawnPlayerProjectile() {

@@ -137,6 +137,26 @@ test('gameplay background scrolls slowly to communicate vertical flight', async 
   assert.match(renderer, /advanceBackgroundOffset/);
 });
 
+test('runs count down from the selected duration', async () => {
+  const { createRunClock, advanceRunClock, formatRunTimer } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const oneMinuteRun = createRunClock({ runLengthMinutes: 1 });
+  const threeMinuteRun = createRunClock({ runLengthMinutes: 3 });
+  const fiveMinuteRun = createRunClock({ runLengthMinutes: 5 });
+
+  assert.equal(oneMinuteRun.remainingMs, 60_000);
+  assert.equal(threeMinuteRun.remainingMs, 180_000);
+  assert.equal(fiveMinuteRun.remainingMs, 300_000);
+
+  const advancedRun = advanceRunClock({ clock: threeMinuteRun, deltaMs: 61_000 });
+
+  assert.equal(advancedRun.remainingMs, 119_000);
+  assert.equal(formatRunTimer(advancedRun.remainingMs), '1:59');
+  assert.match(renderer, /createRunClock/);
+  assert.match(renderer, /advanceRunClock/);
+});
+
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
   const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
