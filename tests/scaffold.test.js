@@ -192,6 +192,21 @@ test('weapon shape pickups change player firing behavior', async () => {
   assert.equal(piercingProjectiles[0].piercing, true);
 });
 
+test('weapon shape pickups replace the currently active weapon shape', async () => {
+  const { applyPickupBuff, createPlayerProjectiles, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const basePlayer = { x: 640, y: 500, radius: 28 };
+  const dualStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'dual-shot' });
+  const spreadStats = applyPickupBuff({ stats: dualStats, pickupType: 'spread-shot' });
+  const piercingStats = applyPickupBuff({ stats: spreadStats, pickupType: 'piercing-shot' });
+
+  assert.equal(spreadStats.weaponShape, 'spread-shot');
+  assert.equal(createPlayerProjectiles({ player: basePlayer, stats: spreadStats }).length, 3);
+  assert.equal(piercingStats.weaponShape, 'piercing-shot');
+  assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats }).length, 1);
+  assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats })[0].piercing, true);
+});
+
 test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
   const { ENEMY_CLASSES } = await import('../src/renderer/gameplay-state.js');
 
