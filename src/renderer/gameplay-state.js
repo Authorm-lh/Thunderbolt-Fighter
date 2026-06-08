@@ -59,6 +59,14 @@ export const PICKUP_BUFFS = {
   }
 };
 
+export const PICKUP_SPAWNING = {
+  spawnIntervalMs: 5_000,
+  maxActivePickups: 3,
+  radius: 18,
+  speed: 72,
+  lanes: [180, 360, 540, 720, 900, 1080]
+};
+
 export const ENEMY_CLASSES = {
   basic: {
     type: 'basic',
@@ -216,6 +224,53 @@ export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic' }) => {
 
 export const createBasicEnemySpawn = ({ spawnIndex }) => createEnemySpawn({ spawnIndex, enemyType: 'basic' });
 
+export const shouldSpawnPickup = ({ elapsedMs, lastSpawnedMs, activePickupCount = 0 }) => (
+  activePickupCount < PICKUP_SPAWNING.maxActivePickups && elapsedMs - lastSpawnedMs >= PICKUP_SPAWNING.spawnIntervalMs
+);
+
+export const createPickupSpawn = ({ spawnIndex }) => {
+  const pickupTypes = Object.keys(PICKUP_BUFFS);
+  const type = pickupTypes[spawnIndex % pickupTypes.length];
+  const x = PICKUP_SPAWNING.lanes[spawnIndex % PICKUP_SPAWNING.lanes.length];
+
+  return {
+    id: `pickup-${spawnIndex}-${type}`,
+    type,
+    label: PICKUP_BUFFS[type].label,
+    x,
+    y: -PICKUP_SPAWNING.radius,
+    radius: PICKUP_SPAWNING.radius,
+    speed: PICKUP_SPAWNING.speed
+  };
+};
+
+export const advancePickups = ({ pickups, deltaSeconds }) => pickups.map((pickup) => ({
+  ...pickup,
+  y: pickup.y + pickup.speed * deltaSeconds
+}));
+
+export const resolvePlayerPickupHits = ({ stats, player, pickups }) => {
+  let nextStats = stats;
+  const collectedPickups = [];
+  const remainingPickups = [];
+
+  pickups.forEach((pickup) => {
+    if (!doCirclesOverlap(pickup, player)) {
+      remainingPickups.push(pickup);
+      return;
+    }
+
+    collectedPickups.push(pickup);
+    nextStats = applyPickupBuff({ stats: nextStats, pickupType: pickup.type });
+  });
+
+  return {
+    stats: nextStats,
+    pickups: remainingPickups,
+    collectedPickups
+  };
+};
+
 export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => {
   const enemyClass = getEnemyClass(enemy.type);
   const y = enemy.y + enemyClass.speed * deltaSeconds;
@@ -352,9 +407,12 @@ export const formatActiveBuffs = (stats) => {
 export const createHudValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
-  health: `Health ${stats.health}/${stats.maxHealth}`,
+  health: stats.shield > 0
+    ? `Health ${stats.health}/${stats.maxHealth} + Shield ${stats.shield}`
+    : `Health ${stats.health}/${stats.maxHealth}`,
   weapon: `Weapon ${stats.weaponName}`,
   buff: `Buff ${formatActiveBuffs(stats)}`,
+  pickups: `Pickups ${stats.pickups}`,
   bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
 });
 
