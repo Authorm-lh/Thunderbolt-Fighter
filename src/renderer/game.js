@@ -25,6 +25,7 @@ import {
   createRunClock,
   createRunStats,
   createTestNameMarker,
+  destroyTestNameMarker,
   followTestNameMarkerTarget,
   getEnemyClass,
   getEnemyTestNameMarkerText,
@@ -398,6 +399,12 @@ class GameplayScene extends Phaser.Scene {
     marker.targetRadius = nextMarker.targetRadius;
   }
 
+  destroyNameMarker(target) {
+    const nextTarget = destroyTestNameMarker(target);
+
+    target.nameMarker = nextTarget.nameMarker;
+  }
+
   updateBackground(deltaSeconds) {
     this.backgroundOffset = advanceBackgroundOffset({
       currentOffset: this.backgroundOffset,
@@ -501,6 +508,7 @@ class GameplayScene extends Phaser.Scene {
 
       if (pickup.y > GAMEPLAY_PLAYFIELD.height + pickup.radius) {
         pickup.sprite.destroy();
+        this.destroyNameMarker(pickup);
         return false;
       }
 
@@ -520,6 +528,7 @@ class GameplayScene extends Phaser.Scene {
     this.pickups.forEach((pickup) => {
       if (!remainingPickupIds.has(pickup.id)) {
         pickup.sprite.destroy();
+        this.destroyNameMarker(pickup);
       }
     });
 
@@ -549,6 +558,7 @@ class GameplayScene extends Phaser.Scene {
     this.enemies.forEach((enemy) => {
       if (!remainingEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
+        this.destroyNameMarker(enemy);
       }
     });
 
@@ -618,6 +628,7 @@ class GameplayScene extends Phaser.Scene {
     advancedEnemies.forEach((enemy) => {
       if (escapedEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
+        this.destroyNameMarker(enemy);
       }
     });
 
@@ -689,6 +700,7 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = this.enemies.filter((enemy) => {
       if (contactEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
+        this.destroyNameMarker(enemy);
         return false;
       }
 

@@ -198,6 +198,15 @@ export const withTestNameMarker = (target, nameMarker) => ({
   nameMarker
 });
 
+export const destroyTestNameMarker = (target) => {
+  target.nameMarker?.destroy();
+
+  return {
+    ...target,
+    nameMarker: null
+  };
+};
+
 const isPressed = (inputState, codes) => codes.some((code) => Boolean(inputState[code]));
 
 export const doCirclesOverlap = (first, second) => Math.hypot(first.x - second.x, first.y - second.y) <= first.radius + second.radius;

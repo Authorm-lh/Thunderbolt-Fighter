@@ -377,6 +377,24 @@ test('test name markers do not change core gameplay behavior', async () => {
   assert.equal(getRunEndReason({ clock: createRunClock({ runLengthMinutes: 1 }), stats: { ...stats, health: 0 } }), 'health-depleted');
 });
 
+test('test name markers are removed with destroyed, escaped, or collected objects', async () => {
+  const { destroyTestNameMarker } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const destroyed = [];
+  const markedObject = {
+    nameMarker: {
+      destroy: () => destroyed.push('marker')
+    }
+  };
+
+  const nextObject = destroyTestNameMarker(markedObject);
+
+  assert.deepEqual(destroyed, ['marker']);
+  assert.equal(nextObject.nameMarker, null);
+  assert.match(renderer, /destroyNameMarker\(pickup\)/);
+  assert.match(renderer, /destroyNameMarker\(enemy\)/);
+});
+
 test('player collision picks up buffs, removes them from play, and applies every pickup effect', async () => {
   const { PICKUP_BUFFS, applyPlayerDamage, createRunStats, resolvePlayerPickupHits } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
