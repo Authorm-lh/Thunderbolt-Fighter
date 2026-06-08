@@ -101,6 +101,23 @@ export const ENEMY_CLASSES = {
     movementPattern: 'sway',
     maxHorizontalOffset: 42,
     lanes: [300, 540, 780, 1020]
+  },
+  'boss-class': {
+    type: 'boss-class',
+    spawnIntervalMs: 0,
+    speed: 24,
+    radius: 64,
+    maxHealth: 240,
+    fireIntervalMs: 700,
+    projectileSpeed: 390,
+    projectileRadius: 10,
+    projectileDamage: 24,
+    contactDamage: 45,
+    escapedDamage: 0,
+    scoreValue: 1200,
+    movementPattern: 'sway',
+    maxHorizontalOffset: 120,
+    lanes: [GAMEPLAY_PLAYFIELD.width / 2]
   }
 };
 
@@ -284,6 +301,10 @@ export const shouldShowBossWarning = ({ remainingMs, bossWarningShown }) => (
   !bossWarningShown && remainingMs <= BOSS_EVENT.warningBeforeEndMs
 );
 
+export const shouldSpawnBoss = ({ remainingMs, bossSpawned }) => (
+  !bossSpawned && remainingMs <= BOSS_EVENT.spawnBeforeEndMs
+);
+
 export const createBossWarningState = () => ({
   text: BOSS_EVENT.warningText,
   detailText: BOSS_EVENT.detailText
@@ -311,6 +332,8 @@ export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic' }) => {
 };
 
 export const createBasicEnemySpawn = ({ spawnIndex }) => createEnemySpawn({ spawnIndex, enemyType: 'basic' });
+
+export const createBossEnemySpawn = ({ spawnIndex = 0 }) => createEnemySpawn({ spawnIndex, enemyType: 'boss-class' });
 
 export const shouldSpawnPickup = ({ elapsedMs, lastSpawnedMs, activePickupCount = 0 }) => (
   activePickupCount < PICKUP_SPAWNING.maxActivePickups && elapsedMs - lastSpawnedMs >= PICKUP_SPAWNING.spawnIntervalMs

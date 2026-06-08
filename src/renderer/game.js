@@ -16,6 +16,7 @@ import {
   applyPickupBuff,
   applyPlayerDamage,
   createBasicEnemyProjectile,
+  createBossEnemySpawn,
   createBossWarningState,
   createEnemySpawn,
   createHudValues,
@@ -42,6 +43,7 @@ import {
   shouldBasicEnemyFire,
   shouldShowBossWarning,
   shouldSpawnBasicEnemy,
+  shouldSpawnBoss,
   shouldSpawnPickup
 } from './gameplay-state.js';
 
@@ -254,6 +256,7 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningText = null;
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
+    this.bossSpawned = false;
     this.root = null;
     this.selectedDifficulty = 'normal';
   }
@@ -264,6 +267,7 @@ class GameplayScene extends Phaser.Scene {
     this.root = root;
     this.selectedDifficulty = runOptions.difficulty;
     this.bossWarningShown = false;
+    this.bossSpawned = false;
     this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = createRunStats();
@@ -308,6 +312,7 @@ class GameplayScene extends Phaser.Scene {
     root.dataset.runLengthMinutes = String(runOptions.runLengthMinutes);
     root.dataset.difficulty = runOptions.difficulty;
     root.dataset.bossWarning = '';
+    root.dataset.bossSpawned = 'false';
     this.updateHud();
   }
 
@@ -439,6 +444,10 @@ class GameplayScene extends Phaser.Scene {
 
     if (shouldShowBossWarning({ remainingMs: this.runClock.remainingMs, bossWarningShown: this.bossWarningShown })) {
       this.showBossWarning();
+    }
+
+    if (shouldSpawnBoss({ remainingMs: this.runClock.remainingMs, bossSpawned: this.bossSpawned })) {
+      this.spawnBossEnemy();
     }
 
     this.updateHud();
@@ -630,9 +639,21 @@ class GameplayScene extends Phaser.Scene {
   spawnBasicEnemy() {
     const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount });
     const enemy = createEnemySpawn({ spawnIndex: this.enemySpawnCount, enemyType });
+
+    this.addEnemy(enemy);
+    this.enemySpawnCount += 1;
+  }
+
+  spawnBossEnemy() {
+    this.bossSpawned = true;
+    this.addEnemy(createBossEnemySpawn({ spawnIndex: 0 }));
+    this.root.dataset.bossSpawned = 'true';
+  }
+
+  addEnemy(enemy) {
     const enemyClass = getEnemyClass(enemy.type);
-    const enemyColor = enemy.type === 'elite' ? 0xc084fc : 0xff5f6d;
-    const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, enemyColor, 1)
+    const enemyColor = enemy.type === 'boss-class' ? 0xffd166 : enemy.type === 'elite' ? 0xc084fc : 0xff5f6d;
+    const sprite = this.add.rectangle(enemy.x, enemy.y, enemyClass.radius * 2, enemyClass.radius * 1.4, enemyColor, 1)
       .setStrokeStyle(2, 0xffd166, 0.8);
     const nameMarker = this.createNameMarker(createTestNameMarker({
       text: getEnemyTestNameMarkerText(enemy.type),
@@ -640,7 +661,6 @@ class GameplayScene extends Phaser.Scene {
     }));
 
     this.enemies.push({ ...enemy, sprite, nameMarker });
-    this.enemySpawnCount += 1;
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
 

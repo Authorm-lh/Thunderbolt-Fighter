@@ -942,6 +942,26 @@ test('a strong boss warning appears near the end of the run before the boss spaw
   assert.match(renderer, /dataset\.bossWarning/);
 });
 
+test('a boss-class enemy appears near the end as a high-value target', async () => {
+  const { BOSS_EVENT, ENEMY_CLASSES, GAMEPLAY_PLAYFIELD, createBossEnemySpawn, shouldSpawnBoss } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(shouldSpawnBoss({ remainingMs: BOSS_EVENT.spawnBeforeEndMs + 1, bossSpawned: false }), false);
+  assert.equal(shouldSpawnBoss({ remainingMs: BOSS_EVENT.spawnBeforeEndMs, bossSpawned: false }), true);
+  assert.equal(shouldSpawnBoss({ remainingMs: BOSS_EVENT.spawnBeforeEndMs, bossSpawned: true }), false);
+
+  const boss = createBossEnemySpawn({ spawnIndex: 0 });
+
+  assert.equal(boss.id, 'boss-class-0');
+  assert.equal(boss.type, 'boss-class');
+  assert.equal(boss.x, GAMEPLAY_PLAYFIELD.width / 2);
+  assert.ok(boss.y < 0);
+  assert.equal(boss.health, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.ok(ENEMY_CLASSES['boss-class'].scoreValue > ENEMY_CLASSES.elite.scoreValue);
+  assert.match(renderer, /spawnBossEnemy/);
+  assert.match(renderer, /dataset\.bossSpawned/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
