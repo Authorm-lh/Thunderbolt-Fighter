@@ -388,6 +388,40 @@ test('test name markers can be disabled through one isolated helper', async () =
   assert.match(renderer, /if \(!markerState\)/);
 });
 
+test('test name marker lifecycle coverage spans player, enemy, pickup, and removal', async () => {
+  const {
+    BASIC_ENEMY,
+    PLAYER_FLIGHT,
+    createPickupSpawn,
+    createTestNameMarker,
+    destroyTestNameMarker,
+    followTestNameMarkerTarget,
+    getEnemyTestNameMarkerText,
+    getPickupTestNameMarkerText,
+    withTestNameMarker
+  } = await import('../src/renderer/gameplay-state.js');
+
+  const player = { x: PLAYER_FLIGHT.startX, y: PLAYER_FLIGHT.startY, radius: PLAYER_FLIGHT.radius };
+  const enemy = { id: 'basic-0', type: 'basic', x: 220, y: 96, radius: BASIC_ENEMY.radius };
+  const pickup = createPickupSpawn({ spawnIndex: 0 });
+  const markedTargets = [
+    withTestNameMarker(player, createTestNameMarker({ text: 'Player', target: player })),
+    withTestNameMarker(enemy, createTestNameMarker({ text: getEnemyTestNameMarkerText(enemy.type), target: enemy })),
+    withTestNameMarker(pickup, createTestNameMarker({ text: getPickupTestNameMarkerText(pickup.type), target: pickup }))
+  ];
+
+  assert.deepEqual(markedTargets.map((target) => target.nameMarker.text), ['Player', 'Basic Enemy', 'Healing Pickup']);
+  assert.deepEqual(
+    markedTargets.map((target) => followTestNameMarkerTarget({
+      marker: target.nameMarker,
+      target: { ...target, x: target.x + 10, y: target.y + 20 }
+    }).x),
+    [player.x + 10, enemy.x + 10, pickup.x + 10]
+  );
+  markedTargets.forEach((target) => destroyTestNameMarker(target));
+  assert.deepEqual(markedTargets.map((target) => target.nameMarker), [null, null, null]);
+});
+
 test('test name markers are removed with destroyed, escaped, or collected objects', async () => {
   const { destroyTestNameMarker } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

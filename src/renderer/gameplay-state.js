@@ -205,7 +205,10 @@ export const withTestNameMarker = (target, nameMarker) => ({
 });
 
 export const destroyTestNameMarker = (target) => {
-  target.nameMarker?.destroy();
+  if (typeof target.nameMarker?.destroy === 'function') {
+    target.nameMarker.destroy();
+  }
+  target.nameMarker = null;
 
   return {
     ...target,
