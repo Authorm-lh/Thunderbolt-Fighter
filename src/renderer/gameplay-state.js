@@ -120,6 +120,24 @@ export const getEnemyTestNameMarkerText = (enemyType = 'basic') => {
   return 'Basic Enemy';
 };
 
+export const getPickupTestNameMarkerText = (pickupType) => {
+  const label = PICKUP_BUFFS[pickupType]?.label ?? pickupType;
+
+  if (pickupType === 'healing') {
+    return 'Healing Pickup';
+  }
+
+  if (pickupType === 'attack-power') {
+    return 'Attack Power Pickup';
+  }
+
+  if (pickupType === 'attack-speed') {
+    return 'Attack Speed Pickup';
+  }
+
+  return `${label} Pickup`;
+};
+
 export const resolveEnemyTypeForSpawn = ({ spawnIndex }) => (spawnIndex > 0 && spawnIndex % 4 === 3 ? 'elite' : 'basic');
 
 export const DIFFICULTY_TUNING = {

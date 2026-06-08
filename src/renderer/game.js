@@ -28,6 +28,7 @@ import {
   followTestNameMarkerTarget,
   getEnemyClass,
   getEnemyTestNameMarkerText,
+  getPickupTestNameMarkerText,
   getRunEndReason,
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
@@ -496,6 +497,7 @@ class GameplayScene extends Phaser.Scene {
 
     this.pickups = advancedPickups.filter((pickup) => {
       pickup.sprite.y = pickup.y;
+      this.followNameMarker(pickup.nameMarker, pickup);
 
       if (pickup.y > GAMEPLAY_PLAYFIELD.height + pickup.radius) {
         pickup.sprite.destroy();
@@ -587,8 +589,12 @@ class GameplayScene extends Phaser.Scene {
     const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount });
     const sprite = this.add.circle(pickup.x, pickup.y, pickup.radius, 0x45f3ff, 0.9)
       .setStrokeStyle(2, 0xf8fbff, 0.85);
+    const nameMarker = this.createNameMarker(createTestNameMarker({
+      text: getPickupTestNameMarkerText(pickup.type),
+      target: pickup
+    }));
 
-    this.pickups.push({ ...pickup, sprite });
+    this.pickups.push({ ...pickup, sprite, nameMarker });
     this.pickupSpawnCount += 1;
     this.root.dataset.pickupCount = String(this.pickups.length);
   }

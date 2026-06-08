@@ -227,6 +227,42 @@ test('weapon shape pickups replace the currently active weapon shape', async () 
   assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats })[0].piercing, true);
 });
 
+test('pickup test name markers identify every pickup type and follow pickup movement', async () => {
+  const { PICKUP_BUFFS, advancePickups, createPickupSpawn, createTestNameMarker, followTestNameMarkerTarget, getPickupTestNameMarkerText } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const pickupTypes = Object.keys(PICKUP_BUFFS);
+  const markerTexts = pickupTypes.map((type) => getPickupTestNameMarkerText(type));
+  const pickup = createPickupSpawn({ spawnIndex: 2 });
+  const [advancedPickup] = advancePickups({ pickups: [pickup], deltaSeconds: 1 });
+  const marker = createTestNameMarker({ text: getPickupTestNameMarkerText(pickup.type), target: pickup });
+  const movedMarker = followTestNameMarkerTarget({ marker, target: advancedPickup });
+
+  assert.deepEqual(pickupTypes, [
+    'healing',
+    'shield',
+    'attack-power',
+    'attack-speed',
+    'dual-shot',
+    'spread-shot',
+    'piercing-shot'
+  ]);
+  assert.deepEqual(markerTexts, [
+    'Healing Pickup',
+    'Shield Pickup',
+    'Attack Power Pickup',
+    'Attack Speed Pickup',
+    'Dual Shot Pickup',
+    'Spread Shot Pickup',
+    'Piercing Shot Pickup'
+  ]);
+  assert.equal(marker.text, 'Attack Power Pickup');
+  assert.equal(movedMarker.x, advancedPickup.x);
+  assert.equal(movedMarker.y, advancedPickup.y - advancedPickup.radius - 18);
+  assert.match(renderer, /getPickupTestNameMarkerText/);
+  assert.match(renderer, /pickup\.nameMarker/);
+});
+
 test('gameplay spawns pickup buffs on an independent cadence without blocking core run loops', async () => {
   const {
     PICKUP_BUFFS,
