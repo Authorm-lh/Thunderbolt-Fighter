@@ -193,6 +193,11 @@ export const followTestNameMarkerTarget = ({ marker, target }) => ({
   targetRadius: target.radius
 });
 
+export const withTestNameMarker = (target, nameMarker) => ({
+  ...target,
+  nameMarker
+});
+
 const isPressed = (inputState, codes) => codes.some((code) => Boolean(inputState[code]));
 
 export const doCirclesOverlap = (first, second) => Math.hypot(first.x - second.x, first.y - second.y) <= first.radius + second.radius;

@@ -311,6 +311,72 @@ test('gameplay spawns pickup buffs on an independent cadence without blocking co
   assert.match(renderer, /spawnPickup/);
 });
 
+test('test name markers do not change core gameplay behavior', async () => {
+  const {
+    BASIC_ENEMY,
+    PLAYER_FLIGHT,
+    PLAYER_WEAPON,
+    advanceBasicEnemies,
+    applyDestroyedEnemyRewards,
+    createRunClock,
+    createRunStats,
+    createTestNameMarker,
+    getRunEndReason,
+    resolveEnemyPlayerHits,
+    resolvePlayerPickupHits,
+    resolvePlayerProjectileEnemyHits,
+    shouldAutoFire,
+    withTestNameMarker
+  } = await import('../src/renderer/gameplay-state.js');
+
+  const markerFor = (text, target) => createTestNameMarker({ text, target });
+  const stripNameMarkers = (value) => {
+    if (Array.isArray(value)) {
+      return value.map(stripNameMarkers);
+    }
+
+    if (value && typeof value === 'object') {
+      const { nameMarker: _nameMarker, ...rest } = value;
+
+      return Object.fromEntries(Object.entries(rest).map(([key, entry]) => [key, stripNameMarkers(entry)]));
+    }
+
+    return value;
+  };
+  const player = { x: PLAYER_FLIGHT.startX, y: PLAYER_FLIGHT.startY, radius: PLAYER_FLIGHT.radius };
+  const enemy = { id: 'basic-0', type: 'basic', x: player.x, y: player.y, health: BASIC_ENEMY.maxHealth, lastFiredMs: 0, movementOriginX: player.x };
+  const projectile = { x: enemy.x, y: enemy.y, radius: PLAYER_WEAPON.projectileRadius };
+  const enemyProjectile = { x: player.x, y: player.y, radius: BASIC_ENEMY.projectileRadius, damage: BASIC_ENEMY.projectileDamage };
+  const pickup = { id: 'pickup-healing', type: 'healing', x: player.x, y: player.y, radius: 18 };
+  const stats = createRunStats();
+  const markedPlayer = withTestNameMarker(player, markerFor('Player', player));
+  const markedEnemy = withTestNameMarker(enemy, markerFor('Basic Enemy', { ...enemy, radius: BASIC_ENEMY.radius }));
+  const markedPickup = withTestNameMarker(pickup, markerFor('Healing Pickup', pickup));
+
+  assert.deepEqual(
+    advanceBasicEnemies({ enemies: [markedEnemy], deltaSeconds: 1 }).map(({ nameMarker: _nameMarker, ...advancedEnemy }) => advancedEnemy),
+    advanceBasicEnemies({ enemies: [enemy], deltaSeconds: 1 })
+  );
+  assert.equal(shouldAutoFire({ elapsedMs: PLAYER_WEAPON.fireIntervalMs, lastFiredMs: 0, stats }), true);
+  assert.deepEqual(
+    stripNameMarkers(resolvePlayerProjectileEnemyHits({ enemies: [markedEnemy], projectiles: [projectile], stats })),
+    resolvePlayerProjectileEnemyHits({ enemies: [enemy], projectiles: [projectile], stats })
+  );
+  assert.deepEqual(
+    stripNameMarkers(resolvePlayerPickupHits({ stats, player: markedPlayer, pickups: [markedPickup] })),
+    resolvePlayerPickupHits({ stats, player, pickups: [pickup] })
+  );
+  assert.deepEqual(
+    stripNameMarkers(resolveEnemyPlayerHits({ stats, player: markedPlayer, enemyProjectiles: [enemyProjectile], enemies: [markedEnemy] })),
+    resolveEnemyPlayerHits({ stats, player, enemyProjectiles: [enemyProjectile], enemies: [enemy] })
+  );
+  assert.deepEqual(
+    stripNameMarkers(applyDestroyedEnemyRewards({ stats, destroyedEnemies: [markedEnemy], damageDealt: PLAYER_WEAPON.damage })),
+    applyDestroyedEnemyRewards({ stats, destroyedEnemies: [enemy], damageDealt: PLAYER_WEAPON.damage })
+  );
+  assert.equal(getRunEndReason({ clock: createRunClock({ runLengthMinutes: 1 }), stats: { ...stats, health: 0 } }), 'health-depleted');
+});
+
 test('player collision picks up buffs, removes them from play, and applies every pickup effect', async () => {
   const { PICKUP_BUFFS, applyPlayerDamage, createRunStats, resolvePlayerPickupHits } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
