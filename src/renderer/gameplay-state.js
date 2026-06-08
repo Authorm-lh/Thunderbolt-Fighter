@@ -249,6 +249,28 @@ export const advancePickups = ({ pickups, deltaSeconds }) => pickups.map((pickup
   y: pickup.y + pickup.speed * deltaSeconds
 }));
 
+export const resolvePlayerPickupHits = ({ stats, player, pickups }) => {
+  let nextStats = stats;
+  const collectedPickups = [];
+  const remainingPickups = [];
+
+  pickups.forEach((pickup) => {
+    if (!doCirclesOverlap(pickup, player)) {
+      remainingPickups.push(pickup);
+      return;
+    }
+
+    collectedPickups.push(pickup);
+    nextStats = applyPickupBuff({ stats: nextStats, pickupType: pickup.type });
+  });
+
+  return {
+    stats: nextStats,
+    pickups: remainingPickups,
+    collectedPickups
+  };
+};
+
 export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => {
   const enemyClass = getEnemyClass(enemy.type);
   const y = enemy.y + enemyClass.speed * deltaSeconds;

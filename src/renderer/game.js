@@ -28,6 +28,7 @@ import {
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
   resolveEnemyTypeForSpawn,
+  resolvePlayerPickupHits,
   resolvePlayerProjectileEnemyHits,
   resolvePlayerVelocity,
   shouldAutoFire,
@@ -346,6 +347,7 @@ class GameplayScene extends Phaser.Scene {
 
     this.updateProjectiles(deltaSeconds);
     this.updatePickups(deltaSeconds);
+    this.resolvePlayerPickupHits();
     this.resolvePlayerProjectileHits();
     this.updateEnemies(deltaSeconds, _time);
     this.updateEnemyProjectiles(deltaSeconds);
@@ -473,6 +475,29 @@ class GameplayScene extends Phaser.Scene {
       return true;
     });
     this.root.dataset.pickupCount = String(this.pickups.length);
+  }
+
+  resolvePlayerPickupHits() {
+    const result = resolvePlayerPickupHits({
+      stats: this.runStats,
+      player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
+      pickups: this.pickups
+    });
+    const remainingPickupIds = new Set(result.pickups.map((pickup) => pickup.id));
+
+    this.pickups.forEach((pickup) => {
+      if (!remainingPickupIds.has(pickup.id)) {
+        pickup.sprite.destroy();
+      }
+    });
+
+    this.runStats = result.stats;
+    this.pickups = result.pickups;
+    this.root.dataset.pickupCount = String(this.pickups.length);
+
+    if (result.collectedPickups.length > 0) {
+      this.updateHud();
+    }
   }
 
   resolvePlayerProjectileHits() {

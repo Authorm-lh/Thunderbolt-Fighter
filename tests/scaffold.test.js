@@ -255,6 +255,45 @@ test('gameplay spawns pickup buffs on an independent cadence without blocking co
   assert.match(renderer, /spawnPickup/);
 });
 
+test('player collision picks up buffs, removes them from play, and applies every pickup effect', async () => {
+  const { PICKUP_BUFFS, applyPlayerDamage, createRunStats, resolvePlayerPickupHits } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const player = { x: 640, y: 500, radius: 28 };
+  const pickupTypes = Object.keys(PICKUP_BUFFS);
+  const pickups = pickupTypes.map((type, index) => ({
+    id: `pickup-${index}-${type}`,
+    type,
+    x: player.x,
+    y: player.y,
+    radius: 18
+  }));
+  const missedPickup = {
+    id: 'pickup-missed-healing',
+    type: 'healing',
+    x: 80,
+    y: 80,
+    radius: 18
+  };
+  const damagedStats = applyPlayerDamage({ stats: createRunStats(), damage: 40 });
+  const result = resolvePlayerPickupHits({
+    stats: damagedStats,
+    player,
+    pickups: [...pickups, missedPickup]
+  });
+
+  assert.deepEqual(result.collectedPickups.map((pickup) => pickup.type), pickupTypes);
+  assert.deepEqual(result.pickups, [missedPickup]);
+  assert.equal(result.stats.pickups, pickupTypes.length);
+  assert.equal(result.stats.health, 85);
+  assert.equal(result.stats.shield, 35);
+  assert.ok(result.stats.activeBuffs.attackPower.remainingMs > 0);
+  assert.ok(result.stats.activeBuffs.attackSpeed.remainingMs > 0);
+  assert.equal(result.stats.weaponShape, 'piercing-shot');
+  assert.equal(result.stats.weaponName, PICKUP_BUFFS['piercing-shot'].label);
+  assert.match(renderer, /resolvePlayerPickupHits/);
+});
+
 test('support buffs coexist while weapon shapes remain exclusive', async () => {
   const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
 
