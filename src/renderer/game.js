@@ -24,6 +24,12 @@ import {
   createRunBaseline,
   createRunClock,
   createRunStats,
+  createTestNameMarker,
+  destroyTestNameMarker,
+  followTestNameMarkerTarget,
+  getEnemyClass,
+  getEnemyTestNameMarkerText,
+  getPickupTestNameMarkerText,
   getRunEndReason,
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
@@ -231,6 +237,7 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = [];
     this.enemyProjectiles = [];
     this.pickups = [];
+    this.playerNameMarker = null;
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
     this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
@@ -270,6 +277,8 @@ class GameplayScene extends Phaser.Scene {
       0x9ed7ff,
       1
     ).setStrokeStyle(2, 0xf8fbff, 0.9);
+    this.player.radius = PLAYER_FLIGHT.radius;
+    this.playerNameMarker = this.createNameMarker(createTestNameMarker({ text: 'Player', target: this.player }));
 
     this.cursorKeys = this.input.keyboard.createCursorKeys();
     this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
@@ -320,6 +329,7 @@ class GameplayScene extends Phaser.Scene {
 
     this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
     this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
+    this.followNameMarker(this.playerNameMarker, this.player);
 
     if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs, stats: this.runStats })) {
       this.spawnPlayerProjectile();
@@ -368,6 +378,39 @@ class GameplayScene extends Phaser.Scene {
         this.backgroundStars.push(star);
       });
     }
+  }
+
+  createNameMarker(markerState) {
+    if (!markerState) {
+      return null;
+    }
+
+    return Object.assign(this.add.text(markerState.x, markerState.y, markerState.text, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '16px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 4
+    }).setOrigin(0.5, 1), markerState);
+  }
+
+  followNameMarker(marker, target) {
+    if (!marker) {
+      return;
+    }
+
+    const nextMarker = followTestNameMarkerTarget({ marker, target });
+
+    marker.x = nextMarker.x;
+    marker.y = nextMarker.y;
+    marker.targetRadius = nextMarker.targetRadius;
+  }
+
+  destroyNameMarker(target) {
+    const nextTarget = destroyTestNameMarker(target);
+
+    target.nameMarker = nextTarget.nameMarker;
   }
 
   updateBackground(deltaSeconds) {
@@ -469,9 +512,11 @@ class GameplayScene extends Phaser.Scene {
 
     this.pickups = advancedPickups.filter((pickup) => {
       pickup.sprite.y = pickup.y;
+      this.followNameMarker(pickup.nameMarker, pickup);
 
       if (pickup.y > GAMEPLAY_PLAYFIELD.height + pickup.radius) {
         pickup.sprite.destroy();
+        this.destroyNameMarker(pickup);
         return false;
       }
 
@@ -491,6 +536,7 @@ class GameplayScene extends Phaser.Scene {
     this.pickups.forEach((pickup) => {
       if (!remainingPickupIds.has(pickup.id)) {
         pickup.sprite.destroy();
+        this.destroyNameMarker(pickup);
       }
     });
 
@@ -520,6 +566,7 @@ class GameplayScene extends Phaser.Scene {
     this.enemies.forEach((enemy) => {
       if (!remainingEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
+        this.destroyNameMarker(enemy);
       }
     });
 
@@ -542,11 +589,16 @@ class GameplayScene extends Phaser.Scene {
   spawnBasicEnemy() {
     const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount });
     const enemy = createEnemySpawn({ spawnIndex: this.enemySpawnCount, enemyType });
+    const enemyClass = getEnemyClass(enemy.type);
     const enemyColor = enemy.type === 'elite' ? 0xc084fc : 0xff5f6d;
     const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, enemyColor, 1)
       .setStrokeStyle(2, 0xffd166, 0.8);
+    const nameMarker = this.createNameMarker(createTestNameMarker({
+      text: getEnemyTestNameMarkerText(enemy.type),
+      target: { ...enemy, radius: enemyClass.radius }
+    }));
 
-    this.enemies.push({ ...enemy, sprite });
+    this.enemies.push({ ...enemy, sprite, nameMarker });
     this.enemySpawnCount += 1;
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
@@ -555,8 +607,12 @@ class GameplayScene extends Phaser.Scene {
     const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount });
     const sprite = this.add.circle(pickup.x, pickup.y, pickup.radius, 0x45f3ff, 0.9)
       .setStrokeStyle(2, 0xf8fbff, 0.85);
+    const nameMarker = this.createNameMarker(createTestNameMarker({
+      text: getPickupTestNameMarkerText(pickup.type),
+      target: pickup
+    }));
 
-    this.pickups.push({ ...pickup, sprite });
+    this.pickups.push({ ...pickup, sprite, nameMarker });
     this.pickupSpawnCount += 1;
     this.root.dataset.pickupCount = String(this.pickups.length);
   }
@@ -567,6 +623,7 @@ class GameplayScene extends Phaser.Scene {
     advancedEnemies.forEach((enemy) => {
       enemy.sprite.x = enemy.x;
       enemy.sprite.y = enemy.y;
+      this.followNameMarker(enemy.nameMarker, { ...enemy, radius: getEnemyClass(enemy.type).radius });
     });
 
     const escapedResult = resolveEscapedEnemyHits({
@@ -579,6 +636,7 @@ class GameplayScene extends Phaser.Scene {
     advancedEnemies.forEach((enemy) => {
       if (escapedEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
+        this.destroyNameMarker(enemy);
       }
     });
 
@@ -650,6 +708,7 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = this.enemies.filter((enemy) => {
       if (contactEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
+        this.destroyNameMarker(enemy);
         return false;
       }
 

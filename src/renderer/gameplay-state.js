@@ -108,6 +108,36 @@ export const BASIC_ENEMY = ENEMY_CLASSES.basic;
 
 export const getEnemyClass = (enemyType = 'basic') => ENEMY_CLASSES[enemyType] ?? ENEMY_CLASSES.basic;
 
+export const getEnemyTestNameMarkerText = (enemyType = 'basic') => {
+  if (enemyType === 'elite') {
+    return 'Elite Enemy';
+  }
+
+  if (enemyType === 'boss-class') {
+    return 'Boss Enemy';
+  }
+
+  return 'Basic Enemy';
+};
+
+export const getPickupTestNameMarkerText = (pickupType) => {
+  const label = PICKUP_BUFFS[pickupType]?.label ?? pickupType;
+
+  if (pickupType === 'healing') {
+    return 'Healing Pickup';
+  }
+
+  if (pickupType === 'attack-power') {
+    return 'Attack Power Pickup';
+  }
+
+  if (pickupType === 'attack-speed') {
+    return 'Attack Speed Pickup';
+  }
+
+  return `${label} Pickup`;
+};
+
 export const resolveEnemyTypeForSpawn = ({ spawnIndex }) => (spawnIndex > 0 && spawnIndex % 4 === 3 ? 'elite' : 'basic');
 
 export const DIFFICULTY_TUNING = {
@@ -142,6 +172,48 @@ export const getDifficultyTuning = (difficulty = 'normal') => DIFFICULTY_TUNING[
 export const BACKGROUND_SCROLL = {
   speed: 36,
   tileHeight: 240
+};
+
+export const TEST_NAME_MARKERS = {
+  enabled: true,
+  labelOffset: 18
+};
+
+export const createTestNameMarker = ({ text, target, enabled = TEST_NAME_MARKERS.enabled }) => {
+  if (!enabled) {
+    return null;
+  }
+
+  return {
+    text,
+    x: target.x,
+    y: target.y - target.radius - TEST_NAME_MARKERS.labelOffset,
+    targetRadius: target.radius
+  };
+};
+
+export const followTestNameMarkerTarget = ({ marker, target }) => ({
+  ...marker,
+  x: target.x,
+  y: target.y - target.radius - TEST_NAME_MARKERS.labelOffset,
+  targetRadius: target.radius
+});
+
+export const withTestNameMarker = (target, nameMarker) => ({
+  ...target,
+  nameMarker
+});
+
+export const destroyTestNameMarker = (target) => {
+  if (typeof target.nameMarker?.destroy === 'function') {
+    target.nameMarker.destroy();
+  }
+  target.nameMarker = null;
+
+  return {
+    ...target,
+    nameMarker: null
+  };
 };
 
 const isPressed = (inputState, codes) => codes.some((code) => Boolean(inputState[code]));
