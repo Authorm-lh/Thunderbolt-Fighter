@@ -377,6 +377,17 @@ test('test name markers do not change core gameplay behavior', async () => {
   assert.equal(getRunEndReason({ clock: createRunClock({ runLengthMinutes: 1 }), stats: { ...stats, health: 0 } }), 'health-depleted');
 });
 
+test('test name markers can be disabled through one isolated helper', async () => {
+  const { TEST_NAME_MARKERS, createTestNameMarker } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const player = { x: 640, y: 500, radius: 28 };
+
+  assert.equal(TEST_NAME_MARKERS.enabled, true);
+  assert.equal(createTestNameMarker({ text: 'Player', target: player, enabled: false }), null);
+  assert.match(renderer, /createNameMarker\(markerState\)/);
+  assert.match(renderer, /if \(!markerState\)/);
+});
+
 test('test name markers are removed with destroyed, escaped, or collected objects', async () => {
   const { destroyTestNameMarker } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

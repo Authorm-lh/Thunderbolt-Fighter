@@ -381,6 +381,10 @@ class GameplayScene extends Phaser.Scene {
   }
 
   createNameMarker(markerState) {
+    if (!markerState) {
+      return null;
+    }
+
     return Object.assign(this.add.text(markerState.x, markerState.y, markerState.text, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '16px',
@@ -392,6 +396,10 @@ class GameplayScene extends Phaser.Scene {
   }
 
   followNameMarker(marker, target) {
+    if (!marker) {
+      return;
+    }
+
     const nextMarker = followTestNameMarkerTarget({ marker, target });
 
     marker.x = nextMarker.x;

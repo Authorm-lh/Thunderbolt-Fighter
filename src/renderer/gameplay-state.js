@@ -179,12 +179,18 @@ export const TEST_NAME_MARKERS = {
   labelOffset: 18
 };
 
-export const createTestNameMarker = ({ text, target }) => ({
-  text,
-  x: target.x,
-  y: target.y - target.radius - TEST_NAME_MARKERS.labelOffset,
-  targetRadius: target.radius
-});
+export const createTestNameMarker = ({ text, target, enabled = TEST_NAME_MARKERS.enabled }) => {
+  if (!enabled) {
+    return null;
+  }
+
+  return {
+    text,
+    x: target.x,
+    y: target.y - target.radius - TEST_NAME_MARKERS.labelOffset,
+    targetRadius: target.radius
+  };
+};
 
 export const followTestNameMarkerTarget = ({ marker, target }) => ({
   ...marker,
