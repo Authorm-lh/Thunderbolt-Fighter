@@ -770,6 +770,39 @@ test('results stats include pickup counts and combat stat changes', async () => 
   assert.equal(resultsValues.weaponShape, 'Weapon Shape Spread Shot');
 });
 
+test('results count collected pickups and related combat stats once through the pickup loop', async () => {
+  const { applyPlayerDamage, createResultsValues, createRunClock, createRunStats, resolvePlayerPickupHits } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const player = { x: 640, y: 500, radius: 28 };
+  const initialPickupResult = resolvePlayerPickupHits({
+    stats: createRunStats(),
+    player,
+    pickups: [
+      { id: 'pickup-power', type: 'attack-power', x: player.x, y: player.y, radius: 18 },
+      { id: 'pickup-shield', type: 'shield', x: player.x, y: player.y, radius: 18 },
+      { id: 'pickup-spread', type: 'spread-shot', x: player.x, y: player.y, radius: 18 },
+      { id: 'pickup-missed', type: 'healing', x: 80, y: 80, radius: 18 }
+    ]
+  });
+  const repeatedPickupResult = resolvePlayerPickupHits({
+    stats: initialPickupResult.stats,
+    player,
+    pickups: initialPickupResult.pickups
+  });
+  const damagedStats = applyPlayerDamage({ stats: repeatedPickupResult.stats, damage: 20 });
+  const resultsValues = createResultsValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats: damagedStats });
+
+  assert.equal(repeatedPickupResult.stats.pickups, 3);
+  assert.equal(resultsValues.pickups, 'Pickups 3');
+  assert.equal(resultsValues.damageBoosted, 'Damage Boosted 10');
+  assert.equal(resultsValues.shieldBlocked, 'Shield Blocked 20');
+  assert.equal(resultsValues.weaponShape, 'Weapon Shape Spread Shot');
+  assert.match(renderer, /dataset\.resultsPickups/);
+  assert.match(renderer, /dataset\.resultsDamageBoosted/);
+  assert.match(renderer, /dataset\.resultsShieldBlocked/);
+});
+
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
   const { PLAYER_FLIGHT, PLAYER_WEAPON, createRunBaseline } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
