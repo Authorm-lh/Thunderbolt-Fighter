@@ -106,6 +106,13 @@ export const ENEMY_CLASSES = {
 
 export const BASIC_ENEMY = ENEMY_CLASSES.basic;
 
+export const BOSS_EVENT = {
+  warningBeforeEndMs: 12_000,
+  spawnBeforeEndMs: 8_000,
+  warningText: '⚠ BOSS INBOUND ⚠',
+  detailText: 'High-value target entering combat zone'
+};
+
 export const getEnemyClass = (enemyType = 'basic') => ENEMY_CLASSES[enemyType] ?? ENEMY_CLASSES.basic;
 
 export const getEnemyTestNameMarkerText = (enemyType = 'basic') => {
@@ -272,6 +279,15 @@ export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs, activeEnemyCou
 
   return activeEnemyCount < tuning.maxActiveEnemies && elapsedMs - lastSpawnedMs >= tuning.enemySpawnIntervalMs;
 };
+
+export const shouldShowBossWarning = ({ remainingMs, bossWarningShown }) => (
+  !bossWarningShown && remainingMs <= BOSS_EVENT.warningBeforeEndMs
+);
+
+export const createBossWarningState = () => ({
+  text: BOSS_EVENT.warningText,
+  detailText: BOSS_EVENT.detailText
+});
 
 export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basic', difficulty = 'normal' }) => {
   const enemyClass = getEnemyClass(enemyType);

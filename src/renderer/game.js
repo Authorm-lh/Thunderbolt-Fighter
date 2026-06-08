@@ -16,6 +16,7 @@ import {
   applyPickupBuff,
   applyPlayerDamage,
   createBasicEnemyProjectile,
+  createBossWarningState,
   createEnemySpawn,
   createHudValues,
   createPickupSpawn,
@@ -39,6 +40,7 @@ import {
   resolvePlayerVelocity,
   shouldAutoFire,
   shouldBasicEnemyFire,
+  shouldShowBossWarning,
   shouldSpawnBasicEnemy,
   shouldSpawnPickup
 } from './gameplay-state.js';
@@ -249,6 +251,9 @@ class GameplayScene extends Phaser.Scene {
     this.runClock = null;
     this.runStats = null;
     this.hudText = null;
+    this.bossWarningText = null;
+    this.bossWarningDetailText = null;
+    this.bossWarningShown = false;
     this.root = null;
     this.selectedDifficulty = 'normal';
   }
@@ -258,6 +263,7 @@ class GameplayScene extends Phaser.Scene {
     const root = document.querySelector('#game-root');
     this.root = root;
     this.selectedDifficulty = runOptions.difficulty;
+    this.bossWarningShown = false;
     this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = createRunStats();
@@ -296,10 +302,12 @@ class GameplayScene extends Phaser.Scene {
       align: 'left',
       lineSpacing: 6
     });
+    this.createBossWarningDisplay();
 
     root.dataset.screen = 'gameplay';
     root.dataset.runLengthMinutes = String(runOptions.runLengthMinutes);
     root.dataset.difficulty = runOptions.difficulty;
+    root.dataset.bossWarning = '';
     this.updateHud();
   }
 
@@ -428,8 +436,41 @@ class GameplayScene extends Phaser.Scene {
   updateRunClock(deltaMs) {
     this.runClock = advanceRunClock({ clock: this.runClock, deltaMs });
     this.runStats = advanceTimedBuffs({ stats: this.runStats, deltaMs });
+
+    if (shouldShowBossWarning({ remainingMs: this.runClock.remainingMs, bossWarningShown: this.bossWarningShown })) {
+      this.showBossWarning();
+    }
+
     this.updateHud();
     this.endRunIfNeeded();
+  }
+
+  createBossWarningDisplay() {
+    this.bossWarningText = this.add.text(this.scale.width / 2, 116, '', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '42px',
+      color: '#ff5f6d',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 6
+    }).setOrigin(0.5).setVisible(false);
+    this.bossWarningDetailText = this.add.text(this.scale.width / 2, 158, '', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '22px',
+      color: '#ffd166',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 4
+    }).setOrigin(0.5).setVisible(false);
+  }
+
+  showBossWarning() {
+    const warning = createBossWarningState();
+
+    this.bossWarningShown = true;
+    this.bossWarningText.setText(warning.text).setVisible(true);
+    this.bossWarningDetailText.setText(warning.detailText).setVisible(true);
+    this.root.dataset.bossWarning = warning.text;
   }
 
   updateHud() {

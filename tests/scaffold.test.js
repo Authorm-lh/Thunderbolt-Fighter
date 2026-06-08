@@ -923,6 +923,25 @@ test('the run ends immediately when player health reaches zero', async () => {
   assert.match(renderer, /this\.scene\.start\('results'/);
 });
 
+test('a strong boss warning appears near the end of the run before the boss spawns', async () => {
+  const { BOSS_EVENT, createBossWarningState, shouldShowBossWarning } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(BOSS_EVENT.warningBeforeEndMs, 12_000);
+  assert.equal(BOSS_EVENT.spawnBeforeEndMs, 8_000);
+  assert.equal(shouldShowBossWarning({ remainingMs: BOSS_EVENT.warningBeforeEndMs + 1, bossWarningShown: false }), false);
+  assert.equal(shouldShowBossWarning({ remainingMs: BOSS_EVENT.warningBeforeEndMs, bossWarningShown: false }), true);
+  assert.equal(shouldShowBossWarning({ remainingMs: BOSS_EVENT.warningBeforeEndMs, bossWarningShown: true }), false);
+  assert.equal(shouldShowBossWarning({ remainingMs: BOSS_EVENT.spawnBeforeEndMs, bossWarningShown: false }), true);
+  assert.deepEqual(createBossWarningState(), {
+    text: '⚠ BOSS INBOUND ⚠',
+    detailText: 'High-value target entering combat zone'
+  });
+  assert.ok(BOSS_EVENT.warningBeforeEndMs > BOSS_EVENT.spawnBeforeEndMs);
+  assert.match(renderer, /showBossWarning/);
+  assert.match(renderer, /dataset\.bossWarning/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
