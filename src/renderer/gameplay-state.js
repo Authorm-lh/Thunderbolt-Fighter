@@ -144,6 +144,25 @@ export const BACKGROUND_SCROLL = {
   tileHeight: 240
 };
 
+export const TEST_NAME_MARKERS = {
+  enabled: true,
+  labelOffset: 18
+};
+
+export const createTestNameMarker = ({ text, target }) => ({
+  text,
+  x: target.x,
+  y: target.y - target.radius - TEST_NAME_MARKERS.labelOffset,
+  targetRadius: target.radius
+});
+
+export const followTestNameMarkerTarget = ({ marker, target }) => ({
+  ...marker,
+  x: target.x,
+  y: target.y - target.radius - TEST_NAME_MARKERS.labelOffset,
+  targetRadius: target.radius
+});
+
 const isPressed = (inputState, codes) => codes.some((code) => Boolean(inputState[code]));
 
 export const doCirclesOverlap = (first, second) => Math.hypot(first.x - second.x, first.y - second.y) <= first.radius + second.radius;

@@ -24,6 +24,8 @@ import {
   createRunBaseline,
   createRunClock,
   createRunStats,
+  createTestNameMarker,
+  followTestNameMarkerTarget,
   getRunEndReason,
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
@@ -231,6 +233,7 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = [];
     this.enemyProjectiles = [];
     this.pickups = [];
+    this.playerNameMarker = null;
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
     this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
@@ -270,6 +273,8 @@ class GameplayScene extends Phaser.Scene {
       0x9ed7ff,
       1
     ).setStrokeStyle(2, 0xf8fbff, 0.9);
+    this.player.radius = PLAYER_FLIGHT.radius;
+    this.playerNameMarker = this.createNameMarker(createTestNameMarker({ text: 'Player', target: this.player }));
 
     this.cursorKeys = this.input.keyboard.createCursorKeys();
     this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
@@ -320,6 +325,7 @@ class GameplayScene extends Phaser.Scene {
 
     this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
     this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
+    this.followNameMarker(this.playerNameMarker, this.player);
 
     if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs, stats: this.runStats })) {
       this.spawnPlayerProjectile();
@@ -368,6 +374,25 @@ class GameplayScene extends Phaser.Scene {
         this.backgroundStars.push(star);
       });
     }
+  }
+
+  createNameMarker(markerState) {
+    return Object.assign(this.add.text(markerState.x, markerState.y, markerState.text, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '16px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 4
+    }).setOrigin(0.5, 1), markerState);
+  }
+
+  followNameMarker(marker, target) {
+    const nextMarker = followTestNameMarkerTarget({ marker, target });
+
+    marker.x = nextMarker.x;
+    marker.y = nextMarker.y;
+    marker.targetRadius = nextMarker.targetRadius;
   }
 
   updateBackground(deltaSeconds) {

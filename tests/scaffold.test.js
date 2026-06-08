@@ -132,6 +132,26 @@ test('gameplay scene uses a 16:9 logical playfield', async () => {
   assert.match(renderer, /Phaser\.Scale\.FIT/);
 });
 
+test('player test name marker is readable and follows player movement', async () => {
+  const { PLAYER_FLIGHT, createTestNameMarker, followTestNameMarkerTarget } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const player = { x: PLAYER_FLIGHT.startX, y: PLAYER_FLIGHT.startY, radius: PLAYER_FLIGHT.radius };
+  const marker = createTestNameMarker({ text: 'Player', target: player });
+  const movedMarker = followTestNameMarkerTarget({
+    marker,
+    target: { ...player, x: player.x + 120, y: player.y - 80 }
+  });
+
+  assert.equal(marker.text, 'Player');
+  assert.equal(marker.x, player.x);
+  assert.equal(marker.y, player.y - PLAYER_FLIGHT.radius - 18);
+  assert.equal(movedMarker.x, player.x + 120);
+  assert.equal(movedMarker.y, player.y - 80 - PLAYER_FLIGHT.radius - 18);
+  assert.match(renderer, /createTestNameMarker\(\{ text: 'Player'/);
+  assert.match(renderer, /followTestNameMarkerTarget\(\{/);
+});
+
 test('player movement accepts arrow keys and WASD continuously', async () => {
   const { PLAYER_FLIGHT, resolvePlayerVelocity } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
