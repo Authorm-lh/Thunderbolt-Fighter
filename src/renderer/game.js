@@ -3,11 +3,13 @@ import {
   BACKGROUND_SCROLL,
   BASIC_ENEMY,
   GAMEPLAY_PLAYFIELD,
+  PICKUP_SPAWNING,
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
   advanceBackgroundOffset,
   advanceBasicEnemies,
   advanceEnemyProjectiles,
+  advancePickups,
   advanceRunClock,
   advanceTimedBuffs,
   applyDestroyedEnemyRewards,
@@ -16,6 +18,7 @@ import {
   createBasicEnemyProjectile,
   createEnemySpawn,
   createHudValues,
+  createPickupSpawn,
   createPlayerProjectiles,
   createResultsValues,
   createRunBaseline,
@@ -29,7 +32,8 @@ import {
   resolvePlayerVelocity,
   shouldAutoFire,
   shouldBasicEnemyFire,
-  shouldSpawnBasicEnemy
+  shouldSpawnBasicEnemy,
+  shouldSpawnPickup
 } from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
@@ -225,9 +229,12 @@ class GameplayScene extends Phaser.Scene {
     this.projectiles = [];
     this.enemies = [];
     this.enemyProjectiles = [];
+    this.pickups = [];
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
+    this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
     this.enemySpawnCount = 0;
+    this.pickupSpawnCount = 0;
     this.backgroundStars = [];
     this.backgroundOffset = 0;
     this.runBaseline = null;
@@ -328,7 +335,17 @@ class GameplayScene extends Phaser.Scene {
       this.lastEnemySpawnedMs = _time;
     }
 
+    if (shouldSpawnPickup({
+      elapsedMs: _time,
+      lastSpawnedMs: this.lastPickupSpawnedMs,
+      activePickupCount: this.pickups.length
+    })) {
+      this.spawnPickup();
+      this.lastPickupSpawnedMs = _time;
+    }
+
     this.updateProjectiles(deltaSeconds);
+    this.updatePickups(deltaSeconds);
     this.resolvePlayerProjectileHits();
     this.updateEnemies(deltaSeconds, _time);
     this.updateEnemyProjectiles(deltaSeconds);
@@ -442,6 +459,22 @@ class GameplayScene extends Phaser.Scene {
     });
   }
 
+  updatePickups(deltaSeconds) {
+    const advancedPickups = advancePickups({ pickups: this.pickups, deltaSeconds });
+
+    this.pickups = advancedPickups.filter((pickup) => {
+      pickup.sprite.y = pickup.y;
+
+      if (pickup.y > GAMEPLAY_PLAYFIELD.height + pickup.radius) {
+        pickup.sprite.destroy();
+        return false;
+      }
+
+      return true;
+    });
+    this.root.dataset.pickupCount = String(this.pickups.length);
+  }
+
   resolvePlayerProjectileHits() {
     const result = resolvePlayerProjectileEnemyHits({
       enemies: this.enemies,
@@ -488,6 +521,16 @@ class GameplayScene extends Phaser.Scene {
     this.enemies.push({ ...enemy, sprite });
     this.enemySpawnCount += 1;
     this.root.dataset.enemyCount = String(this.enemies.length);
+  }
+
+  spawnPickup() {
+    const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount });
+    const sprite = this.add.circle(pickup.x, pickup.y, pickup.radius, 0x45f3ff, 0.9)
+      .setStrokeStyle(2, 0xf8fbff, 0.85);
+
+    this.pickups.push({ ...pickup, sprite });
+    this.pickupSpawnCount += 1;
+    this.root.dataset.pickupCount = String(this.pickups.length);
   }
 
   updateEnemies(deltaSeconds, elapsedMs) {

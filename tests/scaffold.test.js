@@ -207,6 +207,54 @@ test('weapon shape pickups replace the currently active weapon shape', async () 
   assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats })[0].piercing, true);
 });
 
+test('gameplay spawns pickup buffs on an independent cadence without blocking core run loops', async () => {
+  const {
+    PICKUP_BUFFS,
+    PICKUP_SPAWNING,
+    PLAYER_FLIGHT,
+    PLAYER_WEAPON,
+    advancePickups,
+    advanceRunClock,
+    createPickupSpawn,
+    createRunClock,
+    resolvePlayerVelocity,
+    shouldAutoFire,
+    shouldSpawnBasicEnemy,
+    shouldSpawnPickup
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.deepEqual(Object.keys(PICKUP_BUFFS), [
+    'healing',
+    'shield',
+    'attack-power',
+    'attack-speed',
+    'dual-shot',
+    'spread-shot',
+    'piercing-shot'
+  ]);
+  assert.equal(shouldSpawnPickup({ elapsedMs: PICKUP_SPAWNING.spawnIntervalMs - 1, lastSpawnedMs: 0, activePickupCount: 0 }), false);
+  assert.equal(shouldSpawnPickup({ elapsedMs: PICKUP_SPAWNING.spawnIntervalMs, lastSpawnedMs: 0, activePickupCount: 0 }), true);
+  assert.equal(shouldSpawnPickup({ elapsedMs: PICKUP_SPAWNING.spawnIntervalMs * 2, lastSpawnedMs: 0, activePickupCount: PICKUP_SPAWNING.maxActivePickups }), false);
+
+  const pickup = createPickupSpawn({ spawnIndex: 6 });
+
+  assert.equal(pickup.id, 'pickup-6-piercing-shot');
+  assert.equal(pickup.type, 'piercing-shot');
+  assert.equal(pickup.label, PICKUP_BUFFS['piercing-shot'].label);
+  assert.equal(pickup.radius, PICKUP_SPAWNING.radius);
+  assert.ok(pickup.y < 0);
+  assert.equal(advancePickups({ pickups: [pickup], deltaSeconds: 1 })[0].y, pickup.y + PICKUP_SPAWNING.speed);
+
+  assert.deepEqual(resolvePlayerVelocity({ KeyD: true }), { x: PLAYER_FLIGHT.speed, y: 0 });
+  assert.equal(shouldAutoFire({ elapsedMs: PLAYER_WEAPON.fireIntervalMs, lastFiredMs: 0 }), true);
+  assert.equal(shouldSpawnBasicEnemy({ elapsedMs: 1000, lastSpawnedMs: 0, activeEnemyCount: 0, difficulty: 'hard' }), true);
+  assert.equal(advanceRunClock({ clock: createRunClock({ runLengthMinutes: 1 }), deltaMs: 1000 }).remainingMs, 59_000);
+  assert.match(renderer, /this\.pickups/);
+  assert.match(renderer, /shouldSpawnPickup/);
+  assert.match(renderer, /spawnPickup/);
+});
+
 test('support buffs coexist while weapon shapes remain exclusive', async () => {
   const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
 
