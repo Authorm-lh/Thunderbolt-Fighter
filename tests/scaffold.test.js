@@ -324,6 +324,29 @@ test('collected support pickups respect healing, shield, and timed buff rules', 
   assert.equal(getPlayerFireIntervalMs(expiredStats), PLAYER_WEAPON.fireIntervalMs);
 });
 
+test('collected weapon shape pickups replace each other and drive projectile patterns', async () => {
+  const { createPlayerProjectiles, createRunStats, resolvePlayerPickupHits } = await import('../src/renderer/gameplay-state.js');
+
+  const player = { x: 640, y: 500, radius: 28 };
+  const collectWeaponShape = (stats, type) => resolvePlayerPickupHits({
+    stats,
+    player,
+    pickups: [{ id: `pickup-${type}`, type, x: player.x, y: player.y, radius: 18 }]
+  }).stats;
+
+  const dualStats = collectWeaponShape(createRunStats(), 'dual-shot');
+  const spreadStats = collectWeaponShape(dualStats, 'spread-shot');
+  const piercingStats = collectWeaponShape(spreadStats, 'piercing-shot');
+
+  assert.equal(dualStats.weaponShape, 'dual-shot');
+  assert.equal(createPlayerProjectiles({ player, stats: dualStats }).length, 2);
+  assert.equal(spreadStats.weaponShape, 'spread-shot');
+  assert.equal(createPlayerProjectiles({ player, stats: spreadStats }).length, 3);
+  assert.equal(piercingStats.weaponShape, 'piercing-shot');
+  assert.equal(createPlayerProjectiles({ player, stats: piercingStats }).length, 1);
+  assert.equal(createPlayerProjectiles({ player, stats: piercingStats })[0].piercing, true);
+});
+
 test('support buffs coexist while weapon shapes remain exclusive', async () => {
   const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
 
