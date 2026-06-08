@@ -807,6 +807,25 @@ test('destroying basic enemies increases score, kills, and damage dealt', async 
   assert.match(renderer, /dataset\.kills/);
 });
 
+test('defeating the boss awards score and boss result stats', async () => {
+  const { ENEMY_CLASSES, applyDestroyedEnemyRewards, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const bossDamageDealt = ENEMY_CLASSES['boss-class'].maxHealth;
+  const stats = applyDestroyedEnemyRewards({
+    stats: createRunStats(),
+    destroyedEnemies: [{ id: 'boss-class-0', type: 'boss-class', health: 0 }],
+    damageDealt: bossDamageDealt
+  });
+  const resultsValues = createResultsValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats });
+
+  assert.equal(stats.score, ENEMY_CLASSES['boss-class'].scoreValue);
+  assert.equal(stats.kills, 1);
+  assert.equal(stats.bossesDefeated, 1);
+  assert.equal(stats.damageDealt, bossDamageDealt);
+  assert.equal(resultsValues.bossesDefeated, 'Bosses Defeated 1');
+  assert.match(renderer, /dataset\.resultsBossesDefeated/);
+});
+
 test('gameplay background scrolls slowly to communicate vertical flight', async () => {
   const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -1014,6 +1033,7 @@ test('results screen shows baseline run performance stats', async () => {
   assert.deepEqual(createResultsValues({ clock, stats: createRunStats() }), {
     score: 'Score 0',
     kills: 'Kills 0',
+    bossesDefeated: 'Bosses Defeated 0',
     timeSurvived: 'Time Survived 1:15',
     pickups: 'Pickups 0',
     shotsFired: 'Shots Fired 0',

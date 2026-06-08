@@ -813,6 +813,7 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.endReason = data.endReason;
     root.dataset.resultsScore = String(data.runStats.score);
     root.dataset.resultsKills = String(data.runStats.kills);
+    root.dataset.resultsBossesDefeated = String(data.runStats.bossesDefeated);
     root.dataset.resultsTimeSurvived = resultsValues.timeSurvived.replace('Time Survived ', '');
     root.dataset.resultsPickups = String(data.runStats.pickups);
     root.dataset.resultsShotsFired = String(data.runStats.shotsFired);

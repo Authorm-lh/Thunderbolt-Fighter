@@ -487,6 +487,7 @@ export const createRunStats = () => ({
   activeBuffName: 'None',
   bestScore: null,
   kills: 0,
+  bossesDefeated: 0,
   pickups: 0,
   shotsFired: 0,
   damageDealt: 0,
@@ -501,6 +502,7 @@ export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDeal
     0
   ),
   kills: stats.kills + destroyedEnemies.length,
+  bossesDefeated: stats.bossesDefeated + destroyedEnemies.filter((enemy) => enemy.type === 'boss-class').length,
   damageDealt: stats.damageDealt + damageDealt
 });
 
@@ -532,6 +534,7 @@ export const createHudValues = ({ clock, stats }) => ({
 export const createResultsValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   kills: `Kills ${stats.kills}`,
+  bossesDefeated: `Bosses Defeated ${stats.bossesDefeated}`,
   timeSurvived: `Time Survived ${formatRunTimer(clock.durationMs - clock.remainingMs)}`,
   pickups: `Pickups ${stats.pickups}`,
   shotsFired: `Shots Fired ${stats.shotsFired}`,
