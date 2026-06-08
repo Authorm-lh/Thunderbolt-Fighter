@@ -621,6 +621,7 @@ test('HUD shows baseline survival and scoring values', async () => {
     health: 'Health 100/100',
     weapon: 'Weapon Blaster',
     buff: 'Buff None',
+    pickups: 'Pickups 0',
     bestScore: 'Best —'
   });
   assert.match(renderer, /createHudValues/);
@@ -640,6 +641,24 @@ test('HUD shows readable remaining durations for timed buffs', async () => {
   const hudValues = createHudValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats: advancedStats });
 
   assert.equal(hudValues.buff, 'Buff Power 5s + Rapid 5s');
+});
+
+test('HUD reflects collected weapon shape, timed buffs, shield, and pickup count changes', async () => {
+  const { applyPickupBuff, createHudValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const poweredStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-power' });
+  const fastStats = applyPickupBuff({ stats: poweredStats, pickupType: 'attack-speed' });
+  const shieldedStats = applyPickupBuff({ stats: fastStats, pickupType: 'shield' });
+  const shapedStats = applyPickupBuff({ stats: shieldedStats, pickupType: 'spread-shot' });
+  const hudValues = createHudValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats: shapedStats });
+
+  assert.equal(hudValues.weapon, 'Weapon Spread Shot');
+  assert.equal(hudValues.buff, 'Buff Power 8s + Rapid 8s');
+  assert.equal(hudValues.health, 'Health 100/100 + Shield 35');
+  assert.equal(hudValues.pickups, 'Pickups 4');
+  assert.match(renderer, /dataset\.hudPickups/);
+  assert.match(renderer, /dataset\.shield/);
 });
 
 test('player health decreases when damage is applied', async () => {

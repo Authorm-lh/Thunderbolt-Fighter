@@ -397,11 +397,14 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.kills = String(this.runStats.kills);
     this.root.dataset.timer = hudValues.timer.replace('Timer ', '');
     this.root.dataset.health = `${this.runStats.health}/${this.runStats.maxHealth}`;
+    this.root.dataset.shield = String(this.runStats.shield);
     this.root.dataset.weapon = this.runStats.weaponName;
     this.root.dataset.buff = this.runStats.activeBuffName;
+    this.root.dataset.pickups = String(this.runStats.pickups);
     this.root.dataset.bestScore = this.runStats.bestScore === null ? '' : String(this.runStats.bestScore);
     this.root.dataset.hudWeapon = hudValues.weapon;
     this.root.dataset.hudBuff = hudValues.buff;
+    this.root.dataset.hudPickups = hudValues.pickups;
     this.root.dataset.hudBestScore = hudValues.bestScore;
   }
 

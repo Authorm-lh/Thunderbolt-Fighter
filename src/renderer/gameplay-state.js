@@ -407,9 +407,12 @@ export const formatActiveBuffs = (stats) => {
 export const createHudValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
-  health: `Health ${stats.health}/${stats.maxHealth}`,
+  health: stats.shield > 0
+    ? `Health ${stats.health}/${stats.maxHealth} + Shield ${stats.shield}`
+    : `Health ${stats.health}/${stats.maxHealth}`,
   weapon: `Weapon ${stats.weaponName}`,
   buff: `Buff ${formatActiveBuffs(stats)}`,
+  pickups: `Pickups ${stats.pickups}`,
   bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
 });
 
