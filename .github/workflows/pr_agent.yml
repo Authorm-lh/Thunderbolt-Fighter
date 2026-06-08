@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: PR Agent action step
-        uses: qodo-ai/pr-agent@main
+        uses: qodo-ai/pr-agent@31d7dd027968e5fad1f9cbb074be047c4869058e
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
