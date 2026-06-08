@@ -294,6 +294,36 @@ test('player collision picks up buffs, removes them from play, and applies every
   assert.match(renderer, /resolvePlayerPickupHits/);
 });
 
+test('collected support pickups respect healing, shield, and timed buff rules', async () => {
+  const { PICKUP_BUFFS, PLAYER_WEAPON, advanceTimedBuffs, applyPlayerDamage, createRunStats, getPlayerDamage, getPlayerFireIntervalMs, resolvePlayerPickupHits } = await import('../src/renderer/gameplay-state.js');
+
+  const player = { x: 640, y: 500, radius: 28 };
+  const damagedStats = applyPlayerDamage({ stats: createRunStats(), damage: 90 });
+  const collectedStats = resolvePlayerPickupHits({
+    stats: damagedStats,
+    player,
+    pickups: [
+      { id: 'pickup-healing', type: 'healing', x: player.x, y: player.y, radius: 18 },
+      { id: 'pickup-healing-again', type: 'healing', x: player.x, y: player.y, radius: 18 },
+      { id: 'pickup-shield', type: 'shield', x: player.x, y: player.y, radius: 18 },
+      { id: 'pickup-power', type: 'attack-power', x: player.x, y: player.y, radius: 18 },
+      { id: 'pickup-speed', type: 'attack-speed', x: player.x, y: player.y, radius: 18 }
+    ]
+  }).stats;
+  const damagedShieldStats = applyPlayerDamage({ stats: collectedStats, damage: 30 });
+  const expiredStats = advanceTimedBuffs({ stats: damagedShieldStats, deltaMs: PICKUP_BUFFS['attack-power'].durationMs });
+
+  assert.equal(collectedStats.health, 60);
+  assert.equal(damagedShieldStats.shield, 5);
+  assert.equal(damagedShieldStats.health, 60);
+  assert.equal(getPlayerDamage(collectedStats), PICKUP_BUFFS['attack-power'].damage);
+  assert.equal(getPlayerFireIntervalMs(collectedStats), PICKUP_BUFFS['attack-speed'].fireIntervalMs);
+  assert.equal(expiredStats.activeBuffs.attackPower.remainingMs, 0);
+  assert.equal(expiredStats.activeBuffs.attackSpeed.remainingMs, 0);
+  assert.equal(getPlayerDamage(expiredStats), PLAYER_WEAPON.damage);
+  assert.equal(getPlayerFireIntervalMs(expiredStats), PLAYER_WEAPON.fireIntervalMs);
+});
+
 test('support buffs coexist while weapon shapes remain exclusive', async () => {
   const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
 
