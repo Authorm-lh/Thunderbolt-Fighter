@@ -115,8 +115,9 @@ export const ENEMY_CLASSES = {
     contactDamage: 45,
     escapedDamage: 0,
     scoreValue: 1200,
-    movementPattern: 'sway',
+    movementPattern: 'command-hover',
     maxHorizontalOffset: 120,
+    holdY: 96,
     lanes: [GAMEPLAY_PLAYFIELD.width / 2]
   }
 };
@@ -384,8 +385,9 @@ export const resolvePlayerPickupHits = ({ stats, player, pickups }) => {
 
 export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => {
   const enemyClass = getEnemyClass(enemy.type);
-  const y = enemy.y + enemyClass.speed * deltaSeconds;
-  const x = enemyClass.movementPattern === 'sway'
+  const nextY = enemy.y + enemyClass.speed * deltaSeconds;
+  const y = enemyClass.movementPattern === 'command-hover' ? Math.min(nextY, enemyClass.holdY) : nextY;
+  const x = ['sway', 'command-hover'].includes(enemyClass.movementPattern)
     ? enemy.movementOriginX + Math.sin((y + enemyClass.radius) / 80) * enemyClass.maxHorizontalOffset
     : enemy.x;
 

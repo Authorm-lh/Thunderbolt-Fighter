@@ -592,6 +592,30 @@ test('basic and elite enemies differ in durability, damage, firing, movement, an
   assert.ok(ENEMY_CLASSES.elite.scoreValue > ENEMY_CLASSES.basic.scoreValue);
 });
 
+test('boss-class enemy tuning is distinct from lower enemy classes', async () => {
+  const { ENEMY_CLASSES, advanceBasicEnemies, createBasicEnemyProjectile, createBossEnemySpawn, shouldBasicEnemyFire } = await import('../src/renderer/gameplay-state.js');
+
+  const bossClass = ENEMY_CLASSES['boss-class'];
+  const boss = createBossEnemySpawn({ spawnIndex: 0 });
+  const [advancedBoss] = advanceBasicEnemies({ enemies: [{ ...boss, y: 100 }], deltaSeconds: 10 });
+  const bossProjectile = createBasicEnemyProjectile({ enemyId: boss.id, x: boss.x, y: advancedBoss.y, enemyType: boss.type });
+
+  assert.ok(bossClass.maxHealth > ENEMY_CLASSES.elite.maxHealth);
+  assert.ok(bossClass.projectileDamage > ENEMY_CLASSES.elite.projectileDamage);
+  assert.ok(bossClass.contactDamage > ENEMY_CLASSES.elite.contactDamage);
+  assert.ok(bossClass.projectileRadius > ENEMY_CLASSES.elite.projectileRadius);
+  assert.ok(bossClass.fireIntervalMs < ENEMY_CLASSES.elite.fireIntervalMs);
+  assert.ok(shouldBasicEnemyFire({ elapsedMs: bossClass.fireIntervalMs * 2, lastFiredMs: 0, enemyType: boss.type }));
+  assert.ok(bossClass.speed < ENEMY_CLASSES.basic.speed);
+  assert.notEqual(bossClass.movementPattern, ENEMY_CLASSES.basic.movementPattern);
+  assert.notEqual(bossClass.movementPattern, ENEMY_CLASSES.elite.movementPattern);
+  assert.equal(advancedBoss.y, bossClass.holdY);
+  assert.ok(Math.abs(advancedBoss.x - boss.movementOriginX) <= bossClass.maxHorizontalOffset);
+  assert.ok(bossClass.scoreValue > ENEMY_CLASSES.elite.scoreValue);
+  assert.equal(bossProjectile.damage, bossClass.projectileDamage);
+  assert.equal(bossProjectile.radius, bossClass.projectileRadius);
+});
+
 test('enemy movement remains readable while elite enemies use bounded sway', async () => {
   const { BASIC_ENEMY, ENEMY_CLASSES, advanceBasicEnemies, createEnemySpawn, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
