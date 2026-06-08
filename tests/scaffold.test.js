@@ -386,6 +386,29 @@ test('support buffs coexist while weapon shapes remain exclusive', async () => {
   assert.equal(replacedShapeStats.pickups, 6);
 });
 
+test('enemy test name markers identify each enemy class including boss-class rules', async () => {
+  const { ENEMY_CLASSES, advanceBasicEnemies, createEnemySpawn, createTestNameMarker, followTestNameMarkerTarget, getEnemyTestNameMarkerText } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const basicEnemy = createEnemySpawn({ spawnIndex: 0, enemyType: 'basic' });
+  const eliteEnemy = createEnemySpawn({ spawnIndex: 3, enemyType: 'elite' });
+  const bossEnemy = { id: 'boss-0', type: 'boss-class', x: 640, y: 96, radius: 64 };
+  const [advancedBasicEnemy] = advanceBasicEnemies({ enemies: [basicEnemy], deltaSeconds: 1 });
+  const basicMarker = createTestNameMarker({ text: getEnemyTestNameMarkerText(basicEnemy.type), target: { ...basicEnemy, radius: ENEMY_CLASSES.basic.radius } });
+  const movedBasicMarker = followTestNameMarkerTarget({
+    marker: basicMarker,
+    target: { ...advancedBasicEnemy, radius: ENEMY_CLASSES.basic.radius }
+  });
+
+  assert.equal(basicMarker.text, 'Basic Enemy');
+  assert.equal(getEnemyTestNameMarkerText(eliteEnemy.type), 'Elite Enemy');
+  assert.equal(getEnemyTestNameMarkerText(bossEnemy.type), 'Boss Enemy');
+  assert.equal(movedBasicMarker.x, advancedBasicEnemy.x);
+  assert.equal(movedBasicMarker.y, advancedBasicEnemy.y - ENEMY_CLASSES.basic.radius - 18);
+  assert.match(renderer, /getEnemyTestNameMarkerText/);
+  assert.match(renderer, /enemy\.nameMarker/);
+});
+
 test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
   const { ENEMY_CLASSES } = await import('../src/renderer/gameplay-state.js');
 

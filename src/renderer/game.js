@@ -26,6 +26,8 @@ import {
   createRunStats,
   createTestNameMarker,
   followTestNameMarkerTarget,
+  getEnemyClass,
+  getEnemyTestNameMarkerText,
   getRunEndReason,
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
@@ -567,11 +569,16 @@ class GameplayScene extends Phaser.Scene {
   spawnBasicEnemy() {
     const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount });
     const enemy = createEnemySpawn({ spawnIndex: this.enemySpawnCount, enemyType });
+    const enemyClass = getEnemyClass(enemy.type);
     const enemyColor = enemy.type === 'elite' ? 0xc084fc : 0xff5f6d;
     const sprite = this.add.rectangle(enemy.x, enemy.y, BASIC_ENEMY.radius * 2, BASIC_ENEMY.radius * 1.4, enemyColor, 1)
       .setStrokeStyle(2, 0xffd166, 0.8);
+    const nameMarker = this.createNameMarker(createTestNameMarker({
+      text: getEnemyTestNameMarkerText(enemy.type),
+      target: { ...enemy, radius: enemyClass.radius }
+    }));
 
-    this.enemies.push({ ...enemy, sprite });
+    this.enemies.push({ ...enemy, sprite, nameMarker });
     this.enemySpawnCount += 1;
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
@@ -592,6 +599,7 @@ class GameplayScene extends Phaser.Scene {
     advancedEnemies.forEach((enemy) => {
       enemy.sprite.x = enemy.x;
       enemy.sprite.y = enemy.y;
+      this.followNameMarker(enemy.nameMarker, { ...enemy, radius: getEnemyClass(enemy.type).radius });
     });
 
     const escapedResult = resolveEscapedEnemyHits({

@@ -108,6 +108,18 @@ export const BASIC_ENEMY = ENEMY_CLASSES.basic;
 
 export const getEnemyClass = (enemyType = 'basic') => ENEMY_CLASSES[enemyType] ?? ENEMY_CLASSES.basic;
 
+export const getEnemyTestNameMarkerText = (enemyType = 'basic') => {
+  if (enemyType === 'elite') {
+    return 'Elite Enemy';
+  }
+
+  if (enemyType === 'boss-class') {
+    return 'Boss Enemy';
+  }
+
+  return 'Basic Enemy';
+};
+
 export const resolveEnemyTypeForSpawn = ({ spawnIndex }) => (spawnIndex > 0 && spawnIndex % 4 === 3 ? 'elite' : 'basic');
 
 export const DIFFICULTY_TUNING = {
