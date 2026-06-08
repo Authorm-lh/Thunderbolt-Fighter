@@ -41,6 +41,7 @@ jobs:
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
           github_action_config.auto_improve: "false"
+          github_action_config.pr_actions: '["opened", "reopened", "ready_for_review", "review_requested", "synchronize"]'
 
           # Model config
           config.model: "deepseek/deepseek-chat"
