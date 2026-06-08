@@ -1,0 +1,34 @@
+name: AI PR Reviewer
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+
+jobs:
+  pr_agent_job:
+    if: ${{ github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+
+    name: Run AI PR reviewer
+
+    steps:
+      - name: PR Agent action step
+        uses: qodo-ai/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # Automatically review PRs and describe them
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "true"
+          github_action_config.auto_improve: "false"
+
+          # Model config
+          config.model: "deepseek/deepseek-chat"
+          config.fallback_models: "deepseek/deepseek-chat"
+          DEEPSEEK.KEY: ${{ secrets.DEEPSEEK_KEY }}
