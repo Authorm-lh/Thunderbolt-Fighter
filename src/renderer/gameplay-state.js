@@ -22,6 +22,43 @@ export const PLAYER_SURVIVAL = {
   maxHealth: 100
 };
 
+export const PICKUP_BUFFS = {
+  healing: {
+    type: 'healing',
+    label: 'Repair',
+    healAmount: 25
+  },
+  shield: {
+    type: 'shield',
+    label: 'Shield',
+    shieldAmount: 35
+  },
+  'attack-power': {
+    type: 'attack-power',
+    label: 'Power',
+    damage: 25,
+    durationMs: 8_000
+  },
+  'attack-speed': {
+    type: 'attack-speed',
+    label: 'Rapid',
+    fireIntervalMs: 130,
+    durationMs: 8_000
+  },
+  'dual-shot': {
+    type: 'dual-shot',
+    label: 'Dual Shot'
+  },
+  'spread-shot': {
+    type: 'spread-shot',
+    label: 'Spread Shot'
+  },
+  'piercing-shot': {
+    type: 'piercing-shot',
+    label: 'Piercing Shot'
+  }
+};
+
 export const ENEMY_CLASSES = {
   basic: {
     type: 'basic',
@@ -119,7 +156,36 @@ export const resolvePlayerVelocity = (inputState) => {
   };
 };
 
-export const shouldAutoFire = ({ elapsedMs, lastFiredMs }) => elapsedMs - lastFiredMs >= PLAYER_WEAPON.fireIntervalMs;
+export const getPlayerFireIntervalMs = (stats = createRunStats()) => (
+  stats.activeBuffs.attackSpeed.remainingMs > 0 ? PICKUP_BUFFS['attack-speed'].fireIntervalMs : PLAYER_WEAPON.fireIntervalMs
+);
+
+export const shouldAutoFire = ({ elapsedMs, lastFiredMs, stats }) => elapsedMs - lastFiredMs >= getPlayerFireIntervalMs(stats);
+
+export const createPlayerProjectiles = ({ player, stats = createRunStats() }) => {
+  const y = player.y - player.radius;
+  const baseProjectile = {
+    y,
+    radius: PLAYER_WEAPON.projectileRadius,
+    speed: PLAYER_WEAPON.projectileSpeed,
+    velocityX: 0,
+    piercing: false
+  };
+
+  if (stats.weaponShape === 'dual-shot') {
+    return [-12, 12].map((offsetX) => ({ ...baseProjectile, x: player.x + offsetX }));
+  }
+
+  if (stats.weaponShape === 'spread-shot') {
+    return [-140, 0, 140].map((velocityX) => ({ ...baseProjectile, x: player.x, velocityX }));
+  }
+
+  if (stats.weaponShape === 'piercing-shot') {
+    return [{ ...baseProjectile, x: player.x, piercing: true }];
+  }
+
+  return [{ ...baseProjectile, x: player.x }];
+};
 
 export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs, activeEnemyCount = 0, difficulty = 'normal' }) => {
   const tuning = getDifficultyTuning(difficulty);
@@ -182,10 +248,15 @@ export const advanceEnemyProjectiles = ({ projectiles, deltaSeconds }) => projec
   y: projectile.y + (projectile.speed ?? BASIC_ENEMY.projectileSpeed) * deltaSeconds
 }));
 
-export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
+export const getPlayerDamage = (stats = createRunStats()) => (
+  stats.activeBuffs.attackPower.remainingMs > 0 ? PICKUP_BUFFS['attack-power'].damage : PLAYER_WEAPON.damage
+);
+
+export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles, stats }) => {
   const remainingEnemies = enemies.map((enemy) => ({ ...enemy }));
   const destroyedEnemies = [];
   const remainingProjectiles = [];
+  const playerDamage = getPlayerDamage(stats);
   let damageDealt = 0;
 
   projectiles.forEach((projectile) => {
@@ -199,8 +270,8 @@ export const resolvePlayerProjectileEnemyHits = ({ enemies, projectiles }) => {
       return;
     }
 
-    damageDealt += Math.min(hitEnemy.health, PLAYER_WEAPON.damage);
-    hitEnemy.health = Math.max(0, hitEnemy.health - PLAYER_WEAPON.damage);
+    damageDealt += Math.min(hitEnemy.health, playerDamage);
+    hitEnemy.health = Math.max(0, hitEnemy.health - playerDamage);
 
     if (hitEnemy.health === 0) {
       destroyedEnemies.push({ ...hitEnemy });
@@ -238,13 +309,21 @@ export const createRunStats = () => ({
   score: 0,
   health: PLAYER_SURVIVAL.maxHealth,
   maxHealth: PLAYER_SURVIVAL.maxHealth,
+  shield: 0,
+  activeBuffs: {
+    attackPower: { remainingMs: 0 },
+    attackSpeed: { remainingMs: 0 }
+  },
+  weaponShape: 'single-shot',
   weaponName: PLAYER_WEAPON.name,
   activeBuffName: 'None',
   bestScore: null,
   kills: 0,
   pickups: 0,
   shotsFired: 0,
-  damageDealt: 0
+  damageDealt: 0,
+  damageBoosted: 0,
+  shieldBlocked: 0
 });
 
 export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDealt, difficulty = 'normal' }) => ({
@@ -257,12 +336,25 @@ export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDeal
   damageDealt: stats.damageDealt + damageDealt
 });
 
+export const formatActiveBuffs = (stats) => {
+  const activeBuffs = [
+    stats.activeBuffs.attackPower.remainingMs > 0
+      ? `${PICKUP_BUFFS['attack-power'].label} ${Math.ceil(stats.activeBuffs.attackPower.remainingMs / 1000)}s`
+      : null,
+    stats.activeBuffs.attackSpeed.remainingMs > 0
+      ? `${PICKUP_BUFFS['attack-speed'].label} ${Math.ceil(stats.activeBuffs.attackSpeed.remainingMs / 1000)}s`
+      : null
+  ].filter(Boolean);
+
+  return activeBuffs.length > 0 ? activeBuffs.join(' + ') : 'None';
+};
+
 export const createHudValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
   health: `Health ${stats.health}/${stats.maxHealth}`,
   weapon: `Weapon ${stats.weaponName}`,
-  buff: `Buff ${stats.activeBuffName}`,
+  buff: `Buff ${formatActiveBuffs(stats)}`,
   bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
 });
 
@@ -272,13 +364,98 @@ export const createResultsValues = ({ clock, stats }) => ({
   timeSurvived: `Time Survived ${formatRunTimer(clock.durationMs - clock.remainingMs)}`,
   pickups: `Pickups ${stats.pickups}`,
   shotsFired: `Shots Fired ${stats.shotsFired}`,
-  damageDealt: `Damage Dealt ${stats.damageDealt}`
+  damageDealt: `Damage Dealt ${stats.damageDealt}`,
+  damageBoosted: `Damage Boosted ${stats.damageBoosted}`,
+  shieldBlocked: `Shield Blocked ${stats.shieldBlocked}`,
+  weaponShape: `Weapon Shape ${stats.weaponName}`
 });
 
-export const applyPlayerDamage = ({ stats, damage }) => ({
-  ...stats,
-  health: Math.max(0, stats.health - damage)
-});
+export const applyPlayerDamage = ({ stats, damage }) => {
+  const blockedDamage = Math.min(stats.shield, damage);
+  const remainingDamage = damage - blockedDamage;
+
+  return {
+    ...stats,
+    shield: stats.shield - blockedDamage,
+    shieldBlocked: stats.shieldBlocked + blockedDamage,
+    health: Math.max(0, stats.health - remainingDamage)
+  };
+};
+
+export const applyPickupBuff = ({ stats, pickupType }) => {
+  const pickup = PICKUP_BUFFS[pickupType];
+
+  if (pickupType === 'healing') {
+    return {
+      ...stats,
+      health: Math.min(stats.maxHealth, stats.health + pickup.healAmount),
+      pickups: stats.pickups + 1
+    };
+  }
+
+  if (pickupType === 'shield') {
+    return {
+      ...stats,
+      shield: stats.shield + pickup.shieldAmount,
+      pickups: stats.pickups + 1
+    };
+  }
+
+  if (pickupType === 'attack-power') {
+    return {
+      ...stats,
+      activeBuffs: {
+        ...stats.activeBuffs,
+        attackPower: { remainingMs: pickup.durationMs }
+      },
+      activeBuffName: pickup.label,
+      damageBoosted: stats.damageBoosted + (pickup.damage - PLAYER_WEAPON.damage),
+      pickups: stats.pickups + 1
+    };
+  }
+
+  if (pickupType === 'attack-speed') {
+    return {
+      ...stats,
+      activeBuffs: {
+        ...stats.activeBuffs,
+        attackSpeed: { remainingMs: pickup.durationMs }
+      },
+      activeBuffName: pickup.label,
+      pickups: stats.pickups + 1
+    };
+  }
+
+  if (['dual-shot', 'spread-shot', 'piercing-shot'].includes(pickupType)) {
+    return {
+      ...stats,
+      weaponShape: pickupType,
+      weaponName: pickup.label,
+      pickups: stats.pickups + 1
+    };
+  }
+
+  return stats;
+};
+
+export const advanceTimedBuffs = ({ stats, deltaMs }) => {
+  const attackPowerRemainingMs = Math.max(0, stats.activeBuffs.attackPower.remainingMs - deltaMs);
+  const attackSpeedRemainingMs = Math.max(0, stats.activeBuffs.attackSpeed.remainingMs - deltaMs);
+  const activeBuffName = [
+    attackPowerRemainingMs > 0 ? PICKUP_BUFFS['attack-power'].label : null,
+    attackSpeedRemainingMs > 0 ? PICKUP_BUFFS['attack-speed'].label : null
+  ].filter(Boolean).join(' + ');
+
+  return {
+    ...stats,
+    activeBuffs: {
+      ...stats.activeBuffs,
+      attackPower: { remainingMs: attackPowerRemainingMs },
+      attackSpeed: { remainingMs: attackSpeedRemainingMs }
+    },
+    activeBuffName: activeBuffName || 'None'
+  };
+};
 
 export const resolveEscapedEnemyHits = ({ stats, enemies, difficulty = 'normal' }) => {
   let damage = 0;

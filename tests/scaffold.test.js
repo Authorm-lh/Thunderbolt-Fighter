@@ -165,6 +165,67 @@ test('player ship fires automatically on a fixed cadence', async () => {
   assert.match(renderer, /shouldAutoFire/);
 });
 
+test('attack-speed buffs temporarily increase player firing rate', async () => {
+  const { PLAYER_WEAPON, advanceTimedBuffs, applyPickupBuff, createRunStats, shouldAutoFire } = await import('../src/renderer/gameplay-state.js');
+
+  const fastStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-speed' });
+  const expiredStats = advanceTimedBuffs({ stats: fastStats, deltaMs: 10_000 });
+
+  assert.equal(shouldAutoFire({ elapsedMs: 140, lastFiredMs: 0, stats: fastStats }), true);
+  assert.equal(shouldAutoFire({ elapsedMs: 140, lastFiredMs: 0, stats: expiredStats }), false);
+  assert.equal(shouldAutoFire({ elapsedMs: PLAYER_WEAPON.fireIntervalMs, lastFiredMs: 0, stats: expiredStats }), true);
+});
+
+test('weapon shape pickups change player firing behavior', async () => {
+  const { applyPickupBuff, createPlayerProjectiles, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const basePlayer = { x: 640, y: 500, radius: 28 };
+  const dualProjectiles = createPlayerProjectiles({ player: basePlayer, stats: applyPickupBuff({ stats: createRunStats(), pickupType: 'dual-shot' }) });
+  const spreadProjectiles = createPlayerProjectiles({ player: basePlayer, stats: applyPickupBuff({ stats: createRunStats(), pickupType: 'spread-shot' }) });
+  const piercingProjectiles = createPlayerProjectiles({ player: basePlayer, stats: applyPickupBuff({ stats: createRunStats(), pickupType: 'piercing-shot' }) });
+
+  assert.equal(dualProjectiles.length, 2);
+  assert.deepEqual(dualProjectiles.map((projectile) => projectile.x), [628, 652]);
+  assert.equal(spreadProjectiles.length, 3);
+  assert.deepEqual(spreadProjectiles.map((projectile) => projectile.velocityX), [-140, 0, 140]);
+  assert.equal(piercingProjectiles.length, 1);
+  assert.equal(piercingProjectiles[0].piercing, true);
+});
+
+test('weapon shape pickups replace the currently active weapon shape', async () => {
+  const { applyPickupBuff, createPlayerProjectiles, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const basePlayer = { x: 640, y: 500, radius: 28 };
+  const dualStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'dual-shot' });
+  const spreadStats = applyPickupBuff({ stats: dualStats, pickupType: 'spread-shot' });
+  const piercingStats = applyPickupBuff({ stats: spreadStats, pickupType: 'piercing-shot' });
+
+  assert.equal(spreadStats.weaponShape, 'spread-shot');
+  assert.equal(createPlayerProjectiles({ player: basePlayer, stats: spreadStats }).length, 3);
+  assert.equal(piercingStats.weaponShape, 'piercing-shot');
+  assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats }).length, 1);
+  assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats })[0].piercing, true);
+});
+
+test('support buffs coexist while weapon shapes remain exclusive', async () => {
+  const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const damagedStats = applyPlayerDamage({ stats: createRunStats(), damage: 40 });
+  const healedStats = applyPickupBuff({ stats: damagedStats, pickupType: 'healing' });
+  const shieldedStats = applyPickupBuff({ stats: healedStats, pickupType: 'shield' });
+  const poweredStats = applyPickupBuff({ stats: shieldedStats, pickupType: 'attack-power' });
+  const fastStats = applyPickupBuff({ stats: poweredStats, pickupType: 'attack-speed' });
+  const shapedStats = applyPickupBuff({ stats: fastStats, pickupType: 'dual-shot' });
+  const replacedShapeStats = applyPickupBuff({ stats: shapedStats, pickupType: 'spread-shot' });
+
+  assert.equal(replacedShapeStats.health, 85);
+  assert.equal(replacedShapeStats.shield, 35);
+  assert.ok(replacedShapeStats.activeBuffs.attackPower.remainingMs > 0);
+  assert.ok(replacedShapeStats.activeBuffs.attackSpeed.remainingMs > 0);
+  assert.equal(replacedShapeStats.weaponShape, 'spread-shot');
+  assert.equal(replacedShapeStats.pickups, 6);
+});
+
 test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
   const { ENEMY_CLASSES } = await import('../src/renderer/gameplay-state.js');
 
@@ -276,6 +337,28 @@ test('player shots damage and destroy basic enemies', async () => {
   assert.equal(finalHit.enemies.length, 0);
   assert.deepEqual(finalHit.destroyedEnemies, [{ ...firstHit.enemies[0], health: 0 }]);
   assert.match(renderer, /resolvePlayerProjectileEnemyHits/);
+});
+
+test('attack-power buffs temporarily increase player projectile damage', async () => {
+  const { BASIC_ENEMY, PLAYER_WEAPON, advanceTimedBuffs, applyPickupBuff, createRunStats, resolvePlayerProjectileEnemyHits } = await import('../src/renderer/gameplay-state.js');
+
+  const poweredStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-power' });
+  const poweredHit = resolvePlayerProjectileEnemyHits({
+    enemies: [{ id: 'basic-0', type: 'basic', x: 420, y: 120, health: BASIC_ENEMY.maxHealth }],
+    projectiles: [{ x: 420, y: 120, radius: PLAYER_WEAPON.projectileRadius }],
+    stats: poweredStats
+  });
+  const expiredStats = advanceTimedBuffs({ stats: poweredStats, deltaMs: 10_000 });
+  const baselineHit = resolvePlayerProjectileEnemyHits({
+    enemies: [{ id: 'basic-1', type: 'basic', x: 420, y: 120, health: BASIC_ENEMY.maxHealth }],
+    projectiles: [{ x: 420, y: 120, radius: PLAYER_WEAPON.projectileRadius }],
+    stats: expiredStats
+  });
+
+  assert.equal(poweredHit.damageDealt, 25);
+  assert.equal(poweredHit.enemies[0].health, BASIC_ENEMY.maxHealth - 25);
+  assert.equal(expiredStats.activeBuffs.attackPower.remainingMs, 0);
+  assert.equal(baselineHit.damageDealt, PLAYER_WEAPON.damage);
 });
 
 test('enemies that reach the bottom damage the player if they are not eliminated', async () => {
@@ -408,6 +491,17 @@ test('HUD shows baseline survival and scoring values', async () => {
   assert.match(renderer, /Best/);
 });
 
+test('HUD shows readable remaining durations for timed buffs', async () => {
+  const { advanceTimedBuffs, applyPickupBuff, createHudValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const poweredStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-power' });
+  const fastStats = applyPickupBuff({ stats: poweredStats, pickupType: 'attack-speed' });
+  const advancedStats = advanceTimedBuffs({ stats: fastStats, deltaMs: 3_200 });
+  const hudValues = createHudValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats: advancedStats });
+
+  assert.equal(hudValues.buff, 'Buff Power 5s + Rapid 5s');
+});
+
 test('player health decreases when damage is applied', async () => {
   const { applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -417,6 +511,36 @@ test('player health decreases when damage is applied', async () => {
   assert.equal(damagedStats.health, 65);
   assert.equal(applyPlayerDamage({ stats: damagedStats, damage: 90 }).health, 0);
   assert.match(renderer, /applyPlayerDamage/);
+});
+
+test('healing pickups restore player health without exceeding maximum health', async () => {
+  const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const damagedStats = applyPlayerDamage({ stats: createRunStats(), damage: 45 });
+  const healedStats = applyPickupBuff({ stats: damagedStats, pickupType: 'healing' });
+  const cappedStats = applyPickupBuff({ stats: healedStats, pickupType: 'healing' });
+
+  assert.equal(healedStats.health, 80);
+  assert.equal(healedStats.pickups, 1);
+  assert.equal(cappedStats.health, healedStats.maxHealth);
+  assert.equal(cappedStats.pickups, 2);
+  assert.match(renderer, /applyPickupBuff/);
+});
+
+test('shield pickups add shield that absorbs damage before health', async () => {
+  const { applyPickupBuff, applyPlayerDamage, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const shieldedStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'shield' });
+  const partiallyBlockedStats = applyPlayerDamage({ stats: shieldedStats, damage: 20 });
+  const overflowDamageStats = applyPlayerDamage({ stats: partiallyBlockedStats, damage: 30 });
+
+  assert.equal(shieldedStats.shield, 35);
+  assert.equal(shieldedStats.pickups, 1);
+  assert.equal(partiallyBlockedStats.shield, 15);
+  assert.equal(partiallyBlockedStats.health, 100);
+  assert.equal(overflowDamageStats.shield, 0);
+  assert.equal(overflowDamageStats.health, 85);
 });
 
 test('the run ends immediately when player health reaches zero', async () => {
@@ -463,10 +587,28 @@ test('results screen shows baseline run performance stats', async () => {
     timeSurvived: 'Time Survived 1:15',
     pickups: 'Pickups 0',
     shotsFired: 'Shots Fired 0',
-    damageDealt: 'Damage Dealt 0'
+    damageDealt: 'Damage Dealt 0',
+    damageBoosted: 'Damage Boosted 0',
+    shieldBlocked: 'Shield Blocked 0',
+    weaponShape: 'Weapon Shape Blaster'
   });
   assert.match(renderer, /ResultsScene/);
   assert.match(renderer, /createResultsValues/);
+});
+
+test('results stats include pickup counts and combat stat changes', async () => {
+  const { applyPlayerDamage, applyPickupBuff, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+
+  const pickedUpStats = applyPickupBuff({ stats: createRunStats(), pickupType: 'attack-power' });
+  const shapedStats = applyPickupBuff({ stats: pickedUpStats, pickupType: 'spread-shot' });
+  const shieldedStats = applyPickupBuff({ stats: shapedStats, pickupType: 'shield' });
+  const damagedStats = applyPlayerDamage({ stats: shieldedStats, damage: 20 });
+  const resultsValues = createResultsValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats: damagedStats });
+
+  assert.equal(resultsValues.pickups, 'Pickups 3');
+  assert.equal(resultsValues.damageBoosted, 'Damage Boosted 10');
+  assert.equal(resultsValues.shieldBlocked, 'Shield Blocked 20');
+  assert.equal(resultsValues.weaponShape, 'Weapon Shape Spread Shot');
 });
 
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {

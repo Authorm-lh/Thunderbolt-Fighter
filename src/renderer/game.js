@@ -9,11 +9,14 @@ import {
   advanceBasicEnemies,
   advanceEnemyProjectiles,
   advanceRunClock,
+  advanceTimedBuffs,
   applyDestroyedEnemyRewards,
+  applyPickupBuff,
   applyPlayerDamage,
   createBasicEnemyProjectile,
   createEnemySpawn,
   createHudValues,
+  createPlayerProjectiles,
   createResultsValues,
   createRunBaseline,
   createRunClock,
@@ -310,7 +313,7 @@ class GameplayScene extends Phaser.Scene {
     this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
     this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
 
-    if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs })) {
+    if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs, stats: this.runStats })) {
       this.spawnPlayerProjectile();
       this.lastFiredMs = _time;
     }
@@ -362,6 +365,7 @@ class GameplayScene extends Phaser.Scene {
 
   updateRunClock(deltaMs) {
     this.runClock = advanceRunClock({ clock: this.runClock, deltaMs });
+    this.runStats = advanceTimedBuffs({ stats: this.runStats, deltaMs });
     this.updateHud();
     this.endRunIfNeeded();
   }
@@ -388,6 +392,11 @@ class GameplayScene extends Phaser.Scene {
     this.endRunIfNeeded();
   }
 
+  applyPickup(pickupType) {
+    this.runStats = applyPickupBuff({ stats: this.runStats, pickupType });
+    this.updateHud();
+  }
+
   endRunIfNeeded() {
     const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats });
 
@@ -401,22 +410,30 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnPlayerProjectile() {
-    const projectile = this.add.circle(
-      this.player.x,
-      this.player.y - PLAYER_FLIGHT.radius,
-      PLAYER_WEAPON.projectileRadius,
-      0xffd166,
-      1
-    );
+    const projectiles = createPlayerProjectiles({
+      player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
+      stats: this.runStats
+    }).map((projectileState) => {
+      const projectile = this.add.circle(
+        projectileState.x,
+        projectileState.y,
+        projectileState.radius,
+        projectileState.piercing ? 0x8be9fd : 0xffd166,
+        1
+      );
 
-    this.projectiles.push(projectile);
+      return Object.assign(projectile, projectileState);
+    });
+
+    this.projectiles.push(...projectiles);
   }
 
   updateProjectiles(deltaSeconds) {
     this.projectiles = this.projectiles.filter((projectile) => {
-      projectile.y -= PLAYER_WEAPON.projectileSpeed * deltaSeconds;
+      projectile.x += (projectile.velocityX ?? 0) * deltaSeconds;
+      projectile.y -= projectile.speed * deltaSeconds;
 
-      if (projectile.y < -PLAYER_WEAPON.projectileRadius) {
+      if (projectile.y < -projectile.radius) {
         projectile.destroy();
         return false;
       }
@@ -428,7 +445,8 @@ class GameplayScene extends Phaser.Scene {
   resolvePlayerProjectileHits() {
     const result = resolvePlayerProjectileEnemyHits({
       enemies: this.enemies,
-      projectiles: this.projectiles
+      projectiles: this.projectiles,
+      stats: this.runStats
     });
     const remainingEnemyIds = new Set(result.enemies.map((enemy) => enemy.id));
     const remainingProjectiles = new Set(result.projectiles);
@@ -608,6 +626,9 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.resultsPickups = String(data.runStats.pickups);
     root.dataset.resultsShotsFired = String(data.runStats.shotsFired);
     root.dataset.resultsDamageDealt = String(data.runStats.damageDealt);
+    root.dataset.resultsDamageBoosted = String(data.runStats.damageBoosted);
+    root.dataset.resultsShieldBlocked = String(data.runStats.shieldBlocked);
+    root.dataset.resultsWeaponShape = data.runStats.weaponName;
   }
 }
 
