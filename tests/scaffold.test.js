@@ -1952,6 +1952,18 @@ test('project exposes a Windows desktop packaging command', async () => {
   assert.doesNotMatch(packageScript, /cp\(path\.join\(root, 'assets', 'runtime'\)/);
 });
 
+test('GitHub Releases can build and attach a zipped Windows package', async () => {
+  const releaseWorkflow = await readText('.github/workflows/release-windows-package.yml');
+
+  assert.match(releaseWorkflow, /name: Release Windows Package/);
+  assert.match(releaseWorkflow, /release:/);
+  assert.match(releaseWorkflow, /types: \[published\]/);
+  assert.match(releaseWorkflow, /npm run package:win/);
+  assert.match(releaseWorkflow, /Compress-Archive/);
+  assert.match(releaseWorkflow, /softprops\/action-gh-release@v2/);
+  assert.match(releaseWorkflow, /files:/);
+});
+
 test('desktop smoke test launches the shell and reaches the main menu', async () => {
   const packageJson = await readJson('package.json');
   const renderer = await readText('src/renderer/game.js');
