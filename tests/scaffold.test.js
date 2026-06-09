@@ -324,6 +324,30 @@ test('gameplay spawns pickup buffs on an independent cadence without blocking co
   assert.match(renderer, /spawnPickup/);
 });
 
+test('pickup lane and pickup type sequences vary by spawn randomization seed', async () => {
+  const { PICKUP_BUFFS, PICKUP_SPAWNING, createPickupSpawn, createSpawnRandomizationState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const pickupSequenceFor = (seed) => {
+    const spawnRandomization = createSpawnRandomizationState({ seedSource: () => seed });
+
+    return Array.from({ length: 8 }, (_, spawnIndex) => {
+      const pickup = createPickupSpawn({ spawnIndex, spawnRandomization });
+
+      return { type: pickup.type, x: pickup.x };
+    });
+  };
+  const firstRunSequence = pickupSequenceFor(303);
+  const secondRunSequence = pickupSequenceFor(404);
+
+  assert.notDeepEqual(firstRunSequence, secondRunSequence);
+  firstRunSequence.concat(secondRunSequence).forEach((pickup) => {
+    assert.ok(Object.keys(PICKUP_BUFFS).includes(pickup.type));
+    assert.ok(PICKUP_SPAWNING.lanes.includes(pickup.x));
+  });
+  assert.match(renderer, /createPickupSpawn\(\{ spawnIndex: this\.pickupSpawnCount, spawnRandomization: this\.spawnRandomization \}\)/);
+});
+
 test('test name markers do not change core gameplay behavior', async () => {
   const {
     BASIC_ENEMY,

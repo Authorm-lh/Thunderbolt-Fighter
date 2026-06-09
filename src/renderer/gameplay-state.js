@@ -421,10 +421,20 @@ export const shouldSpawnPickup = ({ elapsedMs, lastSpawnedMs, activePickupCount 
   activePickupCount < PICKUP_SPAWNING.maxActivePickups && elapsedMs - lastSpawnedMs >= PICKUP_SPAWNING.spawnIntervalMs
 );
 
-export const createPickupSpawn = ({ spawnIndex }) => {
+export const createPickupSpawn = ({ spawnIndex, spawnRandomization }) => {
   const pickupTypes = Object.keys(PICKUP_BUFFS);
-  const type = pickupTypes[spawnIndex % pickupTypes.length];
-  const x = PICKUP_SPAWNING.lanes[spawnIndex % PICKUP_SPAWNING.lanes.length];
+  const type = selectSpawnValue({
+    values: pickupTypes,
+    spawnIndex,
+    spawnRandomization,
+    stream: 'pickup-type'
+  });
+  const x = selectSpawnValue({
+    values: PICKUP_SPAWNING.lanes,
+    spawnIndex,
+    spawnRandomization,
+    stream: 'pickup-lane'
+  });
 
   return {
     id: `pickup-${spawnIndex}-${type}`,

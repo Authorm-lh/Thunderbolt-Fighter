@@ -701,7 +701,7 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnPickup() {
-    const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount });
+    const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount, spawnRandomization: this.spawnRandomization });
     const sprite = this.add.circle(pickup.x, pickup.y, pickup.radius, 0x45f3ff, 0.9)
       .setStrokeStyle(2, 0xf8fbff, 0.85);
     const nameMarker = this.createNameMarker(createTestNameMarker({
