@@ -107,7 +107,7 @@ export const ENEMY_CLASSES = {
     spawnIntervalMs: 0,
     speed: 24,
     radius: 64,
-    maxHealth: 240,
+    maxHealth: 1200,
     fireIntervalMs: 700,
     projectileSpeed: 390,
     projectileRadius: 10,

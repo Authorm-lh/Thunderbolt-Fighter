@@ -726,6 +726,7 @@ test('boss-class enemy tuning is distinct from lower enemy classes', async () =>
   const [advancedBoss] = advanceBasicEnemies({ enemies: [{ ...boss, y: 100 }], deltaSeconds: 10 });
   const bossProjectile = createBasicEnemyProjectile({ enemyId: boss.id, x: boss.x, y: advancedBoss.y, enemyType: boss.type });
 
+  assert.equal(bossClass.maxHealth, 1200);
   assert.ok(bossClass.maxHealth > ENEMY_CLASSES.elite.maxHealth);
   assert.ok(bossClass.projectileDamage > ENEMY_CLASSES.elite.projectileDamage);
   assert.ok(bossClass.contactDamage > ENEMY_CLASSES.elite.contactDamage);
@@ -1257,7 +1258,7 @@ test('Boss HP HUD exposes DOM state for smoke checks', async () => {
   const boss = { ...createBossEnemySpawn({ spawnIndex: 0 }), health: 180 };
   const bossHpHud = createBossHpHudState({ enemies: [boss] });
 
-  assert.equal(bossHpHud.text, 'Boss HP 180/240');
+  assert.equal(bossHpHud.text, 'Boss HP 180/1200');
   assert.match(renderer, /dataset\.bossHpCurrent/);
   assert.match(renderer, /dataset\.bossHpMax/);
   assert.match(renderer, /dataset\.bossHpText/);
