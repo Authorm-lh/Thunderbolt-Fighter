@@ -574,6 +574,62 @@ export const formatRunTimer = (remainingMs) => {
   return `${minutes}:${seconds}`;
 };
 
+export const LOCAL_RECORDS_STORAGE_KEY = 'thunderbolt-fighter:local-records';
+
+export const createDefaultLocalRecords = () => ({
+  bestScores: {},
+  recentRuns: []
+});
+
+export const createRunRecordKey = ({ runLengthMinutes, difficulty }) => `${runLengthMinutes}m:${difficulty}`;
+
+export const loadLocalRecords = ({ storage = globalThis.localStorage } = {}) => {
+  if (!storage) {
+    return createDefaultLocalRecords();
+  }
+
+  try {
+    return {
+      ...createDefaultLocalRecords(),
+      ...JSON.parse(storage.getItem(LOCAL_RECORDS_STORAGE_KEY) ?? '{}')
+    };
+  } catch {
+    return createDefaultLocalRecords();
+  }
+};
+
+export const saveLocalRecords = ({ storage = globalThis.localStorage, records }) => {
+  if (!storage) {
+    return records;
+  }
+
+  storage.setItem(LOCAL_RECORDS_STORAGE_KEY, JSON.stringify(records));
+
+  return records;
+};
+
+export const getBestScoreForRun = ({ records, runLengthMinutes, difficulty }) => (
+  records.bestScores[createRunRecordKey({ runLengthMinutes, difficulty })] ?? null
+);
+
+export const saveBestScoreForRun = ({ storage = globalThis.localStorage, runLengthMinutes, difficulty, score }) => {
+  const records = loadLocalRecords({ storage });
+  const recordKey = createRunRecordKey({ runLengthMinutes, difficulty });
+  const currentBestScore = records.bestScores[recordKey] ?? null;
+  const bestScore = currentBestScore === null ? score : Math.max(currentBestScore, score);
+
+  return saveLocalRecords({
+    storage,
+    records: {
+      ...records,
+      bestScores: {
+        ...records.bestScores,
+        [recordKey]: bestScore
+      }
+    }
+  });
+};
+
 export const createRunStats = () => ({
   score: 0,
   health: PLAYER_SURVIVAL.maxHealth,

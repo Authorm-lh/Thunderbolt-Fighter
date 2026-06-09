@@ -1323,6 +1323,27 @@ test('results screen receives distinct boss and player defeat reasons', async ()
   assert.match(renderer, /dataset\.resultsTitle/);
 });
 
+test('local best scores are saved separately by run length and difficulty', async () => {
+  const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  saveBestScoreForRun({ storage, runLengthMinutes: 1, difficulty: 'normal', score: 1200 });
+  saveBestScoreForRun({ storage, runLengthMinutes: 3, difficulty: 'normal', score: 900 });
+  saveBestScoreForRun({ storage, runLengthMinutes: 1, difficulty: 'hard', score: 1500 });
+  saveBestScoreForRun({ storage, runLengthMinutes: 1, difficulty: 'normal', score: 800 });
+
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 1, difficulty: 'normal' }), 1200);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 3, difficulty: 'normal' }), 900);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 1, difficulty: 'hard' }), 1500);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), null);
+});
+
 test('results screen shows baseline run performance stats', async () => {
   const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
