@@ -1768,8 +1768,8 @@ test('results actions support mouse interaction and screen metadata checks', asy
   assert.match(renderer, /setInteractive\(\{ useHandCursor: true \}\)/);
   assert.match(renderer, /root\.dataset\.resultsActions = 'Main Menu,Replay'/);
   assert.match(smokeTest, /data-results-actions/);
-  assert.match(smokeTest, /clickGamePoint\(790, 650\)/);
-  assert.match(smokeTest, /clickGamePoint\(490, 650\)/);
+  assert.match(smokeTest, /clickGamePoint\(1020, 380\)/);
+  assert.match(smokeTest, /clickGamePoint\(260, 380\)/);
   assert.match(smokeTest, /data-screen="gameplay"/);
   assert.match(smokeTest, /data-screen="main-menu"/);
 });

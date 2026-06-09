@@ -1249,8 +1249,8 @@ class ResultsScene extends Phaser.Scene {
       lineSpacing: 8
     }).setOrigin(0.5, 0);
 
-    this.createResultsButton(this.scale.width / 2 - 150, 650, 'Main Menu', () => this.returnToMenu());
-    this.createResultsButton(this.scale.width / 2 + 150, 650, 'Replay', () => this.replayRun());
+    this.createResultsButton(this.scale.width / 2 - 380, 380, 'Main Menu', () => this.returnToMenu());
+    this.createResultsButton(this.scale.width / 2 + 380, 380, 'Replay', () => this.replayRun());
 
     root.dataset.screen = 'results';
     root.dataset.bossHpHudVisible = 'false';

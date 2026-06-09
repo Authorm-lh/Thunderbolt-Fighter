@@ -212,7 +212,7 @@ try {
   assert.equal(await gameRoot.getAttribute('data-results-replay-difficulty'), 'hard');
   assert.equal(await gameRoot.getAttribute('data-results-actions'), 'Main Menu,Replay');
 
-  await clickGamePoint(790, 650);
+  await clickGamePoint(1020, 380);
   await window.waitForSelector('#game-root[data-screen="gameplay"]', { timeout: 15000 });
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '5');
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'hard');
@@ -228,7 +228,7 @@ try {
   });
   await window.waitForSelector('#game-root[data-screen="results"]', { timeout: 15000 });
   const recentRunCountBeforeMainMenu = await window.evaluate(() => JSON.parse(localStorage.getItem('thunderbolt-fighter:local-records')).recentRuns.length);
-  await clickGamePoint(490, 650);
+  await clickGamePoint(260, 380);
   await window.waitForSelector('#game-root[data-screen="main-menu"]', { timeout: 15000 });
   assert.equal(await window.evaluate(() => JSON.parse(localStorage.getItem('thunderbolt-fighter:local-records')).recentRuns.length), recentRunCountBeforeMainMenu);
 
