@@ -1982,6 +1982,18 @@ test('release packaging workflow uses a stable Windows zip asset name', async ()
   assert.match(releaseWorkflow, /files: release\/thunderbolt-fighter-win32-x64\.zip/);
 });
 
+test('pull request CI keeps validation artifacts separate from Release publishing', async () => {
+  const ciWorkflow = await readText('.github/workflows/ci-build-check.yml');
+
+  assert.match(ciWorkflow, /pull_request:/);
+  assert.match(ciWorkflow, /npm test/);
+  assert.match(ciWorkflow, /npm run test:smoke/);
+  assert.match(ciWorkflow, /npm run package:win/);
+  assert.match(ciWorkflow, /actions\/upload-artifact@v4/);
+  assert.doesNotMatch(ciWorkflow, /release:/);
+  assert.doesNotMatch(ciWorkflow, /softprops\/action-gh-release/);
+});
+
 test('desktop smoke test launches the shell and reaches the main menu', async () => {
   const packageJson = await readJson('package.json');
   const renderer = await readText('src/renderer/game.js');
