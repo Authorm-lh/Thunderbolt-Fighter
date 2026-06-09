@@ -1051,6 +1051,18 @@ test('Boss HP HUD cleans up when the boss is defeated or results screen opens', 
   assert.match(renderer, /root\.dataset\.bossHpHudVisible = 'false'/);
 });
 
+test('Boss HP HUD layout does not cover regular HUD values', async () => {
+  const { createHudLayoutState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const layout = createHudLayoutState();
+
+  assert.deepEqual(layout.regularHud.values, ['score', 'timer', 'health', 'weapon', 'buff', 'pickups', 'bestScore']);
+  assert.ok(layout.regularHud.right < layout.bossHp.left);
+  assert.ok(layout.runSummary.bottom <= layout.regularHud.top);
+  assert.match(renderer, /HUD_LAYOUT\.regularHud/);
+  assert.match(renderer, /HUD_LAYOUT\.bossHp/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

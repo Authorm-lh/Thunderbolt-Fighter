@@ -3,6 +3,7 @@ import {
   BACKGROUND_SCROLL,
   BASIC_ENEMY,
   GAMEPLAY_PLAYFIELD,
+  HUD_LAYOUT,
   PICKUP_SPAWNING,
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
@@ -295,20 +296,20 @@ class GameplayScene extends Phaser.Scene {
     this.cursorKeys = this.input.keyboard.createCursorKeys();
     this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
 
-    this.add.text(24, 24, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
+    this.add.text(HUD_LAYOUT.runSummary.x, HUD_LAYOUT.runSummary.y, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '24px',
       color: '#9ed7ff',
       align: 'left'
     });
-    this.hudText = this.add.text(24, 58, '', {
+    this.hudText = this.add.text(HUD_LAYOUT.regularHud.x, HUD_LAYOUT.regularHud.y, '', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '22px',
       color: '#f8fbff',
       align: 'left',
       lineSpacing: 6
     });
-    this.bossHpHudText = this.add.text(this.scale.width / 2, 28, '', {
+    this.bossHpHudText = this.add.text(HUD_LAYOUT.bossHp.x, HUD_LAYOUT.bossHp.y, '', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '24px',
       color: '#ffd166',
