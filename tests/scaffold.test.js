@@ -1512,6 +1512,8 @@ test('restart and return-to-menu avoid abandoned-run records while completed run
   assert.match(renderer, /shouldPersistRunOutcome\(\{ endReason \}\)/);
   assert.match(renderer, /restartRun\(\) \{[\s\S]*?this\.scene\.restart\(\{[\s\S]*?runLengthMinutes: this\.selectedRunLengthMinutes[\s\S]*?difficulty: this\.selectedDifficulty/);
   assert.match(renderer, /returnToMenu\(\) \{[\s\S]*?this\.scene\.start\('main-menu'\)/);
+  assert.match(renderer, /resetRunState\(\) \{[\s\S]*?this\.projectiles = \[\][\s\S]*?this\.enemies = \[\][\s\S]*?this\.enemyProjectiles = \[\][\s\S]*?this\.pickups = \[\][\s\S]*?this\.paused = false/);
+  assert.match(renderer, /create\(data\) \{\r?\n    this\.resetRunState\(\)/);
   assert.doesNotMatch(renderer.match(/restartRun\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun/);
   assert.doesNotMatch(renderer.match(/returnToMenu\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun/);
 });

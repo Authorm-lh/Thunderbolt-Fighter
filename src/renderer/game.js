@@ -515,7 +515,41 @@ class GameplayScene extends Phaser.Scene {
     this.selectedDifficulty = 'normal';
   }
 
+  resetRunState() {
+    this.player = null;
+    this.cursorKeys = null;
+    this.wasdKeys = null;
+    this.projectiles = [];
+    this.enemies = [];
+    this.enemyProjectiles = [];
+    this.pickups = [];
+    this.playerNameMarker = null;
+    this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
+    this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
+    this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
+    this.enemySpawnCount = 0;
+    this.pickupSpawnCount = 0;
+    this.backgroundStars = [];
+    this.backgroundOffset = 0;
+    this.runBaseline = null;
+    this.runClock = null;
+    this.runStats = null;
+    this.spawnRandomization = null;
+    this.hudText = null;
+    this.bossHpHudText = null;
+    this.bossWarningText = null;
+    this.bossWarningDetailText = null;
+    this.bossWarningShown = false;
+    this.bossSpawned = false;
+    this.pauseOverlay = [];
+    this.pauseKey = null;
+    this.paused = false;
+    this.root = null;
+  }
+
   create(data) {
+    this.resetRunState();
+
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
     this.root = root;
