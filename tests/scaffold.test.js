@@ -1344,6 +1344,43 @@ test('local best scores are saved separately by run length and difficulty', asyn
   assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), null);
 });
 
+test('recent run history is saved locally and capped at the last 10 runs', async () => {
+  const { loadLocalRecords, saveRecentRun } = await import('../src/renderer/gameplay-state.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  Array.from({ length: 11 }, (_, index) => index + 1).forEach((runNumber) => {
+    saveRecentRun({
+      storage,
+      run: {
+        id: `run-${runNumber}`,
+        score: runNumber * 100,
+        runLengthMinutes: 1,
+        difficulty: 'normal'
+      }
+    });
+  });
+
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(records.recentRuns.length, 10);
+  assert.deepEqual(records.recentRuns.map((run) => run.id), [
+    'run-11',
+    'run-10',
+    'run-9',
+    'run-8',
+    'run-7',
+    'run-6',
+    'run-5',
+    'run-4',
+    'run-3',
+    'run-2'
+  ]);
+});
+
 test('results screen shows baseline run performance stats', async () => {
   const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

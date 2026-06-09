@@ -575,6 +575,7 @@ export const formatRunTimer = (remainingMs) => {
 };
 
 export const LOCAL_RECORDS_STORAGE_KEY = 'thunderbolt-fighter:local-records';
+export const RECENT_RUN_LIMIT = 10;
 
 export const createDefaultLocalRecords = () => ({
   bestScores: {},
@@ -626,6 +627,18 @@ export const saveBestScoreForRun = ({ storage = globalThis.localStorage, runLeng
         ...records.bestScores,
         [recordKey]: bestScore
       }
+    }
+  });
+};
+
+export const saveRecentRun = ({ storage = globalThis.localStorage, run }) => {
+  const records = loadLocalRecords({ storage });
+
+  return saveLocalRecords({
+    storage,
+    records: {
+      ...records,
+      recentRuns: [run, ...records.recentRuns].slice(0, RECENT_RUN_LIMIT)
     }
   });
 };
