@@ -132,6 +132,17 @@ test('new gameplay runs initialize spawn randomization from a changing seed sour
   assert.match(renderer, /createSpawnRandomizationState\(\)/);
 });
 
+test('automated tests can inject a fixed spawn randomization seed directly', async () => {
+  const { createEnemySpawn, createSpawnRandomizationState, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
+
+  const spawnRandomization = createSpawnRandomizationState({ seed: 707 });
+  const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: 0, spawnRandomization });
+  const enemy = createEnemySpawn({ spawnIndex: 0, enemyType, spawnRandomization });
+
+  assert.equal(spawnRandomization.seed, 707);
+  assert.equal(enemy.id, `${enemy.type}-0`);
+});
+
 test('gameplay scene uses a 16:9 logical playfield', async () => {
   const { GAMEPLAY_PLAYFIELD } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

@@ -145,8 +145,8 @@ export const getEnemyTestNameMarkerText = (enemyType = 'basic') => {
   return 'Basic Enemy';
 };
 
-export const createSpawnRandomizationState = ({ seedSource = Date.now } = {}) => ({
-  seed: seedSource()
+export const createSpawnRandomizationState = ({ seed, seedSource = Date.now } = {}) => ({
+  seed: seed ?? seedSource()
 });
 
 const createSeededRandomValue = ({ seed, stream, spawnIndex }) => {
