@@ -613,8 +613,7 @@ export const getBestScoreForRun = ({ records, runLengthMinutes, difficulty }) =>
   records.bestScores[createRunRecordKey({ runLengthMinutes, difficulty })] ?? null
 );
 
-export const saveBestScoreForRun = ({ storage = globalThis.localStorage, runLengthMinutes, difficulty, score }) => {
-  const records = loadLocalRecords({ storage });
+export const saveBestScoreForRun = ({ storage = globalThis.localStorage, records = loadLocalRecords({ storage }), runLengthMinutes, difficulty, score }) => {
   const recordKey = createRunRecordKey({ runLengthMinutes, difficulty });
   const currentBestScore = records.bestScores[recordKey] ?? null;
   const bestScore = currentBestScore === null ? score : Math.max(currentBestScore, score);
@@ -656,7 +655,7 @@ export const persistCompletedRun = ({ storage = globalThis.localStorage, runLeng
   const recordsBeforeRun = loadLocalRecords({ storage });
   const recordToBeat = getBestScoreForRun({ records: recordsBeforeRun, runLengthMinutes, difficulty });
 
-  saveBestScoreForRun({ storage, runLengthMinutes, difficulty, score: stats.score });
+  saveBestScoreForRun({ storage, records: recordsBeforeRun, runLengthMinutes, difficulty, score: stats.score });
 
   return saveRecentRun({
     storage,

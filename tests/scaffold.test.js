@@ -1465,6 +1465,39 @@ test('completed run history names the pre-run local record as the record to beat
   assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), 2500);
 });
 
+test('completed run persistence reuses the loaded records when updating best score', async () => {
+  const { createRunClock, createRunStats, getBestScoreForRun, loadLocalRecords, persistCompletedRun } = await import('../src/renderer/gameplay-state.js');
+  const snapshots = [
+    { bestScores: { '5m:hard': 3000 }, recentRuns: [] },
+    { bestScores: { '5m:hard': 2000 }, recentRuns: [] }
+  ];
+  let storedRecords = null;
+  let readCount = 0;
+  const storage = {
+    getItem: () => {
+      readCount += 1;
+      return JSON.stringify(storedRecords ?? snapshots[Math.min(readCount - 1, snapshots.length - 1)]);
+    },
+    setItem: (_key, value) => {
+      storedRecords = JSON.parse(value);
+    }
+  };
+
+  persistCompletedRun({
+    storage,
+    runLengthMinutes: 5,
+    difficulty: 'hard',
+    endReason: 'timer-expired',
+    clock: createRunClock({ runLengthMinutes: 5 }),
+    stats: { ...createRunStats(), score: 2500, kills: 4 }
+  });
+
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(records.recentRuns[0].recordToBeat, 3000);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), 3000);
+});
+
 test('results screen shows current stats with local record context', async () => {
   const { createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
