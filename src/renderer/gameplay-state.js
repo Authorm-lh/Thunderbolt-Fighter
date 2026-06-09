@@ -567,6 +567,18 @@ export const createHudValues = ({ clock, stats }) => ({
   bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
 });
 
+export const createResultsTitle = ({ endReason }) => {
+  if (endReason === 'boss-defeated') {
+    return 'Boss Defeated';
+  }
+
+  if (endReason === 'health-depleted') {
+    return 'Player Defeated';
+  }
+
+  return 'Run Complete';
+};
+
 export const createResultsValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   kills: `Kills ${stats.kills}`,
@@ -721,12 +733,18 @@ export const resolveEnemyPlayerHits = ({ stats, player, enemyProjectiles, enemie
   };
 };
 
-export const getRunEndReason = ({ clock, stats }) => {
+export const getRunEndReason = ({ clock, stats, enemies = [] }) => {
   if (stats.health <= 0) {
     return 'health-depleted';
   }
 
-  if (clock.remainingMs <= 0) {
+  if (stats.bossesDefeated > 0) {
+    return 'boss-defeated';
+  }
+
+  const activeBoss = enemies.some((enemy) => enemy.type === 'boss-class' && enemy.health > 0);
+
+  if (clock.remainingMs <= 0 && !activeBoss) {
     return 'timer-expired';
   }
 

@@ -807,8 +807,8 @@ test('destroying basic enemies increases score, kills, and damage dealt', async 
   assert.match(renderer, /dataset\.kills/);
 });
 
-test('defeating the boss awards score and boss result stats', async () => {
-  const { ENEMY_CLASSES, applyDestroyedEnemyRewards, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+test('defeating the boss ends the run with score and boss result stats', async () => {
+  const { ENEMY_CLASSES, applyDestroyedEnemyRewards, createResultsValues, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
   const bossDamageDealt = ENEMY_CLASSES['boss-class'].maxHealth;
   const stats = applyDestroyedEnemyRewards({
@@ -822,7 +822,12 @@ test('defeating the boss awards score and boss result stats', async () => {
   assert.equal(stats.kills, 1);
   assert.equal(stats.bossesDefeated, 1);
   assert.equal(stats.damageDealt, bossDamageDealt);
+  assert.equal(getRunEndReason({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    stats
+  }), 'boss-defeated');
   assert.equal(resultsValues.bossesDefeated, 'Bosses Defeated 1');
+  assert.match(renderer, /result\.destroyedEnemies\.some\(\(enemy\) => enemy\.type === 'boss-class'\)[\s\S]*?this\.endRunIfNeeded\(\)/);
   assert.match(renderer, /dataset\.resultsBossesDefeated/);
 });
 
@@ -1111,7 +1116,7 @@ test('the run ends when the selected timer expires', async () => {
   assert.match(renderer, /endRunIfNeeded/);
 });
 
-test('the run can time out while the boss remains alive', async () => {
+test('the run keeps going when the timer expires while the boss remains alive', async () => {
   const { ENEMY_CLASSES, advanceRunClock, createBossEnemySpawn, createResultsValues, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
   const aliveBoss = {
@@ -1131,10 +1136,39 @@ test('the run can time out while the boss remains alive', async () => {
     clock: expiredClock,
     stats,
     enemies: [aliveBoss]
-  }), 'timer-expired');
+  }), null);
   assert.equal(createResultsValues({ clock: expiredClock, stats }).bossesDefeated, 'Bosses Defeated 0');
-  assert.match(renderer, /endRunIfNeeded/);
+  assert.match(renderer, /getRunEndReason\(\{ clock: this\.runClock, stats: this\.runStats, enemies: this\.enemies \}\)/);
   assert.match(renderer, /dataset\.resultsBossesDefeated/);
+});
+
+test('player defeat still ends the run during a boss fight', async () => {
+  const { ENEMY_CLASSES, applyPlayerDamage, createBossEnemySpawn, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const aliveBoss = {
+    ...createBossEnemySpawn({ spawnIndex: 0 }),
+    y: ENEMY_CLASSES['boss-class'].holdY,
+    health: ENEMY_CLASSES['boss-class'].maxHealth
+  };
+  const depletedStats = applyPlayerDamage({ stats: createRunStats(), damage: 100 });
+
+  assert.equal(getRunEndReason({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    stats: depletedStats,
+    enemies: [aliveBoss]
+  }), 'health-depleted');
+  assert.match(renderer, /dataset\.endReason = data\.endReason/);
+});
+
+test('results screen receives distinct boss and player defeat reasons', async () => {
+  const { createResultsTitle } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(createResultsTitle({ endReason: 'boss-defeated' }), 'Boss Defeated');
+  assert.equal(createResultsTitle({ endReason: 'health-depleted' }), 'Player Defeated');
+  assert.equal(createResultsTitle({ endReason: 'timer-expired' }), 'Run Complete');
+  assert.match(renderer, /createResultsTitle\(\{ endReason: data\.endReason \}\)/);
+  assert.match(renderer, /dataset\.resultsTitle/);
 });
 
 test('results screen shows baseline run performance stats', async () => {
