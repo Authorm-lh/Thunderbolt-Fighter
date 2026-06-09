@@ -1243,6 +1243,8 @@ class ResultsScene extends Phaser.Scene {
       lineSpacing: 8
     }).setOrigin(0.5, 0);
 
+    this.createResultsButton(this.scale.width / 2, 650, 'Main Menu', () => this.scene.start('main-menu'));
+
     root.dataset.screen = 'results';
     root.dataset.bossHpHudVisible = 'false';
     root.dataset.endReason = data.endReason;
@@ -1259,6 +1261,28 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.resultsWeaponShape = data.runStats.weaponName;
     root.dataset.resultsBestScore = data.runStats.bestScore === null ? '' : String(data.runStats.bestScore);
     root.dataset.resultsLocalRecord = String(Math.max(data.runStats.score, data.runStats.bestScore ?? 0));
+    root.dataset.resultsActions = 'Main Menu';
+  }
+
+  createResultsButton(x, y, labelText, action) {
+    const plate = this.add.rectangle(x, y, 280, 56, 0x0b2234, 0.78)
+      .setStrokeStyle(1, 0x3db7ff, 0.66);
+    const hitArea = this.add.rectangle(x, y, 280, 56, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y, labelText, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '24px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#071827',
+      strokeThickness: 3
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const invoke = () => action();
+
+    hitArea.on('pointerdown', invoke);
+    label.on('pointerdown', invoke);
+
+    return { plate, hitArea, label };
   }
 }
 
