@@ -143,6 +143,30 @@ test('automated tests can inject a fixed spawn randomization seed directly', asy
   assert.equal(enemy.id, `${enemy.type}-0`);
 });
 
+test('spawn randomization is deterministic for fixed seeds and changes across seeds', async () => {
+  const { createEnemySpawn, createPickupSpawn, createSpawnRandomizationState, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
+
+  const spawnSequenceFor = (seed) => {
+    const spawnRandomization = createSpawnRandomizationState({ seed });
+
+    return Array.from({ length: 10 }, (_, spawnIndex) => {
+      const enemyType = resolveEnemyTypeForSpawn({ spawnIndex, spawnRandomization });
+      const enemy = createEnemySpawn({ spawnIndex, enemyType, spawnRandomization });
+      const pickup = createPickupSpawn({ spawnIndex, spawnRandomization });
+
+      return {
+        enemyType: enemy.type,
+        enemyX: enemy.x,
+        pickupType: pickup.type,
+        pickupX: pickup.x
+      };
+    });
+  };
+
+  assert.deepEqual(spawnSequenceFor(808), spawnSequenceFor(808));
+  assert.notDeepEqual(spawnSequenceFor(808), spawnSequenceFor(909));
+});
+
 test('gameplay scene uses a 16:9 logical playfield', async () => {
   const { GAMEPLAY_PLAYFIELD } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
