@@ -1964,6 +1964,13 @@ test('GitHub Releases can build and attach a zipped Windows package', async () =
   assert.match(releaseWorkflow, /files:/);
 });
 
+test('release packaging workflow reuses the Windows package command', async () => {
+  const releaseWorkflow = await readText('.github/workflows/release-windows-package.yml');
+
+  assert.deepEqual(releaseWorkflow.match(/npm run package:win/g), ['npm run package:win']);
+  assert.doesNotMatch(releaseWorkflow, /node scripts\/package-win\.js/);
+});
+
 test('desktop smoke test launches the shell and reaches the main menu', async () => {
   const packageJson = await readJson('package.json');
   const renderer = await readText('src/renderer/game.js');
