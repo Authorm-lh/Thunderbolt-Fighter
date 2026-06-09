@@ -14,6 +14,7 @@ import {
   advanceRunClock,
   advanceTimedBuffs,
   applyDestroyedEnemyRewards,
+  applyLocalRecordContext,
   applyPickupBuff,
   applyPlayerDamage,
   createBasicEnemyProjectile,
@@ -37,6 +38,7 @@ import {
   getEnemyTestNameMarkerText,
   getPickupTestNameMarkerText,
   getRunEndReason,
+  persistCompletedRun,
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
   resolveEnemyTypeForSpawn,
@@ -264,6 +266,7 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningShown = false;
     this.bossSpawned = false;
     this.root = null;
+    this.selectedRunLengthMinutes = 1;
     this.selectedDifficulty = 'normal';
   }
 
@@ -271,12 +274,17 @@ class GameplayScene extends Phaser.Scene {
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
     this.root = root;
+    this.selectedRunLengthMinutes = runOptions.runLengthMinutes;
     this.selectedDifficulty = runOptions.difficulty;
     this.bossWarningShown = false;
     this.bossSpawned = false;
     this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
-    this.runStats = createRunStats();
+    this.runStats = applyLocalRecordContext({
+      stats: createRunStats(),
+      runLengthMinutes: runOptions.runLengthMinutes,
+      difficulty: runOptions.difficulty
+    });
     this.spawnRandomization = createSpawnRandomizationState();
 
     this.cameras.main.setBackgroundColor('#09111f');
@@ -509,7 +517,7 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.weapon = this.runStats.weaponName;
     this.root.dataset.buff = this.runStats.activeBuffName;
     this.root.dataset.pickups = String(this.runStats.pickups);
-    this.root.dataset.bestScore = this.runStats.bestScore === null ? '' : String(this.runStats.bestScore);
+    this.root.dataset.bestScore = hudValues.bestScore === 'Best —' ? '' : hudValues.bestScore.replace('Best ', '');
     this.root.dataset.hudWeapon = hudValues.weapon;
     this.root.dataset.hudBuff = hudValues.buff;
     this.root.dataset.hudPickups = hudValues.pickups;
@@ -541,6 +549,13 @@ class GameplayScene extends Phaser.Scene {
     const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats, enemies: this.enemies });
 
     if (endReason) {
+      persistCompletedRun({
+        runLengthMinutes: this.selectedRunLengthMinutes,
+        difficulty: this.selectedDifficulty,
+        endReason,
+        clock: this.runClock,
+        stats: this.runStats
+      });
       this.scene.start('results', {
         endReason,
         runClock: this.runClock,
@@ -860,6 +875,8 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.resultsDamageBoosted = String(data.runStats.damageBoosted);
     root.dataset.resultsShieldBlocked = String(data.runStats.shieldBlocked);
     root.dataset.resultsWeaponShape = data.runStats.weaponName;
+    root.dataset.resultsBestScore = data.runStats.bestScore === null ? '' : String(data.runStats.bestScore);
+    root.dataset.resultsLocalRecord = String(Math.max(data.runStats.score, data.runStats.bestScore ?? 0));
   }
 }
 

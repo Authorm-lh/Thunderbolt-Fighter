@@ -1014,6 +1014,37 @@ test('runs count down from the selected duration', async () => {
   assert.match(renderer, /advanceRunClock/);
 });
 
+test('HUD shows the relevant local best score for the active run options', async () => {
+  const { applyLocalRecordContext, createHudValues, createRunClock, createRunStats, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  saveBestScoreForRun({ storage, runLengthMinutes: 5, difficulty: 'hard', score: 2400 });
+  saveBestScoreForRun({ storage, runLengthMinutes: 3, difficulty: 'hard', score: 9000 });
+
+  const stats = applyLocalRecordContext({
+    storage,
+    stats: createRunStats(),
+    runLengthMinutes: 5,
+    difficulty: 'hard'
+  });
+  const hudValues = createHudValues({ clock: createRunClock({ runLengthMinutes: 5 }), stats });
+  const beatenRecordHudValues = createHudValues({
+    clock: createRunClock({ runLengthMinutes: 5 }),
+    stats: { ...stats, score: 2600 }
+  });
+
+  assert.equal(stats.bestScore, 2400);
+  assert.equal(hudValues.bestScore, 'Best 2400');
+  assert.equal(beatenRecordHudValues.bestScore, 'Best 2600');
+  assert.match(renderer, /applyLocalRecordContext/);
+  assert.match(renderer, /dataset\.hudBestScore/);
+});
+
 test('HUD shows baseline survival and scoring values', async () => {
   const { createRunClock, createRunStats, createHudValues } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -1323,6 +1354,174 @@ test('results screen receives distinct boss and player defeat reasons', async ()
   assert.match(renderer, /dataset\.resultsTitle/);
 });
 
+test('local best scores are saved separately by run length and difficulty', async () => {
+  const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  saveBestScoreForRun({ storage, runLengthMinutes: 1, difficulty: 'normal', score: 1200 });
+  saveBestScoreForRun({ storage, runLengthMinutes: 3, difficulty: 'normal', score: 900 });
+  saveBestScoreForRun({ storage, runLengthMinutes: 1, difficulty: 'hard', score: 1500 });
+  saveBestScoreForRun({ storage, runLengthMinutes: 1, difficulty: 'normal', score: 800 });
+
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 1, difficulty: 'normal' }), 1200);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 3, difficulty: 'normal' }), 900);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 1, difficulty: 'hard' }), 1500);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), null);
+});
+
+test('recent run history is saved locally and capped at the last 10 runs', async () => {
+  const { loadLocalRecords, saveRecentRun } = await import('../src/renderer/gameplay-state.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  Array.from({ length: 11 }, (_, index) => index + 1).forEach((runNumber) => {
+    saveRecentRun({
+      storage,
+      run: {
+        id: `run-${runNumber}`,
+        score: runNumber * 100,
+        runLengthMinutes: 1,
+        difficulty: 'normal'
+      }
+    });
+  });
+
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(records.recentRuns.length, 10);
+  assert.deepEqual(records.recentRuns.map((run) => run.id), [
+    'run-11',
+    'run-10',
+    'run-9',
+    'run-8',
+    'run-7',
+    'run-6',
+    'run-5',
+    'run-4',
+    'run-3',
+    'run-2'
+  ]);
+});
+
+test('completed runs persist records that load into a later app session', async () => {
+  const { applyLocalRecordContext, createRunClock, createRunStats, loadLocalRecords, persistCompletedRun } = await import('../src/renderer/gameplay-state.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  persistCompletedRun({
+    storage,
+    runLengthMinutes: 5,
+    difficulty: 'hard',
+    endReason: 'timer-expired',
+    clock: createRunClock({ runLengthMinutes: 5 }),
+    stats: { ...createRunStats(), score: 3200, kills: 8 }
+  });
+
+  const restartedSessionStats = applyLocalRecordContext({
+    storage,
+    stats: createRunStats(),
+    runLengthMinutes: 5,
+    difficulty: 'hard'
+  });
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(restartedSessionStats.bestScore, 3200);
+  assert.equal(records.recentRuns[0].score, 3200);
+  assert.equal(records.recentRuns[0].runLengthMinutes, 5);
+  assert.equal(records.recentRuns[0].difficulty, 'hard');
+  assert.equal(records.recentRuns[0].endReason, 'timer-expired');
+});
+
+test('completed run history names the pre-run local record as the record to beat', async () => {
+  const { createRunClock, createRunStats, getBestScoreForRun, loadLocalRecords, persistCompletedRun, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  saveBestScoreForRun({ storage, runLengthMinutes: 5, difficulty: 'hard', score: 2000 });
+  persistCompletedRun({
+    storage,
+    runLengthMinutes: 5,
+    difficulty: 'hard',
+    endReason: 'boss-defeated',
+    clock: createRunClock({ runLengthMinutes: 5 }),
+    stats: { ...createRunStats(), score: 2500, kills: 9, bossesDefeated: 1 }
+  });
+
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(records.recentRuns[0].score, 2500);
+  assert.equal(records.recentRuns[0].recordToBeat, 2000);
+  assert.equal(records.recentRuns[0].localRecord, undefined);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), 2500);
+});
+
+test('completed run persistence reuses the loaded records when updating best score', async () => {
+  const { createRunClock, createRunStats, getBestScoreForRun, loadLocalRecords, persistCompletedRun } = await import('../src/renderer/gameplay-state.js');
+  const snapshots = [
+    { bestScores: { '5m:hard': 3000 }, recentRuns: [] },
+    { bestScores: { '5m:hard': 2000 }, recentRuns: [] }
+  ];
+  let storedRecords = null;
+  let readCount = 0;
+  const storage = {
+    getItem: () => {
+      readCount += 1;
+      return JSON.stringify(storedRecords ?? snapshots[Math.min(readCount - 1, snapshots.length - 1)]);
+    },
+    setItem: (_key, value) => {
+      storedRecords = JSON.parse(value);
+    }
+  };
+
+  persistCompletedRun({
+    storage,
+    runLengthMinutes: 5,
+    difficulty: 'hard',
+    endReason: 'timer-expired',
+    clock: createRunClock({ runLengthMinutes: 5 }),
+    stats: { ...createRunStats(), score: 2500, kills: 4 }
+  });
+
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(records.recentRuns[0].recordToBeat, 3000);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), 3000);
+});
+
+test('results screen shows current stats with local record context', async () => {
+  const { createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const stats = {
+    ...createRunStats(),
+    score: 3000,
+    bestScore: 2400,
+    kills: 7
+  };
+  const resultsValues = createResultsValues({ clock: createRunClock({ runLengthMinutes: 5 }), stats });
+
+  assert.equal(resultsValues.score, 'Score 3000');
+  assert.equal(resultsValues.kills, 'Kills 7');
+  assert.equal(resultsValues.bestScore, 'Previous Best 2400');
+  assert.equal(resultsValues.localRecord, 'Local Record 3000');
+  assert.match(renderer, /dataset\.resultsBestScore/);
+  assert.match(renderer, /dataset\.resultsLocalRecord/);
+});
+
 test('results screen shows baseline run performance stats', async () => {
   const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -1342,7 +1541,9 @@ test('results screen shows baseline run performance stats', async () => {
     damageDealt: 'Damage Dealt 0',
     damageBoosted: 'Damage Boosted 0',
     shieldBlocked: 'Shield Blocked 0',
-    weaponShape: 'Weapon Shape Blaster'
+    weaponShape: 'Weapon Shape Blaster',
+    bestScore: 'Previous Best —',
+    localRecord: 'Local Record 0'
   });
   assert.match(renderer, /ResultsScene/);
   assert.match(renderer, /createResultsValues/);
@@ -1394,6 +1595,32 @@ test('results count collected pickups and related combat stats once through the 
   assert.match(renderer, /dataset\.resultsPickups/);
   assert.match(renderer, /dataset\.resultsDamageBoosted/);
   assert.match(renderer, /dataset\.resultsShieldBlocked/);
+});
+
+test('local record tests cover keying, caps, persistence, and smoke-visible context', async () => {
+  const unitTests = await readText('tests/scaffold.test.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(unitTests, /local best scores are saved separately by run length and difficulty/);
+  assert.match(unitTests, /recent run history is saved locally and capped at the last 10 runs/);
+  assert.match(unitTests, /completed runs persist records that load into a later app session/);
+  assert.match(unitTests, /local records use browser storage without network access or accounts/);
+  assert.match(smokeTest, /data-hud-best-score/);
+  assert.match(smokeTest, /data-results-local-record/);
+});
+
+test('local records use browser storage without network access or accounts', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const state = await readText('src/renderer/gameplay-state.js');
+
+  assert.match(state, /localStorage/);
+  assert.match(renderer, /persistCompletedRun/);
+  assert.doesNotMatch(state, /fetch\(/);
+  assert.doesNotMatch(renderer, /fetch\(/);
+  assert.doesNotMatch(state, /https?:\/\//);
+  assert.doesNotMatch(renderer, /https?:\/\//);
+  assert.doesNotMatch(state, /account/i);
+  assert.doesNotMatch(renderer, /account/i);
 });
 
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {

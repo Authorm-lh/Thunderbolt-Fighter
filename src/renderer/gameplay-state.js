@@ -574,6 +574,105 @@ export const formatRunTimer = (remainingMs) => {
   return `${minutes}:${seconds}`;
 };
 
+export const LOCAL_RECORDS_STORAGE_KEY = 'thunderbolt-fighter:local-records';
+export const RECENT_RUN_LIMIT = 10;
+
+export const createDefaultLocalRecords = () => ({
+  bestScores: {},
+  recentRuns: []
+});
+
+export const createRunRecordKey = ({ runLengthMinutes, difficulty }) => `${runLengthMinutes}m:${difficulty}`;
+
+export const loadLocalRecords = ({ storage = globalThis.localStorage } = {}) => {
+  if (!storage) {
+    return createDefaultLocalRecords();
+  }
+
+  try {
+    return {
+      ...createDefaultLocalRecords(),
+      ...JSON.parse(storage.getItem(LOCAL_RECORDS_STORAGE_KEY) ?? '{}')
+    };
+  } catch {
+    return createDefaultLocalRecords();
+  }
+};
+
+export const saveLocalRecords = ({ storage = globalThis.localStorage, records }) => {
+  if (!storage) {
+    return records;
+  }
+
+  storage.setItem(LOCAL_RECORDS_STORAGE_KEY, JSON.stringify(records));
+
+  return records;
+};
+
+export const getBestScoreForRun = ({ records, runLengthMinutes, difficulty }) => (
+  records.bestScores[createRunRecordKey({ runLengthMinutes, difficulty })] ?? null
+);
+
+export const saveBestScoreForRun = ({ storage = globalThis.localStorage, records = loadLocalRecords({ storage }), runLengthMinutes, difficulty, score }) => {
+  const recordKey = createRunRecordKey({ runLengthMinutes, difficulty });
+  const currentBestScore = records.bestScores[recordKey] ?? null;
+  const bestScore = currentBestScore === null ? score : Math.max(currentBestScore, score);
+
+  return saveLocalRecords({
+    storage,
+    records: {
+      ...records,
+      bestScores: {
+        ...records.bestScores,
+        [recordKey]: bestScore
+      }
+    }
+  });
+};
+
+export const saveRecentRun = ({ storage = globalThis.localStorage, run }) => {
+  const records = loadLocalRecords({ storage });
+
+  return saveLocalRecords({
+    storage,
+    records: {
+      ...records,
+      recentRuns: [run, ...records.recentRuns].slice(0, RECENT_RUN_LIMIT)
+    }
+  });
+};
+
+export const applyLocalRecordContext = ({ storage = globalThis.localStorage, stats, runLengthMinutes, difficulty }) => ({
+  ...stats,
+  bestScore: getBestScoreForRun({
+    records: loadLocalRecords({ storage }),
+    runLengthMinutes,
+    difficulty
+  })
+});
+
+export const persistCompletedRun = ({ storage = globalThis.localStorage, runLengthMinutes, difficulty, endReason, clock, stats }) => {
+  const recordsBeforeRun = loadLocalRecords({ storage });
+  const recordToBeat = getBestScoreForRun({ records: recordsBeforeRun, runLengthMinutes, difficulty });
+
+  saveBestScoreForRun({ storage, records: recordsBeforeRun, runLengthMinutes, difficulty, score: stats.score });
+
+  return saveRecentRun({
+    storage,
+    run: {
+      score: stats.score,
+      runLengthMinutes,
+      difficulty,
+      endReason,
+      timeSurvivedMs: clock.durationMs - clock.remainingMs,
+      kills: stats.kills,
+      bossesDefeated: stats.bossesDefeated,
+      pickups: stats.pickups,
+      recordToBeat
+    }
+  });
+};
+
 export const createRunStats = () => ({
   score: 0,
   health: PLAYER_SURVIVAL.maxHealth,
@@ -620,17 +719,21 @@ export const formatActiveBuffs = (stats) => {
   return activeBuffs.length > 0 ? activeBuffs.join(' + ') : 'None';
 };
 
-export const createHudValues = ({ clock, stats }) => ({
-  score: `Score ${stats.score}`,
-  timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
-  health: stats.shield > 0
-    ? `Health ${stats.health}/${stats.maxHealth} + Shield ${stats.shield}`
-    : `Health ${stats.health}/${stats.maxHealth}`,
-  weapon: `Weapon ${stats.weaponName}`,
-  buff: `Buff ${formatActiveBuffs(stats)}`,
-  pickups: `Pickups ${stats.pickups}`,
-  bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
-});
+export const createHudValues = ({ clock, stats }) => {
+  const currentBestScore = Math.max(stats.score, stats.bestScore ?? 0);
+
+  return {
+    score: `Score ${stats.score}`,
+    timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
+    health: stats.shield > 0
+      ? `Health ${stats.health}/${stats.maxHealth} + Shield ${stats.shield}`
+      : `Health ${stats.health}/${stats.maxHealth}`,
+    weapon: `Weapon ${stats.weaponName}`,
+    buff: `Buff ${formatActiveBuffs(stats)}`,
+    pickups: `Pickups ${stats.pickups}`,
+    bestScore: currentBestScore === 0 ? 'Best —' : `Best ${currentBestScore}`
+  };
+};
 
 export const createResultsTitle = ({ endReason }) => {
   if (endReason === 'boss-defeated') {
@@ -654,7 +757,9 @@ export const createResultsValues = ({ clock, stats }) => ({
   damageDealt: `Damage Dealt ${stats.damageDealt}`,
   damageBoosted: `Damage Boosted ${stats.damageBoosted}`,
   shieldBlocked: `Shield Blocked ${stats.shieldBlocked}`,
-  weaponShape: `Weapon Shape ${stats.weaponName}`
+  weaponShape: `Weapon Shape ${stats.weaponName}`,
+  bestScore: stats.bestScore === null ? 'Previous Best —' : `Previous Best ${stats.bestScore}`,
+  localRecord: `Local Record ${Math.max(stats.score, stats.bestScore ?? 0)}`
 });
 
 export const applyPlayerDamage = ({ stats, damage }) => {
