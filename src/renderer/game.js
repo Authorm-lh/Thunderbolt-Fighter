@@ -779,13 +779,13 @@ class GameplayScene extends Phaser.Scene {
     });
 
     this.add.image(
-      HUD_LAYOUT.regularHud.x + HUD_LAYOUT.regularHud.panelWidth / 2,
-      HUD_LAYOUT.regularHud.y + HUD_LAYOUT.regularHud.panelHeight / 2,
+      HUD_LAYOUT.panel.x + HUD_LAYOUT.panel.width / 2,
+      HUD_LAYOUT.panel.y + HUD_LAYOUT.panel.height / 2,
       'hud-panel'
     )
-      .setDisplaySize(HUD_LAYOUT.regularHud.panelWidth, HUD_LAYOUT.regularHud.panelHeight)
+      .setDisplaySize(HUD_LAYOUT.panel.width, HUD_LAYOUT.panel.height)
       .setAlpha(0.82);
-    this.add.image(HUD_LAYOUT.runSummary.x - 22, HUD_LAYOUT.runSummary.y + 14, 'life-icon')
+    this.add.image(HUD_LAYOUT.runSummary.iconX, HUD_LAYOUT.runSummary.iconY, 'life-icon')
       .setDisplaySize(28, 28);
     this.add.text(HUD_LAYOUT.runSummary.x, HUD_LAYOUT.runSummary.y, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',

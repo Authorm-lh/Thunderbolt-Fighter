@@ -1091,8 +1091,17 @@ test('HUD shows baseline survival and scoring values', async () => {
     pickups: 'Pickups 0',
     bestScore: 'Best —'
   });
-  assert.ok(layout.regularHud.panelHeight >= layout.regularHud.values.length * 30 + 28);
-  assert.match(renderer, /setDisplaySize\(HUD_LAYOUT\.regularHud\.panelWidth, HUD_LAYOUT\.regularHud\.panelHeight\)/);
+  const innerLeft = layout.panel.x + layout.panel.padding;
+  const innerTop = layout.panel.y + layout.panel.padding;
+  const innerRight = layout.panel.x + layout.panel.width - layout.panel.padding;
+  const innerBottom = layout.panel.y + layout.panel.height - layout.panel.padding;
+  const regularHudBottom = layout.regularHud.y + layout.regularHud.values.length * 30;
+
+  assert.ok(layout.regularHud.top >= innerTop);
+  assert.ok(layout.regularHud.x >= innerLeft);
+  assert.ok(layout.regularHud.right <= innerRight);
+  assert.ok(regularHudBottom <= innerBottom);
+  assert.match(renderer, /setDisplaySize\(HUD_LAYOUT\.panel\.width, HUD_LAYOUT\.panel\.height\)/);
   assert.match(renderer, /createHudValues/);
   assert.match(renderer, /Score/);
   assert.match(renderer, /Health/);
