@@ -163,9 +163,9 @@ try {
     gameplay.updateBossHpHud();
   });
   assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'true');
-  assert.equal(await gameRoot.getAttribute('data-boss-hp-current'), '240');
-  assert.equal(await gameRoot.getAttribute('data-boss-hp-max'), '240');
-  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 240/240');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-current'), '1200');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-max'), '1200');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 1200/1200');
 
   await window.evaluate(() => {
     const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
@@ -180,8 +180,8 @@ try {
     gameplay.resolvePlayerProjectileHits();
   });
   const bossHpAfterDamage = await gameRoot.getAttribute('data-boss-hp-current');
-  assert.equal(bossHpAfterDamage, '225');
-  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 225/240');
+  assert.equal(bossHpAfterDamage, '1185');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 1185/1200');
 
   await window.evaluate(() => {
     const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
