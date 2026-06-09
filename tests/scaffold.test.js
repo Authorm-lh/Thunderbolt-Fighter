@@ -1982,6 +1982,15 @@ test('release packaging workflow uses a stable Windows zip asset name', async ()
   assert.match(releaseWorkflow, /files: release\/thunderbolt-fighter-win32-x64\.zip/);
 });
 
+test('root README is English and links to the Simplified Chinese README', async () => {
+  const readme = await readText('README.md');
+
+  assert.match(readme, /^# Thunderbolt Fighter/m);
+  assert.match(readme, /\[简体中文\]\(README\.zh-CN\.md\)/);
+  assert.match(readme, /Thunderbolt Fighter is an offline desktop arcade shooter/);
+  assert.doesNotMatch(readme, /# 雷霆战机/);
+});
+
 test('pull request CI keeps validation artifacts separate from Release publishing', async () => {
   const ciWorkflow = await readText('.github/workflows/ci-build-check.yml');
 
