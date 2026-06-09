@@ -1991,6 +1991,18 @@ test('root README is English and links to the Simplified Chinese README', async 
   assert.doesNotMatch(readme, /# 雷霆战机/);
 });
 
+test('Simplified Chinese README mirrors the user-facing project guidance', async () => {
+  const readme = await readText('README.zh-CN.md');
+
+  assert.match(readme, /^# Thunderbolt Fighter/m);
+  assert.match(readme, /\[English\]\(README\.md\)/);
+  assert.match(readme, /离线桌面街机射击游戏/);
+  assert.match(readme, /安装/);
+  assert.match(readme, /运行/);
+  assert.match(readme, /构建/);
+  assert.match(readme, /下载/);
+});
+
 test('pull request CI keeps validation artifacts separate from Release publishing', async () => {
   const ciWorkflow = await readText('.github/workflows/ci-build-check.yml');
 
