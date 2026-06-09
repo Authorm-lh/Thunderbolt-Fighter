@@ -1944,6 +1944,12 @@ test('project exposes a Windows desktop packaging command', async () => {
   assert.match(packageScript, /`\$\{appName\}\.exe`/);
   assert.match(packageScript, /resources', 'app/);
   assert.match(packageScript, /node_modules', 'phaser/);
+  assert.match(packageScript, /copyApprovedRuntimeAssets/);
+  assert.match(packageScript, /APPROVED_RUNTIME_ASSET_EXTENSIONS/);
+  assert.match(packageScript, /\.png/);
+  assert.match(packageScript, /\.wav/);
+  assert.match(packageScript, /\.mp3/);
+  assert.doesNotMatch(packageScript, /cp\(path\.join\(root, 'assets', 'runtime'\)/);
 });
 
 test('desktop smoke test launches the shell and reaches the main menu', async () => {

@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -6,6 +6,30 @@ import path from 'node:path';
 const require = createRequire(import.meta.url);
 const AdmZip = require('adm-zip');
 const { downloadArtifact } = require('@electron/get');
+const APPROVED_RUNTIME_ASSET_EXTENSIONS = new Set(['.png', '.wav', '.mp3']);
+
+const copyApprovedRuntimeAssets = async (sourceDir, targetDir) => {
+  const entries = await readdir(sourceDir, { withFileTypes: true });
+
+  await Promise.all(
+    entries.map(async (entry) => {
+      const sourcePath = path.join(sourceDir, entry.name);
+      const targetPath = path.join(targetDir, entry.name);
+
+      if (entry.isDirectory()) {
+        await copyApprovedRuntimeAssets(sourcePath, targetPath);
+        return;
+      }
+
+      if (!APPROVED_RUNTIME_ASSET_EXTENSIONS.has(path.extname(entry.name))) {
+        return;
+      }
+
+      await mkdir(path.dirname(targetPath), { recursive: true });
+      await cp(sourcePath, targetPath);
+    })
+  );
+};
 
 const main = async () => {
   const root = process.cwd();
@@ -48,9 +72,10 @@ const main = async () => {
   await cp(electronExe, path.join(outputDir, `${appName}.exe`));
 
   await cp(path.join(root, 'src'), path.join(appDir, 'src'), { recursive: true });
-  await cp(path.join(root, 'assets', 'runtime'), path.join(appDir, 'assets', 'runtime'), {
-    recursive: true
-  });
+  await copyApprovedRuntimeAssets(
+    path.join(root, 'assets', 'runtime'),
+    path.join(appDir, 'assets', 'runtime')
+  );
   await cp(path.join(root, 'package.json'), path.join(appDir, 'package.json'));
   await cp(path.join(root, 'node_modules', 'phaser'), path.join(appDir, 'node_modules', 'phaser'), {
     recursive: true
