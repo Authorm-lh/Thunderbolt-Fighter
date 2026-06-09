@@ -5,12 +5,7 @@ const app = await electron.launch({ args: ['.'] });
 
 try {
   const window = await app.firstWindow();
-  await window.waitForSelector('#game-root[data-screen="main-menu"]', { timeout: 15000 });
   await window.waitForSelector('#game-root canvas', { timeout: 15000 });
-
-  const title = await window.locator('#game-root').getAttribute('data-title');
-  assert.equal(title, 'Thunderbolt Fighter');
-  await window.evaluate(() => localStorage.clear());
 
   const gameRoot = window.locator('#game-root');
   const canvasBox = await window.locator('#game-root canvas').boundingBox();
@@ -20,6 +15,18 @@ try {
     canvasBox.x + canvasBox.width * (x / 1280),
     canvasBox.y + canvasBox.height * (y / 720)
   );
+
+  if (await gameRoot.getAttribute('data-screen') === 'tutorial') {
+    assert.match(await gameRoot.getAttribute('data-tutorial-controls'), /Arrow keys|WASD/);
+    assert.match(await gameRoot.getAttribute('data-tutorial-goal'), /score/i);
+    await clickGamePoint(640, 546);
+  }
+
+  await window.waitForSelector('#game-root[data-screen="main-menu"]', { timeout: 15000 });
+
+  const title = await window.locator('#game-root').getAttribute('data-title');
+  assert.equal(title, 'Thunderbolt Fighter');
+  await window.evaluate(() => localStorage.clear());
 
   assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '1');
 

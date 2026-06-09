@@ -32,6 +32,7 @@ import {
   createRunClock,
   createRunStats,
   createTestNameMarker,
+  createTutorialContent,
   destroyTestNameMarker,
   followTestNameMarkerTarget,
   getEnemyClass,
@@ -40,6 +41,7 @@ import {
   getRunEndReason,
   loadSettings,
   markTutorialReplayRequested,
+  markTutorialSeen,
   persistCompletedRun,
   resetLocalRecords,
   resolveEscapedEnemyHits,
@@ -50,6 +52,7 @@ import {
   resolvePlayerVelocity,
   saveSettings,
   shouldAutoFire,
+  shouldShowTutorialOnLaunch,
   shouldBasicEnemyFire,
   shouldShowBossWarning,
   shouldSpawnBasicEnemy,
@@ -87,6 +90,91 @@ const MENU_LAYOUT = {
   settingsButtonY: 548,
   startButtonY: 616
 };
+
+class BootScene extends Phaser.Scene {
+  constructor() {
+    super('boot');
+  }
+
+  create() {
+    if (shouldShowTutorialOnLaunch()) {
+      this.scene.start('tutorial');
+      return;
+    }
+
+    this.scene.start('main-menu');
+  }
+}
+
+class TutorialScene extends Phaser.Scene {
+  constructor() {
+    super('tutorial');
+  }
+
+  create() {
+    const root = document.querySelector('#game-root');
+    const tutorialContent = createTutorialContent();
+
+    this.cameras.main.setBackgroundColor('#09111f');
+    this.add.rectangle(this.scale.width / 2, this.scale.height / 2, 760, 520, 0x071827, 0.74)
+      .setStrokeStyle(1, 0x3db7ff, 0.52);
+    this.add.text(this.scale.width / 2, 126, tutorialContent.title, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '42px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 5
+    }).setOrigin(0.5);
+    this.add.text(this.scale.width / 2, 246, tutorialContent.controls, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '28px',
+      color: '#9ed7ff',
+      align: 'center',
+      wordWrap: { width: 620 },
+      lineSpacing: 8
+    }).setOrigin(0.5);
+    this.add.text(this.scale.width / 2, 378, tutorialContent.goal, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '26px',
+      color: '#ffd166',
+      align: 'center',
+      wordWrap: { width: 620 },
+      lineSpacing: 8
+    }).setOrigin(0.5);
+
+    this.createTutorialButton(this.scale.width / 2, 546, 'Continue', () => {
+      markTutorialSeen();
+      this.scene.start('main-menu');
+    });
+
+    root.dataset.screen = 'tutorial';
+    root.dataset.tutorialTitle = tutorialContent.title;
+    root.dataset.tutorialControls = tutorialContent.controls;
+    root.dataset.tutorialGoal = tutorialContent.goal;
+  }
+
+  createTutorialButton(x, y, labelText, action) {
+    const plate = this.add.rectangle(x, y, 220, 62, 0x12334a, 0.82)
+      .setStrokeStyle(2, 0xffd166, 0.78);
+    const hitArea = this.add.rectangle(x, y, 220, 62, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y - 1, labelText, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '28px',
+      color: '#ffd166',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 4
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const invoke = () => action();
+
+    hitArea.on('pointerdown', invoke);
+    label.on('pointerdown', invoke);
+
+    return { plate, hitArea, label };
+  }
+}
 
 class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -1023,7 +1111,7 @@ const config = {
   width: GAMEPLAY_PLAYFIELD.width,
   height: GAMEPLAY_PLAYFIELD.height,
   backgroundColor: '#09111f',
-  scene: [MainMenuScene, SettingsScene, GameplayScene, ResultsScene],
+  scene: [BootScene, TutorialScene, MainMenuScene, SettingsScene, GameplayScene, ResultsScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH

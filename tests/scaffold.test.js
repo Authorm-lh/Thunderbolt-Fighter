@@ -1396,6 +1396,39 @@ test('settings controls expose audio, fullscreen, tutorial replay, and record re
   assert.match(renderer, /Reset Records/);
 });
 
+test('tutorial appears once on first launch and teaches controls and score-chase goal', async () => {
+  const {
+    TUTORIAL_STORAGE_KEY,
+    createTutorialContent,
+    loadTutorialProgress,
+    markTutorialSeen,
+    shouldShowTutorialOnLaunch
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+  const tutorialContent = createTutorialContent();
+
+  assert.deepEqual(loadTutorialProgress({ storage }), { seen: false });
+  assert.equal(shouldShowTutorialOnLaunch({ storage }), true);
+  assert.match(tutorialContent.controls, /Arrow keys|WASD/);
+  assert.match(tutorialContent.controls, /auto-fire/i);
+  assert.match(tutorialContent.goal, /score/i);
+  assert.match(tutorialContent.goal, /record/i);
+
+  markTutorialSeen({ storage });
+
+  assert.equal(storage.getItem(TUTORIAL_STORAGE_KEY), JSON.stringify({ seen: true }));
+  assert.equal(shouldShowTutorialOnLaunch({ storage }), false);
+  assert.match(renderer, /TutorialScene/);
+  assert.match(renderer, /createTutorialContent/);
+  assert.match(renderer, /dataset\.screen = 'tutorial'/);
+  assert.match(renderer, /this\.scene\.start\('main-menu'\)/);
+});
+
 test('local best scores are saved separately by run length and difficulty', async () => {
   const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
   const values = new Map();

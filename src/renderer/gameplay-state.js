@@ -576,6 +576,7 @@ export const formatRunTimer = (remainingMs) => {
 
 export const LOCAL_RECORDS_STORAGE_KEY = 'thunderbolt-fighter:local-records';
 export const SETTINGS_STORAGE_KEY = 'thunderbolt-fighter:settings';
+export const TUTORIAL_STORAGE_KEY = 'thunderbolt-fighter:tutorial';
 export const RECENT_RUN_LIMIT = 10;
 
 export const createDefaultLocalRecords = () => ({
@@ -633,6 +634,39 @@ export const resetLocalRecords = ({ storage = globalThis.localStorage } = {}) =>
   storage,
   records: createDefaultLocalRecords()
 });
+
+export const createTutorialContent = () => ({
+  title: 'Flight Briefing',
+  controls: 'Move with Arrow keys or WASD. Your ship auto-fires so you can focus on dodging and collecting pickups.',
+  goal: 'Chase the highest score, defeat enemies and bosses, and beat your local record for each run length and difficulty.'
+});
+
+export const loadTutorialProgress = ({ storage = globalThis.localStorage } = {}) => {
+  if (!storage) {
+    return { seen: false };
+  }
+
+  try {
+    return {
+      seen: false,
+      ...JSON.parse(storage.getItem(TUTORIAL_STORAGE_KEY) ?? '{}')
+    };
+  } catch {
+    return { seen: false };
+  }
+};
+
+export const markTutorialSeen = ({ storage = globalThis.localStorage } = {}) => {
+  const progress = { seen: true };
+
+  if (storage) {
+    storage.setItem(TUTORIAL_STORAGE_KEY, JSON.stringify(progress));
+  }
+
+  return progress;
+};
+
+export const shouldShowTutorialOnLaunch = ({ storage = globalThis.localStorage } = {}) => !loadTutorialProgress({ storage }).seen;
 
 export const createRunRecordKey = ({ runLengthMinutes, difficulty }) => `${runLengthMinutes}m:${difficulty}`;
 
