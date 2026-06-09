@@ -1,9 +1,26 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const readJson = async (path) => JSON.parse(await readFile(path, 'utf8'));
 const readText = (path) => readFile(path, 'utf8');
+
+const listFiles = async (directory) => {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const path = `${directory}/${entry.name}`;
+
+      if (entry.isDirectory()) {
+        return listFiles(path);
+      }
+
+      return path;
+    })
+  );
+
+  return files.flat();
+};
 
 test('project exposes an offline Electron and Phaser app scaffold', async () => {
   const packageJson = await readJson('package.json');
@@ -2028,8 +2045,13 @@ test('runtime assets and prototype reference assets are separated', async () => 
   const runtimeReadme = await readText('assets/runtime/README.md');
   const prototypeReadme = await readText('assets/prototype/README.md');
 
+  const runtimeFiles = await listFiles('assets/runtime');
+  const prototypeFiles = await listFiles('assets/prototype');
+
   assert.match(runtimeReadme, /Shipped runtime assets/);
   assert.match(prototypeReadme, /Prototype and reference assets/);
   assert.match(packageScript, /assets', 'runtime/);
   assert.doesNotMatch(packageScript, /assets', 'prototype/);
+  assert.equal(runtimeFiles.some((file) => /generation-prompts\.md$/.test(file)), false);
+  assert.ok(prototypeFiles.some((file) => /generation-prompts\.md$/.test(file)));
 });

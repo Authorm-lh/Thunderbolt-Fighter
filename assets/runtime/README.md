@@ -68,12 +68,6 @@ Keep runtime paths stable once code starts loading them. If a file is renamed or
 | `art/ui/ui_panel_hud.png` | HUD panel frame. Use behind score, timer, wave, or status readouts. |
 | `art/ui/ui_title_plate.png` | Title plate background. Use behind the game title text; the asset intentionally contains no title text. |
 
-### Visual source notes
-
-| File | Purpose |
-| --- | --- |
-| `art/visual-generation-prompts.md` | Prompt and art-direction record for the visual asset set. Keep it with runtime assets so future replacements can match the current style. |
-
 ## Audio assets
 
 ### Music loops
@@ -120,16 +114,11 @@ Keep runtime paths stable once code starts loading them. If a file is renamed or
 | `audio/pickup_shield.mp3` | Shield pickup cue. |
 | `audio/pickup_heal.mp3` | Healing pickup cue. |
 
-### Audio source notes
-
-| File | Purpose |
-| --- | --- |
-| `audio/audio-generation-prompts.md` | Prompt, mix-direction, and review-checklist record for the audio asset set. Keep it with runtime assets so future replacements can match the current sound direction. |
-
 ## Maintenance notes
 
 - Runtime assets should be files the game can load directly from `assets/runtime`, not review drafts from `assets/prototype`.
 - Do not add text, logos, or watermarks to visual assets; UI text should be rendered by the game.
 - Music files are intended to loop. Check loop points before wiring them into gameplay.
 - Rapid-repeat SFX such as `player_bolt_fire.wav` and `player_bolt_hit.wav` should be tested at gameplay fire rates.
+- Keep generation prompts, exploratory drafts, and reference material under `assets/prototype`; only approved runtime-loadable exports belong here.
 - Before shipping, record source, license, approval status, and any generator details in the runtime asset manifest if one is added.
