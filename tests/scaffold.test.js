@@ -1958,12 +1958,17 @@ test('desktop smoke test launches the shell and reaches the main menu', async ()
   const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
 
   assert.equal(packageJson.scripts['test:smoke'], 'node tests/smoke/electron-smoke.mjs');
+  assert.equal(packageJson.scripts['test:smoke:package-win'], 'npm run package:win && node tests/smoke/package-win-smoke.mjs');
+  const packagedSmokeTest = await readText('tests/smoke/package-win-smoke.mjs');
   assert.equal(packageJson.devDependencies['@playwright/test'], '^1.57.0');
   assert.match(renderer, /dataset\.screen = 'main-menu'/);
   assert.match(renderer, /dataset\.title = 'Thunderbolt Fighter'/);
   assert.match(smokeTest, /_electron/);
   assert.match(smokeTest, /THUNDERBOLT_FIGHTER_EXECUTABLE/);
   assert.match(smokeTest, /executablePath/);
+  assert.match(packagedSmokeTest, /THUNDERBOLT_FIGHTER_EXECUTABLE/);
+  assert.match(packagedSmokeTest, /Thunderbolt Fighter\.exe/);
+  assert.match(packagedSmokeTest, /electron-smoke\.mjs/);
   assert.match(smokeTest, /#game-root\[data-screen="main-menu"\]/);
   assert.match(smokeTest, /#game-root\[data-screen="gameplay"\]/);
   assert.match(smokeTest, /Thunderbolt Fighter/);
