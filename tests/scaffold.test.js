@@ -1075,6 +1075,16 @@ test('Boss HP HUD exposes DOM state for smoke checks', async () => {
   assert.match(renderer, /dataset\.bossHpText/);
 });
 
+test('Boss HP HUD updates on boss lifecycle changes instead of every HUD refresh', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const updateHudBody = renderer.match(/  updateHud\(\) \{[\s\S]*?\n  \}/)[0];
+
+  assert.doesNotMatch(updateHudBody, /updateBossHpHud/);
+  assert.match(renderer, /spawnBossEnemy\(\) \{[\s\S]*?this\.updateBossHpHud\(\)/);
+  assert.match(renderer, /result\.damageDealt > 0/);
+  assert.match(renderer, /result\.destroyedEnemies\.length > 0[\s\S]*?this\.updateBossHpHud\(\)/);
+});
+
 test('Boss HP smoke test covers visibility, damage updates, and cleanup', async () => {
   const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
 

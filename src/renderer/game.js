@@ -510,7 +510,6 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.hudBuff = hudValues.buff;
     this.root.dataset.hudPickups = hudValues.pickups;
     this.root.dataset.hudBestScore = hudValues.bestScore;
-    this.updateBossHpHud();
   }
 
   updateBossHpHud() {
@@ -653,6 +652,7 @@ class GameplayScene extends Phaser.Scene {
         difficulty: this.selectedDifficulty
       });
       this.updateHud();
+      this.updateBossHpHud();
     } else if (result.damageDealt > 0) {
       this.updateBossHpHud();
     }
@@ -672,6 +672,7 @@ class GameplayScene extends Phaser.Scene {
     this.bossSpawned = true;
     this.addEnemy(createBossEnemySpawn({ spawnIndex: 0 }));
     this.root.dataset.bossSpawned = 'true';
+    this.updateBossHpHud();
   }
 
   addEnemy(enemy) {
