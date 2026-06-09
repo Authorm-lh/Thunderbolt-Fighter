@@ -46,6 +46,12 @@ try {
   const startRunWithSelectedOptions = async () => {
     await clickGamePoint(436, 354);
     await clickGamePoint(436, 494);
+    await window.evaluate(() => {
+      localStorage.setItem('thunderbolt-fighter:local-records', JSON.stringify({
+        bestScores: { '5m:hard': 1200 },
+        recentRuns: []
+      }));
+    });
     await clickGamePoint(320, 616);
   };
 
@@ -63,8 +69,8 @@ try {
   assert.equal(await gameRoot.getAttribute('data-buff'), 'None');
   assert.equal(await gameRoot.getAttribute('data-pickups'), '0');
   assert.equal(await gameRoot.getAttribute('data-hud-pickups'), 'Pickups 0');
-  assert.equal(await gameRoot.getAttribute('data-best-score'), '');
-  assert.equal(await gameRoot.getAttribute('data-hud-best-score'), 'Best —');
+  assert.equal(await gameRoot.getAttribute('data-best-score'), '1200');
+  assert.equal(await gameRoot.getAttribute('data-hud-best-score'), 'Best 1200');
 
   await window.waitForFunction(() => globalThis.__thunderboltFighterGame?.scene?.getScene('gameplay'));
   await window.evaluate(() => {
@@ -106,7 +112,7 @@ try {
   await window.waitForSelector('#game-root[data-screen="results"]', { timeout: 15000 });
   assert.equal(await gameRoot.getAttribute('data-screen'), 'results');
   assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'false');
-  assert.equal(await gameRoot.getAttribute('data-results-best-score'), '1500');
+  assert.equal(await gameRoot.getAttribute('data-results-best-score'), '1200');
   assert.equal(await gameRoot.getAttribute('data-results-local-record'), '1500');
 
   const windowTitle = await window.title();

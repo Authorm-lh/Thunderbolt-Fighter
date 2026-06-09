@@ -559,10 +559,7 @@ class GameplayScene extends Phaser.Scene {
       this.scene.start('results', {
         endReason,
         runClock: this.runClock,
-        runStats: {
-          ...this.runStats,
-          bestScore: Math.max(this.runStats.score, this.runStats.bestScore ?? 0)
-        }
+        runStats: this.runStats
       });
     }
   }
