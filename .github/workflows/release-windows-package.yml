@@ -1,0 +1,42 @@
+name: Release Windows Package
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-windows-package-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  windows-release-package:
+    name: Build and attach Windows release zip
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows package
+        run: npm run package:win
+
+      - name: Create release zip
+        shell: pwsh
+        run: Compress-Archive -Path "release/Thunderbolt Fighter-win32-x64/*" -DestinationPath "release/thunderbolt-fighter-win32-x64.zip" -Force
+
+      - name: Attach Windows package to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/thunderbolt-fighter-win32-x64.zip

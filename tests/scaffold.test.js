@@ -1952,6 +1952,57 @@ test('project exposes a Windows desktop packaging command', async () => {
   assert.doesNotMatch(packageScript, /cp\(path\.join\(root, 'assets', 'runtime'\)/);
 });
 
+test('GitHub Releases can build and attach a zipped Windows package', async () => {
+  const releaseWorkflow = await readText('.github/workflows/release-windows-package.yml');
+
+  assert.match(releaseWorkflow, /name: Release Windows Package/);
+  assert.match(releaseWorkflow, /release:/);
+  assert.match(releaseWorkflow, /types: \[published\]/);
+  assert.match(releaseWorkflow, /npm run package:win/);
+  assert.match(releaseWorkflow, /Compress-Archive/);
+  assert.match(releaseWorkflow, /softprops\/action-gh-release@v2/);
+  assert.match(releaseWorkflow, /files:/);
+});
+
+test('release packaging workflow reuses the Windows package command', async () => {
+  const releaseWorkflow = await readText('.github/workflows/release-windows-package.yml');
+
+  assert.deepEqual(releaseWorkflow.match(/npm run package:win/g), ['npm run package:win']);
+  assert.doesNotMatch(releaseWorkflow, /node scripts\/package-win\.js/);
+});
+
+test('release packaging workflow uses a stable Windows zip asset name', async () => {
+  const releaseWorkflow = await readText('.github/workflows/release-windows-package.yml');
+
+  assert.deepEqual(releaseWorkflow.match(/thunderbolt-fighter-win32-x64\.zip/g), [
+    'thunderbolt-fighter-win32-x64.zip',
+    'thunderbolt-fighter-win32-x64.zip'
+  ]);
+  assert.match(releaseWorkflow, /-DestinationPath "release\/thunderbolt-fighter-win32-x64\.zip"/);
+  assert.match(releaseWorkflow, /files: release\/thunderbolt-fighter-win32-x64\.zip/);
+});
+
+test('pull request CI keeps validation artifacts separate from Release publishing', async () => {
+  const ciWorkflow = await readText('.github/workflows/ci-build-check.yml');
+
+  assert.match(ciWorkflow, /pull_request:/);
+  assert.match(ciWorkflow, /npm test/);
+  assert.match(ciWorkflow, /npm run test:smoke/);
+  assert.match(ciWorkflow, /npm run package:win/);
+  assert.match(ciWorkflow, /actions\/upload-artifact@v4/);
+  assert.doesNotMatch(ciWorkflow, /release:/);
+  assert.doesNotMatch(ciWorkflow, /softprops\/action-gh-release/);
+});
+
+test('release workflow reference documents the official Windows release trigger', async () => {
+  const workflowReference = await readText('.github/workflows/workflow-trigger-reference.md');
+
+  assert.match(workflowReference, /## Release Windows Package/);
+  assert.match(workflowReference, /Workflow file: `release-windows-package\.yml`/);
+  assert.match(workflowReference, /publish a GitHub Release/);
+  assert.match(workflowReference, /thunderbolt-fighter-win32-x64\.zip/);
+});
+
 test('desktop smoke test launches the shell and reaches the main menu', async () => {
   const packageJson = await readJson('package.json');
   const renderer = await readText('src/renderer/game.js');
