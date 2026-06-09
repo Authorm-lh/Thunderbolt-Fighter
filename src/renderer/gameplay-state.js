@@ -719,17 +719,21 @@ export const formatActiveBuffs = (stats) => {
   return activeBuffs.length > 0 ? activeBuffs.join(' + ') : 'None';
 };
 
-export const createHudValues = ({ clock, stats }) => ({
-  score: `Score ${stats.score}`,
-  timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
-  health: stats.shield > 0
-    ? `Health ${stats.health}/${stats.maxHealth} + Shield ${stats.shield}`
-    : `Health ${stats.health}/${stats.maxHealth}`,
-  weapon: `Weapon ${stats.weaponName}`,
-  buff: `Buff ${formatActiveBuffs(stats)}`,
-  pickups: `Pickups ${stats.pickups}`,
-  bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
-});
+export const createHudValues = ({ clock, stats }) => {
+  const currentBestScore = Math.max(stats.score, stats.bestScore ?? 0);
+
+  return {
+    score: `Score ${stats.score}`,
+    timer: `Timer ${formatRunTimer(clock.remainingMs)}`,
+    health: stats.shield > 0
+      ? `Health ${stats.health}/${stats.maxHealth} + Shield ${stats.shield}`
+      : `Health ${stats.health}/${stats.maxHealth}`,
+    weapon: `Weapon ${stats.weaponName}`,
+    buff: `Buff ${formatActiveBuffs(stats)}`,
+    pickups: `Pickups ${stats.pickups}`,
+    bestScore: currentBestScore === 0 ? 'Best —' : `Best ${currentBestScore}`
+  };
+};
 
 export const createResultsTitle = ({ endReason }) => {
   if (endReason === 'boss-defeated') {

@@ -1033,9 +1033,14 @@ test('HUD shows the relevant local best score for the active run options', async
     difficulty: 'hard'
   });
   const hudValues = createHudValues({ clock: createRunClock({ runLengthMinutes: 5 }), stats });
+  const beatenRecordHudValues = createHudValues({
+    clock: createRunClock({ runLengthMinutes: 5 }),
+    stats: { ...stats, score: 2600 }
+  });
 
   assert.equal(stats.bestScore, 2400);
   assert.equal(hudValues.bestScore, 'Best 2400');
+  assert.equal(beatenRecordHudValues.bestScore, 'Best 2600');
   assert.match(renderer, /applyLocalRecordContext/);
   assert.match(renderer, /dataset\.hudBestScore/);
 });
