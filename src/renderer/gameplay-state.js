@@ -567,6 +567,18 @@ export const createHudValues = ({ clock, stats }) => ({
   bestScore: stats.bestScore === null ? 'Best —' : `Best ${stats.bestScore}`
 });
 
+export const createResultsTitle = ({ endReason }) => {
+  if (endReason === 'boss-defeated') {
+    return 'Boss Defeated';
+  }
+
+  if (endReason === 'health-depleted') {
+    return 'Player Defeated';
+  }
+
+  return 'Run Complete';
+};
+
 export const createResultsValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   kills: `Kills ${stats.kills}`,

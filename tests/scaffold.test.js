@@ -1160,6 +1160,17 @@ test('player defeat still ends the run during a boss fight', async () => {
   assert.match(renderer, /dataset\.endReason = data\.endReason/);
 });
 
+test('results screen receives distinct boss and player defeat reasons', async () => {
+  const { createResultsTitle } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(createResultsTitle({ endReason: 'boss-defeated' }), 'Boss Defeated');
+  assert.equal(createResultsTitle({ endReason: 'health-depleted' }), 'Player Defeated');
+  assert.equal(createResultsTitle({ endReason: 'timer-expired' }), 'Run Complete');
+  assert.match(renderer, /createResultsTitle\(\{ endReason: data\.endReason \}\)/);
+  assert.match(renderer, /dataset\.resultsTitle/);
+});
+
 test('results screen shows baseline run performance stats', async () => {
   const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

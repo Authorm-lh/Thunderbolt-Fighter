@@ -24,6 +24,7 @@ import {
   createHudValues,
   createPickupSpawn,
   createPlayerProjectiles,
+  createResultsTitle,
   createResultsValues,
   createRunBaseline,
   createRunClock,
@@ -820,10 +821,11 @@ class ResultsScene extends Phaser.Scene {
   create(data) {
     const root = document.querySelector('#game-root');
 
+    const resultsTitle = createResultsTitle({ endReason: data.endReason });
     const resultsValues = createResultsValues({ clock: data.runClock, stats: data.runStats });
 
     this.cameras.main.setBackgroundColor('#09111f');
-    this.add.text(this.scale.width / 2, 150, 'Run Complete', {
+    this.add.text(this.scale.width / 2, 150, resultsTitle, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '42px',
       color: '#f8fbff',
@@ -840,6 +842,7 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.screen = 'results';
     root.dataset.bossHpHudVisible = 'false';
     root.dataset.endReason = data.endReason;
+    root.dataset.resultsTitle = resultsTitle;
     root.dataset.resultsScore = String(data.runStats.score);
     root.dataset.resultsKills = String(data.runStats.kills);
     root.dataset.resultsBossesDefeated = String(data.runStats.bossesDefeated);
