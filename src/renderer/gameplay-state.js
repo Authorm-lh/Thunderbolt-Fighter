@@ -721,12 +721,14 @@ export const resolveEnemyPlayerHits = ({ stats, player, enemyProjectiles, enemie
   };
 };
 
-export const getRunEndReason = ({ clock, stats }) => {
+export const getRunEndReason = ({ clock, stats, enemies = [] }) => {
   if (stats.health <= 0) {
     return 'health-depleted';
   }
 
-  if (clock.remainingMs <= 0) {
+  const activeBoss = enemies.some((enemy) => enemy.type === 'boss-class' && enemy.health > 0);
+
+  if (clock.remainingMs <= 0 && !activeBoss) {
     return 'timer-expired';
   }
 

@@ -534,7 +534,7 @@ class GameplayScene extends Phaser.Scene {
   }
 
   endRunIfNeeded() {
-    const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats });
+    const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats, enemies: this.enemies });
 
     if (endReason) {
       this.scene.start('results', {

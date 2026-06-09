@@ -1111,7 +1111,7 @@ test('the run ends when the selected timer expires', async () => {
   assert.match(renderer, /endRunIfNeeded/);
 });
 
-test('the run can time out while the boss remains alive', async () => {
+test('the run keeps going when the timer expires while the boss remains alive', async () => {
   const { ENEMY_CLASSES, advanceRunClock, createBossEnemySpawn, createResultsValues, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
   const aliveBoss = {
@@ -1131,9 +1131,9 @@ test('the run can time out while the boss remains alive', async () => {
     clock: expiredClock,
     stats,
     enemies: [aliveBoss]
-  }), 'timer-expired');
+  }), null);
   assert.equal(createResultsValues({ clock: expiredClock, stats }).bossesDefeated, 'Bosses Defeated 0');
-  assert.match(renderer, /endRunIfNeeded/);
+  assert.match(renderer, /getRunEndReason\(\{ clock: this\.runClock, stats: this\.runStats, enemies: this\.enemies \}\)/);
   assert.match(renderer, /dataset\.resultsBossesDefeated/);
 });
 
