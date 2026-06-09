@@ -1982,6 +1982,67 @@ test('release packaging workflow uses a stable Windows zip asset name', async ()
   assert.match(releaseWorkflow, /files: release\/thunderbolt-fighter-win32-x64\.zip/);
 });
 
+test('root README is English and links to the Simplified Chinese README', async () => {
+  const readme = await readText('README.md');
+
+  assert.match(readme, /^# Thunderbolt Fighter/m);
+  assert.match(readme, /\[简体中文\]\(README\.zh-CN\.md\)/);
+  assert.match(readme, /Thunderbolt Fighter is an offline desktop arcade shooter/);
+  assert.doesNotMatch(readme, /# 雷霆战机/);
+});
+
+test('Simplified Chinese README mirrors the user-facing project guidance', async () => {
+  const readme = await readText('README.zh-CN.md');
+
+  assert.match(readme, /^# Thunderbolt Fighter/m);
+  assert.match(readme, /\[English\]\(README\.md\)/);
+  assert.match(readme, /离线桌面街机射击游戏/);
+  assert.match(readme, /安装/);
+  assert.match(readme, /运行/);
+  assert.match(readme, /构建/);
+  assert.match(readme, /下载/);
+});
+
+test('README files document prerequisites and source commands', async () => {
+  const englishReadme = await readText('README.md');
+  const chineseReadme = await readText('README.zh-CN.md');
+
+  [englishReadme, chineseReadme].forEach((readme) => {
+    assert.match(readme, /Node\.js/);
+    assert.match(readme, /npm/);
+    assert.match(readme, /npm install/);
+    assert.match(readme, /npm run dev/);
+    assert.match(readme, /npm run package:win/);
+  });
+});
+
+test('README files point players to prebuilt Windows GitHub Releases', async () => {
+  const englishReadme = await readText('README.md');
+  const chineseReadme = await readText('README.zh-CN.md');
+
+  [englishReadme, chineseReadme].forEach((readme) => {
+    assert.match(readme, /https:\/\/github\.com\/Authorm-lh\/Thunderbolt-Fighter\/releases/);
+    assert.match(readme, /thunderbolt-fighter-win32-x64\.zip/);
+    assert.match(readme, /prebuilt Windows|预构建 Windows/);
+  });
+});
+
+test('README build docs match the Windows package script output', async () => {
+  const packageJson = await readJson('package.json');
+  const packageScript = await readText('scripts/package-win.js');
+  const englishReadme = await readText('README.md');
+  const chineseReadme = await readText('README.zh-CN.md');
+
+  assert.equal(packageJson.scripts['package:win'], 'node scripts/package-win.js');
+  assert.match(packageScript, /path\.join\(releaseDir, `\$\{appName\}-win32-x64`\)/);
+  assert.match(packageScript, /path\.join\(outputDir, `\$\{appName\}\.exe`\)/);
+
+  [englishReadme, chineseReadme].forEach((readme) => {
+    assert.match(readme, /npm run package:win/);
+    assert.match(readme, /release\/Thunderbolt Fighter-win32-x64\/Thunderbolt Fighter\.exe/);
+  });
+});
+
 test('pull request CI keeps validation artifacts separate from Release publishing', async () => {
   const ciWorkflow = await readText('.github/workflows/ci-build-check.yml');
 
