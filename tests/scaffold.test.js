@@ -646,6 +646,32 @@ test('enemy movement remains readable while elite enemies use bounded sway', asy
   assert.match(renderer, /resolveEnemyTypeForSpawn/);
 });
 
+test('enemy lane and eligible enemy type sequences vary by spawn randomization seed', async () => {
+  const { ENEMY_CLASSES, createEnemySpawn, createSpawnRandomizationState, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const enemySequenceFor = (seed) => {
+    const spawnRandomization = createSpawnRandomizationState({ seedSource: () => seed });
+
+    return Array.from({ length: 8 }, (_, spawnIndex) => {
+      const enemyType = resolveEnemyTypeForSpawn({ spawnIndex, spawnRandomization });
+      const enemy = createEnemySpawn({ spawnIndex, enemyType, spawnRandomization });
+
+      return { type: enemy.type, x: enemy.x };
+    });
+  };
+  const firstRunSequence = enemySequenceFor(101);
+  const secondRunSequence = enemySequenceFor(202);
+
+  assert.notDeepEqual(firstRunSequence, secondRunSequence);
+  firstRunSequence.concat(secondRunSequence).forEach((enemy) => {
+    assert.ok(['basic', 'elite'].includes(enemy.type));
+    assert.ok(ENEMY_CLASSES[enemy.type].lanes.includes(enemy.x));
+  });
+  assert.match(renderer, /spawnRandomization/);
+  assert.match(renderer, /resolveEnemyTypeForSpawn\(\{ spawnIndex: this\.enemySpawnCount, spawnRandomization: this\.spawnRandomization \}\)/);
+});
+
 test('basic enemies spawn from the top and descend in readable lanes', async () => {
   const { BASIC_ENEMY, createBasicEnemySpawn, advanceBasicEnemies } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

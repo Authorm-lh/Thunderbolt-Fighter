@@ -668,8 +668,12 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnBasicEnemy() {
-    const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount });
-    const enemy = createEnemySpawn({ spawnIndex: this.enemySpawnCount, enemyType });
+    const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount, spawnRandomization: this.spawnRandomization });
+    const enemy = createEnemySpawn({
+      spawnIndex: this.enemySpawnCount,
+      enemyType,
+      spawnRandomization: this.spawnRandomization
+    });
 
     this.addEnemy(enemy);
     this.enemySpawnCount += 1;

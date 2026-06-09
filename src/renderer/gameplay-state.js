@@ -149,6 +149,30 @@ export const createSpawnRandomizationState = ({ seedSource = Date.now } = {}) =>
   seed: seedSource()
 });
 
+const createSeededRandomValue = ({ seed, stream, spawnIndex }) => {
+  const streamOffset = [...stream].reduce((offset, character) => offset + character.charCodeAt(0), 0);
+  let value = (seed + streamOffset + Math.imul(spawnIndex + 1, 0x9e3779b1)) >>> 0;
+
+  value = Math.imul(value ^ (value >>> 16), 0x85ebca6b) >>> 0;
+  value = Math.imul(value ^ (value >>> 13), 0xc2b2ae35) >>> 0;
+
+  return ((value ^ (value >>> 16)) >>> 0) / 0x100000000;
+};
+
+const selectSpawnValue = ({ values, spawnIndex, spawnRandomization, stream }) => {
+  if (!spawnRandomization) {
+    return values[spawnIndex % values.length];
+  }
+
+  const randomIndex = Math.floor(createSeededRandomValue({
+    seed: spawnRandomization.seed,
+    stream,
+    spawnIndex
+  }) * values.length);
+
+  return values[randomIndex];
+};
+
 export const getPickupTestNameMarkerText = (pickupType) => {
   const label = PICKUP_BUFFS[pickupType]?.label ?? pickupType;
 
@@ -167,7 +191,18 @@ export const getPickupTestNameMarkerText = (pickupType) => {
   return `${label} Pickup`;
 };
 
-export const resolveEnemyTypeForSpawn = ({ spawnIndex }) => (spawnIndex > 0 && spawnIndex % 4 === 3 ? 'elite' : 'basic');
+export const resolveEnemyTypeForSpawn = ({ spawnIndex, spawnRandomization }) => {
+  if (!spawnRandomization) {
+    return spawnIndex > 0 && spawnIndex % 4 === 3 ? 'elite' : 'basic';
+  }
+
+  return selectSpawnValue({
+    values: ['basic', 'basic', 'basic', 'elite'],
+    spawnIndex,
+    spawnRandomization,
+    stream: 'enemy-type'
+  });
+};
 
 export const DIFFICULTY_TUNING = {
   simple: {
@@ -358,17 +393,23 @@ export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basi
   return elapsedMs - lastFiredMs >= fireIntervalMs;
 };
 
-export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic' }) => {
+export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic', spawnRandomization }) => {
   const enemyClass = getEnemyClass(enemyType);
+  const x = selectSpawnValue({
+    values: enemyClass.lanes,
+    spawnIndex,
+    spawnRandomization,
+    stream: `${enemyClass.type}-lane`
+  });
 
   return {
     id: `${enemyClass.type}-${spawnIndex}`,
     type: enemyClass.type,
-    x: enemyClass.lanes[spawnIndex % enemyClass.lanes.length],
+    x,
     y: -enemyClass.radius,
     health: enemyClass.maxHealth,
     lastFiredMs: -enemyClass.fireIntervalMs,
-    movementOriginX: enemyClass.lanes[spawnIndex % enemyClass.lanes.length]
+    movementOriginX: x
   };
 };
 
