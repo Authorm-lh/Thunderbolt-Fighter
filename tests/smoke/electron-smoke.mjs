@@ -163,9 +163,14 @@ try {
     gameplay.updateBossHpHud();
   });
   assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'true');
-  assert.equal(await gameRoot.getAttribute('data-boss-hp-current'), '240');
-  assert.equal(await gameRoot.getAttribute('data-boss-hp-max'), '240');
-  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 240/240');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-current'), '1200');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-max'), '1200');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 1200/1200');
+  await window.waitForFunction(() => {
+    const gameplay = globalThis.__thunderboltFighterGame?.scene?.getScene('gameplay');
+
+    return gameplay?.enemies?.some((enemy) => enemy.type === 'boss-class');
+  });
 
   await window.evaluate(() => {
     const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
@@ -180,8 +185,8 @@ try {
     gameplay.resolvePlayerProjectileHits();
   });
   const bossHpAfterDamage = await gameRoot.getAttribute('data-boss-hp-current');
-  assert.equal(bossHpAfterDamage, '225');
-  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 225/240');
+  assert.equal(bossHpAfterDamage, '1185');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 1185/1200');
 
   await window.evaluate(() => {
     const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
@@ -203,6 +208,29 @@ try {
   assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'false');
   assert.equal(await gameRoot.getAttribute('data-results-best-score'), '1200');
   assert.equal(await gameRoot.getAttribute('data-results-local-record'), '1500');
+  assert.equal(await gameRoot.getAttribute('data-results-replay-run-length-minutes'), '5');
+  assert.equal(await gameRoot.getAttribute('data-results-replay-difficulty'), 'hard');
+  assert.equal(await gameRoot.getAttribute('data-results-actions'), 'Main Menu,Replay');
+
+  await clickGamePoint(1020, 380);
+  await window.waitForSelector('#game-root[data-screen="gameplay"]', { timeout: 15000 });
+  assert.equal(await gameRoot.getAttribute('data-run-length-minutes'), '5');
+  assert.equal(await gameRoot.getAttribute('data-difficulty'), 'hard');
+  assert.equal(await gameRoot.getAttribute('data-score'), '0');
+  assert.equal(await gameRoot.getAttribute('data-pickups'), '0');
+
+  await window.evaluate(() => {
+    const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
+
+    gameplay.runClock.remainingMs = 0;
+    gameplay.enemies = [];
+    gameplay.endRunIfNeeded();
+  });
+  await window.waitForSelector('#game-root[data-screen="results"]', { timeout: 15000 });
+  const recentRunCountBeforeMainMenu = await window.evaluate(() => JSON.parse(localStorage.getItem('thunderbolt-fighter:local-records')).recentRuns.length);
+  await clickGamePoint(260, 380);
+  await window.waitForSelector('#game-root[data-screen="main-menu"]', { timeout: 15000 });
+  assert.equal(await window.evaluate(() => JSON.parse(localStorage.getItem('thunderbolt-fighter:local-records')).recentRuns.length), recentRunCountBeforeMainMenu);
 
   const windowTitle = await window.title();
   assert.equal(windowTitle, 'Thunderbolt Fighter');

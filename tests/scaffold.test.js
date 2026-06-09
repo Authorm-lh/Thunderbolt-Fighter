@@ -705,6 +705,8 @@ test('basic and elite enemies differ in durability, damage, firing, movement, an
 
   assert.equal(ENEMY_CLASSES.basic.type, 'basic');
   assert.equal(ENEMY_CLASSES.elite.type, 'elite');
+  assert.equal(ENEMY_CLASSES.basic.maxHealth, 30);
+  assert.equal(ENEMY_CLASSES.elite.maxHealth, 60);
   assert.ok(ENEMY_CLASSES.elite.maxHealth > ENEMY_CLASSES.basic.maxHealth);
   assert.ok(ENEMY_CLASSES.elite.projectileDamage > ENEMY_CLASSES.basic.projectileDamage);
   assert.ok(ENEMY_CLASSES.elite.contactDamage > ENEMY_CLASSES.basic.contactDamage);
@@ -726,6 +728,7 @@ test('boss-class enemy tuning is distinct from lower enemy classes', async () =>
   const [advancedBoss] = advanceBasicEnemies({ enemies: [{ ...boss, y: 100 }], deltaSeconds: 10 });
   const bossProjectile = createBasicEnemyProjectile({ enemyId: boss.id, x: boss.x, y: advancedBoss.y, enemyType: boss.type });
 
+  assert.equal(bossClass.maxHealth, 1200);
   assert.ok(bossClass.maxHealth > ENEMY_CLASSES.elite.maxHealth);
   assert.ok(bossClass.projectileDamage > ENEMY_CLASSES.elite.projectileDamage);
   assert.ok(bossClass.contactDamage > ENEMY_CLASSES.elite.contactDamage);
@@ -1185,6 +1188,7 @@ test('a boss-class enemy appears near the end as a high-value target', async () 
   assert.equal(boss.type, 'boss-class');
   assert.equal(boss.x, GAMEPLAY_PLAYFIELD.width / 2);
   assert.ok(boss.y < 0);
+  assert.equal(boss.health, 1200);
   assert.equal(boss.health, ENEMY_CLASSES['boss-class'].maxHealth);
   assert.ok(ENEMY_CLASSES['boss-class'].scoreValue > ENEMY_CLASSES.elite.scoreValue);
   assert.match(renderer, /spawnBossEnemy/);
@@ -1208,7 +1212,9 @@ test('Boss HP HUD shows current and max boss health', async () => {
   const bossHpHud = createBossHpHudState({ enemies: [boss] });
 
   assert.equal(bossHpHud.currentHealth, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.equal(bossHpHud.maxHealth, 1200);
   assert.equal(bossHpHud.maxHealth, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.equal(bossHpHud.text, 'Boss HP 1200/1200');
   assert.equal(bossHpHud.text, `Boss HP ${ENEMY_CLASSES['boss-class'].maxHealth}/${ENEMY_CLASSES['boss-class'].maxHealth}`);
 });
 
@@ -1255,7 +1261,7 @@ test('Boss HP HUD exposes DOM state for smoke checks', async () => {
   const boss = { ...createBossEnemySpawn({ spawnIndex: 0 }), health: 180 };
   const bossHpHud = createBossHpHudState({ enemies: [boss] });
 
-  assert.equal(bossHpHud.text, 'Boss HP 180/240');
+  assert.equal(bossHpHud.text, 'Boss HP 180/1200');
   assert.match(renderer, /dataset\.bossHpCurrent/);
   assert.match(renderer, /dataset\.bossHpMax/);
   assert.match(renderer, /dataset\.bossHpText/);
@@ -1709,6 +1715,61 @@ test('results screen shows baseline run performance stats', async () => {
   });
   assert.match(renderer, /ResultsScene/);
   assert.match(renderer, /createResultsValues/);
+});
+
+test('results screen shows an action to return to the main menu', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /class ResultsScene[\s\S]*Main Menu/);
+  assert.match(renderer, /dataset\.resultsActions/);
+});
+
+test('results screen shows an action to start another run', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /class ResultsScene[\s\S]*Replay/);
+  assert.match(renderer, /dataset\.resultsActions = 'Main Menu,Replay'/);
+});
+
+test('results main-menu action returns without mutating stored results', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /class ResultsScene[\s\S]*returnToMenu\(\) \{[\s\S]*?this\.scene\.start\('main-menu'\)/);
+  assert.match(renderer, /createResultsButton\([^\n]*'Main Menu', \(\) => this\.returnToMenu\(\)\)/);
+  assert.doesNotMatch(renderer.match(/returnToMenu\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun|resetLocalRecords|resultsScore|resultsLocalRecord/);
+});
+
+test('results replay action starts fresh gameplay with run options', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /this\.scene\.start\('results', \{[\s\S]*?runOptions: \{[\s\S]*?runLengthMinutes: this\.selectedRunLengthMinutes[\s\S]*?difficulty: this\.selectedDifficulty/);
+  assert.match(renderer, /class ResultsScene[\s\S]*replayRun\(\) \{[\s\S]*?this\.scene\.start\('gameplay', \{[\s\S]*?runOptions: this\.runOptions/);
+  assert.match(renderer, /createResultsButton\([^\n]*'Replay', \(\) => this\.replayRun\(\)\)/);
+  assert.doesNotMatch(renderer.match(/replayRun\(\) \{[\s\S]*?\n  \}/)[0], /scene\.restart|runStats|runClock/);
+});
+
+test('results replay preserves the completed run settings', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /root\.dataset\.resultsReplayRunLengthMinutes = String\(this\.runOptions\.runLengthMinutes\)/);
+  assert.match(renderer, /root\.dataset\.resultsReplayDifficulty = this\.runOptions\.difficulty/);
+  assert.match(renderer, /runOptions: this\.runOptions/);
+  assert.match(smokeTest, /data-results-replay-run-length-minutes/);
+  assert.match(smokeTest, /data-results-replay-difficulty/);
+});
+
+test('results actions support mouse interaction and screen metadata checks', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /setInteractive\(\{ useHandCursor: true \}\)/);
+  assert.match(renderer, /root\.dataset\.resultsActions = 'Main Menu,Replay'/);
+  assert.match(smokeTest, /data-results-actions/);
+  assert.match(smokeTest, /clickGamePoint\(1020, 380\)/);
+  assert.match(smokeTest, /clickGamePoint\(260, 380\)/);
+  assert.match(smokeTest, /data-screen="gameplay"/);
+  assert.match(smokeTest, /data-screen="main-menu"/);
 });
 
 test('results stats include pickup counts and combat stat changes', async () => {
