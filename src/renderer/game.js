@@ -653,6 +653,9 @@ class GameplayScene extends Phaser.Scene {
       });
       this.updateHud();
       this.updateBossHpHud();
+      if (result.destroyedEnemies.some((enemy) => enemy.type === 'boss-class')) {
+        this.endRunIfNeeded();
+      }
     } else if (result.damageDealt > 0) {
       this.updateBossHpHud();
     }

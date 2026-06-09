@@ -726,6 +726,10 @@ export const getRunEndReason = ({ clock, stats, enemies = [] }) => {
     return 'health-depleted';
   }
 
+  if (stats.bossesDefeated > 0) {
+    return 'boss-defeated';
+  }
+
   const activeBoss = enemies.some((enemy) => enemy.type === 'boss-class' && enemy.health > 0);
 
   if (clock.remainingMs <= 0 && !activeBoss) {

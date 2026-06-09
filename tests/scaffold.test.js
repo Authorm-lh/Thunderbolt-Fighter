@@ -807,8 +807,8 @@ test('destroying basic enemies increases score, kills, and damage dealt', async 
   assert.match(renderer, /dataset\.kills/);
 });
 
-test('defeating the boss awards score and boss result stats', async () => {
-  const { ENEMY_CLASSES, applyDestroyedEnemyRewards, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+test('defeating the boss ends the run with score and boss result stats', async () => {
+  const { ENEMY_CLASSES, applyDestroyedEnemyRewards, createResultsValues, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
   const bossDamageDealt = ENEMY_CLASSES['boss-class'].maxHealth;
   const stats = applyDestroyedEnemyRewards({
@@ -822,7 +822,12 @@ test('defeating the boss awards score and boss result stats', async () => {
   assert.equal(stats.kills, 1);
   assert.equal(stats.bossesDefeated, 1);
   assert.equal(stats.damageDealt, bossDamageDealt);
+  assert.equal(getRunEndReason({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    stats
+  }), 'boss-defeated');
   assert.equal(resultsValues.bossesDefeated, 'Bosses Defeated 1');
+  assert.match(renderer, /result\.destroyedEnemies\.some\(\(enemy\) => enemy\.type === 'boss-class'\)[\s\S]*?this\.endRunIfNeeded\(\)/);
   assert.match(renderer, /dataset\.resultsBossesDefeated/);
 });
 
