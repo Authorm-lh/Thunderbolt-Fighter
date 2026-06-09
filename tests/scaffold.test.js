@@ -1439,7 +1439,7 @@ test('completed runs persist records that load into a later app session', async 
   assert.equal(records.recentRuns[0].endReason, 'timer-expired');
 });
 
-test('completed run history stores the local record context from before the run', async () => {
+test('completed run history names the pre-run local record as the record to beat', async () => {
   const { createRunClock, createRunStats, getBestScoreForRun, loadLocalRecords, persistCompletedRun, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
   const values = new Map();
   const storage = {
@@ -1460,7 +1460,8 @@ test('completed run history stores the local record context from before the run'
   const records = loadLocalRecords({ storage });
 
   assert.equal(records.recentRuns[0].score, 2500);
-  assert.equal(records.recentRuns[0].localRecord, 2000);
+  assert.equal(records.recentRuns[0].recordToBeat, 2000);
+  assert.equal(records.recentRuns[0].localRecord, undefined);
   assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), 2500);
 });
 
