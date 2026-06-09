@@ -119,6 +119,19 @@ test('gameplay baseline carries the selected difficulty tuning', async () => {
   assert.match(renderer, /createRunBaseline\(\{ difficulty: runOptions\.difficulty \}\)/);
 });
 
+test('new gameplay runs initialize spawn randomization from a changing seed source', async () => {
+  const { createSpawnRandomizationState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const firstRun = createSpawnRandomizationState({ seedSource: () => 101 });
+  const secondRun = createSpawnRandomizationState({ seedSource: () => 202 });
+
+  assert.equal(firstRun.seed, 101);
+  assert.equal(secondRun.seed, 202);
+  assert.notEqual(firstRun.seed, secondRun.seed);
+  assert.match(renderer, /createSpawnRandomizationState\(\)/);
+});
+
 test('gameplay scene uses a 16:9 logical playfield', async () => {
   const { GAMEPLAY_PLAYFIELD } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

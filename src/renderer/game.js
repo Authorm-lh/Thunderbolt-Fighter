@@ -27,6 +27,7 @@ import {
   createResultsTitle,
   createResultsValues,
   createRunBaseline,
+  createSpawnRandomizationState,
   createRunClock,
   createRunStats,
   createTestNameMarker,
@@ -255,6 +256,7 @@ class GameplayScene extends Phaser.Scene {
     this.runBaseline = null;
     this.runClock = null;
     this.runStats = null;
+    this.spawnRandomization = null;
     this.hudText = null;
     this.bossHpHudText = null;
     this.bossWarningText = null;
@@ -275,6 +277,7 @@ class GameplayScene extends Phaser.Scene {
     this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = createRunStats();
+    this.spawnRandomization = createSpawnRandomizationState();
 
     this.cameras.main.setBackgroundColor('#09111f');
     this.createBackgroundStarfield();

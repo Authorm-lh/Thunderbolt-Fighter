@@ -145,6 +145,10 @@ export const getEnemyTestNameMarkerText = (enemyType = 'basic') => {
   return 'Basic Enemy';
 };
 
+export const createSpawnRandomizationState = ({ seedSource = Date.now } = {}) => ({
+  seed: seedSource()
+});
+
 export const getPickupTestNameMarkerText = (pickupType) => {
   const label = PICKUP_BUFFS[pickupType]?.label ?? pickupType;
 
