@@ -176,6 +176,10 @@ try {
     const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
     const boss = gameplay.enemies.find((enemy) => enemy.type === 'boss-class');
 
+    if (!boss) {
+      throw new Error('Expected a boss-class enemy before smoke damage check');
+    }
+
     gameplay.projectiles.push({
       x: boss.x,
       y: boss.y,
@@ -191,6 +195,10 @@ try {
   await window.evaluate(() => {
     const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
     const boss = gameplay.enemies.find((enemy) => enemy.type === 'boss-class');
+
+    if (!boss) {
+      throw new Error('Expected a boss-class enemy before smoke defeat check');
+    }
 
     boss.health = 15;
     gameplay.projectiles.push({

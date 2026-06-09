@@ -86,10 +86,18 @@ const RUNTIME_VISUAL_ASSETS = {
   'enemy-projectile': '../../assets/runtime/art/projectiles/projectile_enemy_orb.png',
   'pickup-power': '../../assets/runtime/art/pickups/pickup_power..png',
   'pickup-shield': '../../assets/runtime/art/pickups/pickup_shield.png',
+  'hit-spark': '../../assets/runtime/art/fx/fx_hit_spark.png',
   'button-primary': '../../assets/runtime/art/ui/ui_button_primary.png',
   'life-icon': '../../assets/runtime/art/ui/ui_life_icon.png',
   'hud-panel': '../../assets/runtime/art/ui/ui_panel_hud.png',
   'title-plate': '../../assets/runtime/art/ui/ui_title_plate.png'
+};
+
+const RUNTIME_SPRITESHEET_ASSETS = {
+  'boss-explosion': {
+    path: '../../assets/runtime/art/fx/fx_explosion_spritesheet.png',
+    config: { frameWidth: 256, frameHeight: 256 }
+  }
 };
 
 const RUNTIME_AUDIO_ASSETS = {
@@ -120,6 +128,12 @@ const loadRuntimeVisualAssets = (scene) => {
   Object.entries(RUNTIME_VISUAL_ASSETS).forEach(([key, path]) => {
     if (!scene.textures.exists(key)) {
       scene.load.image(key, path);
+    }
+  });
+
+  Object.entries(RUNTIME_SPRITESHEET_ASSETS).forEach(([key, asset]) => {
+    if (!scene.textures.exists(key)) {
+      scene.load.spritesheet(key, asset.path, asset.config);
     }
   });
 };
@@ -671,6 +685,7 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
     this.bossSpawned = false;
+    this.bossExplosionPending = false;
     this.pauseOverlay = [];
     this.pauseKey = null;
     this.paused = false;
@@ -702,6 +717,7 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
     this.bossSpawned = false;
+    this.bossExplosionPending = false;
     this.pauseOverlay = [];
     this.pauseKey = null;
     this.paused = false;
@@ -723,6 +739,7 @@ class GameplayScene extends Phaser.Scene {
     this.selectedDifficulty = runOptions.difficulty;
     this.bossWarningShown = false;
     this.bossSpawned = false;
+    this.bossExplosionPending = false;
     this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = applyLocalRecordContext({
@@ -734,6 +751,7 @@ class GameplayScene extends Phaser.Scene {
 
     playRuntimeMusic(this, 'music-run');
     this.cameras.main.setBackgroundColor('#09111f');
+    this.createBossExplosionAnimation();
     this.createGameplayBackdrop();
 
     this.player = this.add.image(
@@ -859,6 +877,19 @@ class GameplayScene extends Phaser.Scene {
     this.add.image(this.scale.width / 2, this.scale.height / 2, 'cloud-layer')
       .setDisplaySize(this.scale.width, this.scale.height)
       .setAlpha(0.54);
+  }
+
+  createBossExplosionAnimation() {
+    if (this.anims.exists('boss-explosion-flow')) {
+      return;
+    }
+
+    this.anims.create({
+      key: 'boss-explosion-flow',
+      frames: this.anims.generateFrameNumbers('boss-explosion', { start: 0, end: 15 }),
+      duration: 3000,
+      repeat: 0
+    });
   }
 
   openPauseMenu() {
@@ -1040,6 +1071,10 @@ class GameplayScene extends Phaser.Scene {
   }
 
   endRunIfNeeded() {
+    if (this.bossExplosionPending) {
+      return;
+    }
+
     const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats, enemies: this.enemies });
 
     if (endReason) {
@@ -1167,6 +1202,7 @@ class GameplayScene extends Phaser.Scene {
 
     if (result.destroyedEnemies.length > 0) {
       result.destroyedEnemies.forEach((enemy) => playRuntimeSound(this, enemyDestroyedSoundKeyFor(enemy.type)));
+      result.destroyedEnemies.forEach((enemy) => this.playEnemyDestroyedEffect(enemy));
       this.runStats = applyDestroyedEnemyRewards({
         stats: this.runStats,
         destroyedEnemies: result.destroyedEnemies,
@@ -1176,13 +1212,58 @@ class GameplayScene extends Phaser.Scene {
       this.updateHud();
       this.updateBossHpHud();
       if (result.destroyedEnemies.some((enemy) => enemy.type === 'boss-class')) {
-        this.endRunIfNeeded();
+        return;
       }
     } else if (result.damageDealt > 0) {
       this.updateBossHpHud();
     }
 
     this.root.dataset.enemyCount = String(this.enemies.length);
+  }
+
+  playEnemyDestroyedEffect(enemy) {
+    if (enemy.type === 'boss-class') {
+      this.spawnBossExplosion(enemy);
+      return;
+    }
+
+    this.spawnHitSpark(enemy);
+  }
+
+  spawnHitSpark(enemy) {
+    const spark = this.add.image(enemy.x, enemy.y, 'hit-spark')
+      .setDisplaySize(96, 96)
+      .setAlpha(0.9);
+
+    this.tweens.add({
+      targets: spark,
+      alpha: 0,
+      scale: 1.35,
+      duration: 1000,
+      onComplete: () => spark.destroy()
+    });
+  }
+
+  spawnBossExplosion(enemy) {
+    if (this.bossExplosionPending) {
+      return;
+    }
+
+    this.bossExplosionPending = true;
+    const explosion = this.add.sprite(enemy.x, enemy.y, 'boss-explosion')
+      .setDisplaySize(300, 300)
+      .setDepth(10);
+
+    explosion.once('animationcomplete', () => {
+      explosion.destroy();
+      this.time.delayedCall(2000, () => this.finishBossExplosion());
+    });
+    explosion.play('boss-explosion-flow');
+  }
+
+  finishBossExplosion() {
+    this.bossExplosionPending = false;
+    this.endRunIfNeeded();
   }
 
   spawnBasicEnemy() {

@@ -962,6 +962,31 @@ test('destroying basic enemies increases score, kills, and damage dealt', async 
   assert.match(renderer, /dataset\.kills/);
 });
 
+test('destroyed basic and elite enemies flash hit sparks at their destroyed position', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /fx_hit_spark\.png/);
+  assert.match(renderer, /spawnHitSpark\(enemy\)/);
+  assert.match(renderer, /this\.add\.image\(enemy\.x, enemy\.y, 'hit-spark'/);
+  assert.match(renderer, /duration: 1000/);
+  assert.match(renderer, /onComplete: \(\) => spark\.destroy\(\)/);
+});
+
+test('destroyed boss plays a runtime explosion animation before delayed results', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /fx_explosion_spritesheet\.png/);
+  assert.match(renderer, /scene\.load\.spritesheet\(key, asset\.path, asset\.config\)/);
+  assert.match(renderer, /frameWidth: 256/);
+  assert.match(renderer, /frameHeight: 256/);
+  assert.match(renderer, /createBossExplosionAnimation/);
+  assert.match(renderer, /duration: 3000/);
+  assert.match(renderer, /repeat: 0/);
+  assert.match(renderer, /spawnBossExplosion\(enemy\)/);
+  assert.match(renderer, /animationcomplete/);
+  assert.match(renderer, /this\.time\.delayedCall\(2000, \(\) => this\.finishBossExplosion\(\)\)/);
+});
+
 test('defeating the boss ends the run with score and boss result stats', async () => {
   const { ENEMY_CLASSES, applyDestroyedEnemyRewards, createResultsValues, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -982,7 +1007,8 @@ test('defeating the boss ends the run with score and boss result stats', async (
     stats
   }), 'boss-defeated');
   assert.equal(resultsValues.bossesDefeated, 'Bosses Defeated 1');
-  assert.match(renderer, /result\.destroyedEnemies\.some\(\(enemy\) => enemy\.type === 'boss-class'\)[\s\S]*?this\.endRunIfNeeded\(\)/);
+  assert.match(renderer, /result\.destroyedEnemies\.forEach\(\(enemy\) => this\.playEnemyDestroyedEffect\(enemy\)\)/);
+  assert.match(renderer, /finishBossExplosion\(\)/);
   assert.match(renderer, /dataset\.resultsBossesDefeated/);
 });
 
@@ -1907,6 +1933,8 @@ test('approved runtime visual assets are loaded and rendered for gameplay presen
     'projectile_enemy_orb.png',
     'pickup_power..png',
     'pickup_shield.png',
+    'fx_hit_spark.png',
+    'fx_explosion_spritesheet.png',
     'ui_button_primary.png',
     'ui_life_icon.png',
     'ui_panel_hud.png',
