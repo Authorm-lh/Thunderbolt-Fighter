@@ -1473,6 +1473,32 @@ test('tutorial replay can be triggered immediately from settings', async () => {
   assert.match(renderer, /this\.scene\.start\(this\.returnScene\)/);
 });
 
+test('pause menu supports continue, restart, return to menu, audio toggle, and key reference', async () => {
+  const {
+    createDefaultSettings,
+    createPauseMenuContent,
+    toggleAudioEnabled
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const pauseMenu = createPauseMenuContent(createDefaultSettings());
+  const mutedPauseMenu = createPauseMenuContent(toggleAudioEnabled(createDefaultSettings()));
+
+  assert.deepEqual(pauseMenu.actions, ['Continue', 'Restart', 'Return to Menu', 'Audio On']);
+  assert.equal(mutedPauseMenu.actions.at(-1), 'Audio Off');
+  assert.match(pauseMenu.keyReference, /Arrow keys|WASD/);
+  assert.match(pauseMenu.keyReference, /Esc/);
+  assert.match(pauseMenu.keyReference, /auto-fire/i);
+  assert.match(renderer, /Phaser\.Input\.Keyboard\.KeyCodes\.ESC/);
+  assert.match(renderer, /openPauseMenu/);
+  assert.match(renderer, /closePauseMenu/);
+  assert.match(renderer, /restartRun/);
+  assert.match(renderer, /returnToMenu/);
+  assert.match(renderer, /togglePauseAudio/);
+  assert.match(renderer, /dataset\.paused/);
+  assert.match(renderer, /Key Reference/);
+});
+
 test('local best scores are saved separately by run length and difficulty', async () => {
   const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
   const values = new Map();

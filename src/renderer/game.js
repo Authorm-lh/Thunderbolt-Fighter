@@ -33,6 +33,7 @@ import {
   createRunStats,
   createTestNameMarker,
   createTutorialContent,
+  createPauseMenuContent,
   clearTutorialReplayRequested,
   destroyTestNameMarker,
   followTestNameMarkerTarget,
@@ -505,6 +506,9 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
     this.bossSpawned = false;
+    this.pauseOverlay = [];
+    this.pauseKey = null;
+    this.paused = false;
     this.root = null;
     this.selectedRunLengthMinutes = 1;
     this.selectedDifficulty = 'normal';
@@ -547,6 +551,15 @@ class GameplayScene extends Phaser.Scene {
 
     this.cursorKeys = this.input.keyboard.createCursorKeys();
     this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
+    this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (this.paused) {
+        this.closePauseMenu();
+        return;
+      }
+
+      this.openPauseMenu();
+    });
 
     this.add.text(HUD_LAYOUT.runSummary.x, HUD_LAYOUT.runSummary.y, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',
@@ -576,11 +589,12 @@ class GameplayScene extends Phaser.Scene {
     root.dataset.difficulty = runOptions.difficulty;
     root.dataset.bossWarning = '';
     root.dataset.bossSpawned = 'false';
+    root.dataset.paused = 'false';
     this.updateHud();
   }
 
   update(_time, delta) {
-    if (!this.player || !this.cursorKeys || !this.wasdKeys) {
+    if (!this.player || !this.cursorKeys || !this.wasdKeys || this.paused) {
       return;
     }
 
@@ -687,6 +701,97 @@ class GameplayScene extends Phaser.Scene {
     const nextTarget = destroyTestNameMarker(target);
 
     target.nameMarker = nextTarget.nameMarker;
+  }
+
+  openPauseMenu() {
+    if (this.paused) {
+      return;
+    }
+
+    this.paused = true;
+    this.root.dataset.paused = 'true';
+    this.renderPauseMenu();
+  }
+
+  closePauseMenu() {
+    this.paused = false;
+    this.root.dataset.paused = 'false';
+    this.pauseOverlay.forEach((element) => element.destroy());
+    this.pauseOverlay = [];
+  }
+
+  renderPauseMenu() {
+    const settings = loadSettings();
+    const content = createPauseMenuContent(settings);
+    const centerX = this.scale.width / 2;
+
+    this.pauseOverlay.forEach((element) => element.destroy());
+    this.pauseOverlay = [
+      this.add.rectangle(centerX, this.scale.height / 2, 620, 560, 0x071827, 0.86)
+        .setStrokeStyle(1, 0x3db7ff, 0.52),
+      this.add.text(centerX, 118, content.title, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '42px',
+        color: '#f8fbff',
+        align: 'center',
+        stroke: '#0b1c2e',
+        strokeThickness: 5
+      }).setOrigin(0.5),
+      this.add.text(centerX, 448, `Key Reference\n${content.keyReference}`, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '21px',
+        color: '#9ed7ff',
+        align: 'center',
+        wordWrap: { width: 520 },
+        lineSpacing: 8
+      }).setOrigin(0.5)
+    ];
+
+    [
+      ['Continue', () => this.closePauseMenu()],
+      ['Restart', () => this.restartRun()],
+      ['Return to Menu', () => this.returnToMenu()],
+      [content.actions.at(-1), () => this.togglePauseAudio()]
+    ].forEach(([labelText, action], index) => {
+      const y = 206 + index * 68;
+      const plate = this.add.rectangle(centerX, y, 280, 52, 0x0b2234, 0.78)
+        .setStrokeStyle(1, 0x3db7ff, 0.66);
+      const hitArea = this.add.rectangle(centerX, y, 280, 52, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+      const label = this.add.text(centerX, y, labelText, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '24px',
+        color: '#f8fbff',
+        align: 'center',
+        stroke: '#071827',
+        strokeThickness: 3
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      const invoke = () => action();
+
+      hitArea.on('pointerdown', invoke);
+      label.on('pointerdown', invoke);
+      this.pauseOverlay.push(plate, hitArea, label);
+    });
+  }
+
+  restartRun() {
+    this.scene.restart({
+      runOptions: {
+        runLengthMinutes: this.selectedRunLengthMinutes,
+        difficulty: this.selectedDifficulty
+      }
+    });
+  }
+
+  returnToMenu() {
+    this.scene.start('main-menu');
+  }
+
+  togglePauseAudio() {
+    const settings = saveSettings({ settings: toggleAudioEnabled(loadSettings()) });
+
+    this.root.dataset.audioEnabled = String(settings.audioEnabled);
+    this.renderPauseMenu();
   }
 
   updateBackground(deltaSeconds) {

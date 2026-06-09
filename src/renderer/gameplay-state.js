@@ -646,6 +646,12 @@ export const createTutorialContent = () => ({
   goal: 'Chase the highest score, defeat enemies and bosses, and beat your local record for each run length and difficulty.'
 });
 
+export const createPauseMenuContent = (settings = createDefaultSettings()) => ({
+  title: 'Paused',
+  actions: ['Continue', 'Restart', 'Return to Menu', `Audio ${settings.audioEnabled ? 'On' : 'Off'}`],
+  keyReference: 'Key Reference: Arrow keys or WASD move. Esc pauses or resumes. Your ship auto-fires.'
+});
+
 export const loadTutorialProgress = ({ storage = globalThis.localStorage } = {}) => {
   if (!storage) {
     return { seen: false };
