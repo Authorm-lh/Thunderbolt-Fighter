@@ -1733,6 +1733,14 @@ test('results screen shows an action to start another run', async () => {
   assert.match(renderer, /dataset\.resultsActions = 'Main Menu,Replay'/);
 });
 
+test('results main-menu action returns without mutating stored results', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /class ResultsScene[\s\S]*returnToMenu\(\) \{[\s\S]*?this\.scene\.start\('main-menu'\)/);
+  assert.match(renderer, /createResultsButton\([^\n]*'Main Menu', \(\) => this\.returnToMenu\(\)\)/);
+  assert.doesNotMatch(renderer.match(/returnToMenu\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun|resetLocalRecords|resultsScore|resultsLocalRecord/);
+});
+
 test('results stats include pickup counts and combat stat changes', async () => {
   const { applyPlayerDamage, applyPickupBuff, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
 

@@ -1243,7 +1243,7 @@ class ResultsScene extends Phaser.Scene {
       lineSpacing: 8
     }).setOrigin(0.5, 0);
 
-    this.createResultsButton(this.scale.width / 2 - 150, 650, 'Main Menu', () => this.scene.start('main-menu'));
+    this.createResultsButton(this.scale.width / 2 - 150, 650, 'Main Menu', () => this.returnToMenu());
     this.createResultsButton(this.scale.width / 2 + 150, 650, 'Replay', () => {});
 
     root.dataset.screen = 'results';
@@ -1263,6 +1263,10 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.resultsBestScore = data.runStats.bestScore === null ? '' : String(data.runStats.bestScore);
     root.dataset.resultsLocalRecord = String(Math.max(data.runStats.score, data.runStats.bestScore ?? 0));
     root.dataset.resultsActions = 'Main Menu,Replay';
+  }
+
+  returnToMenu() {
+    this.scene.start('main-menu');
   }
 
   createResultsButton(x, y, labelText, action) {
