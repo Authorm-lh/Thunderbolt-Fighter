@@ -1726,6 +1726,13 @@ test('results screen shows an action to return to the main menu', async () => {
   assert.match(renderer, /dataset\.resultsActions/);
 });
 
+test('results screen shows an action to start another run', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /class ResultsScene[\s\S]*Replay/);
+  assert.match(renderer, /dataset\.resultsActions = 'Main Menu,Replay'/);
+});
+
 test('results stats include pickup counts and combat stat changes', async () => {
   const { applyPlayerDamage, applyPickupBuff, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
 
