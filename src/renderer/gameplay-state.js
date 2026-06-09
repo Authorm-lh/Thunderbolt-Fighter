@@ -575,11 +575,63 @@ export const formatRunTimer = (remainingMs) => {
 };
 
 export const LOCAL_RECORDS_STORAGE_KEY = 'thunderbolt-fighter:local-records';
+export const SETTINGS_STORAGE_KEY = 'thunderbolt-fighter:settings';
 export const RECENT_RUN_LIMIT = 10;
 
 export const createDefaultLocalRecords = () => ({
   bestScores: {},
   recentRuns: []
+});
+
+export const createDefaultSettings = () => ({
+  audioEnabled: true,
+  fullscreenEnabled: false,
+  tutorialReplayRequested: false
+});
+
+export const loadSettings = ({ storage = globalThis.localStorage } = {}) => {
+  if (!storage) {
+    return createDefaultSettings();
+  }
+
+  try {
+    return {
+      ...createDefaultSettings(),
+      ...JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}')
+    };
+  } catch {
+    return createDefaultSettings();
+  }
+};
+
+export const saveSettings = ({ storage = globalThis.localStorage, settings }) => {
+  if (!storage) {
+    return settings;
+  }
+
+  storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+
+  return settings;
+};
+
+export const toggleAudioEnabled = (settings = createDefaultSettings()) => ({
+  ...settings,
+  audioEnabled: !settings.audioEnabled
+});
+
+export const toggleFullscreenEnabled = (settings = createDefaultSettings()) => ({
+  ...settings,
+  fullscreenEnabled: !settings.fullscreenEnabled
+});
+
+export const markTutorialReplayRequested = (settings = createDefaultSettings()) => ({
+  ...settings,
+  tutorialReplayRequested: true
+});
+
+export const resetLocalRecords = ({ storage = globalThis.localStorage } = {}) => saveLocalRecords({
+  storage,
+  records: createDefaultLocalRecords()
 });
 
 export const createRunRecordKey = ({ runLengthMinutes, difficulty }) => `${runLengthMinutes}m:${difficulty}`;

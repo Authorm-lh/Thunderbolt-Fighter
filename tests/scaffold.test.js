@@ -1354,6 +1354,48 @@ test('results screen receives distinct boss and player defeat reasons', async ()
   assert.match(renderer, /dataset\.resultsTitle/);
 });
 
+test('settings controls expose audio, fullscreen, tutorial replay, and record reset actions', async () => {
+  const {
+    LOCAL_RECORDS_STORAGE_KEY,
+    createDefaultLocalRecords,
+    createDefaultSettings,
+    markTutorialReplayRequested,
+    resetLocalRecords,
+    toggleAudioEnabled,
+    toggleFullscreenEnabled
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  storage.setItem(LOCAL_RECORDS_STORAGE_KEY, JSON.stringify({ bestScores: { '1m:normal': 1200 }, recentRuns: [{ id: 'old-run' }] }));
+
+  const defaults = createDefaultSettings();
+  const mutedSettings = toggleAudioEnabled(defaults);
+  const fullscreenSettings = toggleFullscreenEnabled(mutedSettings);
+  const replaySettings = markTutorialReplayRequested(fullscreenSettings);
+  const recordsAfterReset = resetLocalRecords({ storage });
+
+  assert.deepEqual(defaults, {
+    audioEnabled: true,
+    fullscreenEnabled: false,
+    tutorialReplayRequested: false
+  });
+  assert.equal(mutedSettings.audioEnabled, false);
+  assert.equal(fullscreenSettings.fullscreenEnabled, true);
+  assert.equal(replaySettings.tutorialReplayRequested, true);
+  assert.deepEqual(recordsAfterReset, createDefaultLocalRecords());
+  assert.equal(storage.getItem(LOCAL_RECORDS_STORAGE_KEY), JSON.stringify(createDefaultLocalRecords()));
+  assert.match(renderer, /SettingsScene/);
+  assert.match(renderer, /Audio/);
+  assert.match(renderer, /Fullscreen/);
+  assert.match(renderer, /Replay Tutorial/);
+  assert.match(renderer, /Reset Records/);
+});
+
 test('local best scores are saved separately by run length and difficulty', async () => {
   const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
   const values = new Map();

@@ -38,19 +38,25 @@ import {
   getEnemyTestNameMarkerText,
   getPickupTestNameMarkerText,
   getRunEndReason,
+  loadSettings,
+  markTutorialReplayRequested,
   persistCompletedRun,
+  resetLocalRecords,
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
   resolveEnemyTypeForSpawn,
   resolvePlayerPickupHits,
   resolvePlayerProjectileEnemyHits,
   resolvePlayerVelocity,
+  saveSettings,
   shouldAutoFire,
   shouldBasicEnemyFire,
   shouldShowBossWarning,
   shouldSpawnBasicEnemy,
   shouldSpawnBoss,
-  shouldSpawnPickup
+  shouldSpawnPickup,
+  toggleAudioEnabled,
+  toggleFullscreenEnabled
 } from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
@@ -78,6 +84,7 @@ const MENU_LAYOUT = {
   runLengthButtonY: 354,
   difficultyY: 440,
   difficultyButtonY: 494,
+  settingsButtonY: 548,
   startButtonY: 616
 };
 
@@ -164,6 +171,12 @@ class MainMenuScene extends Phaser.Scene {
 
     this.bindOptionButtons(difficultyButtons, DIFFICULTY_OPTIONS, (option) => updateDifficultySelection(option.difficulty));
 
+    const settingsButton = this.createSecondaryButton(contentX, MENU_LAYOUT.settingsButtonY, 'Settings');
+    const openSettings = () => this.scene.start('settings');
+
+    settingsButton.hitArea.on('pointerdown', openSettings);
+    settingsButton.label.on('pointerdown', openSettings);
+
     const startRunButton = this.createActionButton(contentX, MENU_LAYOUT.startButtonY, 'Start Run');
 
     const startRun = () => {
@@ -219,6 +232,23 @@ class MainMenuScene extends Phaser.Scene {
     return { plate, hitArea, label };
   }
 
+  createSecondaryButton(x, y, labelText) {
+    const plate = this.add.rectangle(x, y, 220, 44, 0x0b2234, 0.72)
+      .setStrokeStyle(1, 0x3db7ff, 0.6);
+    const hitArea = this.add.rectangle(x, y, 220, 44, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y, labelText, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '22px',
+      color: '#9ed7ff',
+      align: 'center',
+      stroke: '#071827',
+      strokeThickness: 3
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    return { plate, hitArea, label };
+  }
+
   bindOptionButtons(buttons, options, selectOption) {
     buttons.forEach((button, index) => {
       button.option = options[index];
@@ -234,6 +264,113 @@ class MainMenuScene extends Phaser.Scene {
       plate.setStrokeStyle(isSelected ? 2 : 1, isSelected ? 0xf8fbff : 0x3db7ff, isSelected ? 0.9 : 0.6);
       label.setColor(isSelected ? '#f8fbff' : '#9ed7ff');
     });
+  }
+}
+
+class SettingsScene extends Phaser.Scene {
+  constructor() {
+    super('settings');
+    this.settings = null;
+    this.root = null;
+    this.statusText = null;
+    this.audioButton = null;
+    this.fullscreenButton = null;
+  }
+
+  create() {
+    this.root = document.querySelector('#game-root');
+    this.settings = loadSettings();
+
+    this.cameras.main.setBackgroundColor('#09111f');
+    this.add.rectangle(this.scale.width / 2, this.scale.height / 2, 640, 560, 0x071827, 0.72)
+      .setStrokeStyle(1, 0x3db7ff, 0.48);
+    this.add.text(this.scale.width / 2, 104, 'Settings', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '42px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 5
+    }).setOrigin(0.5);
+
+    this.audioButton = this.createSettingsButton(440, 210, this.getAudioLabel(), () => {
+      this.settings = saveSettings({ settings: toggleAudioEnabled(this.settings) });
+      this.refreshSettingsDisplay('Audio preference updated');
+    });
+    this.fullscreenButton = this.createSettingsButton(840, 210, this.getFullscreenLabel(), () => {
+      this.settings = saveSettings({ settings: toggleFullscreenEnabled(this.settings) });
+      this.applyFullscreenPreference();
+      this.refreshSettingsDisplay('Fullscreen preference updated');
+    });
+    this.createSettingsButton(440, 330, 'Replay Tutorial', () => {
+      this.settings = saveSettings({ settings: markTutorialReplayRequested(this.settings) });
+      this.refreshSettingsDisplay('Tutorial replay queued');
+    });
+    this.createSettingsButton(840, 330, 'Reset Records', () => {
+      resetLocalRecords();
+      this.root.dataset.recordsReset = 'true';
+      this.refreshSettingsDisplay('Local records reset');
+    });
+    this.createSettingsButton(640, 510, 'Back', () => this.scene.start('main-menu'));
+
+    this.statusText = this.add.text(this.scale.width / 2, 424, '', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '22px',
+      color: '#9ed7ff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.root.dataset.screen = 'settings';
+    this.root.dataset.recordsReset = 'false';
+    this.refreshSettingsDisplay('Adjust desktop preferences');
+  }
+
+  createSettingsButton(x, y, labelText, action) {
+    const plate = this.add.rectangle(x, y, 280, 68, 0x0b2234, 0.78)
+      .setStrokeStyle(1, 0x3db7ff, 0.66);
+    const hitArea = this.add.rectangle(x, y, 280, 68, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y, labelText, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '24px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#071827',
+      strokeThickness: 3
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const invoke = () => action();
+
+    hitArea.on('pointerdown', invoke);
+    label.on('pointerdown', invoke);
+
+    return { plate, hitArea, label };
+  }
+
+  getAudioLabel() {
+    return `Audio ${this.settings.audioEnabled ? 'On' : 'Off'}`;
+  }
+
+  getFullscreenLabel() {
+    return `Fullscreen ${this.settings.fullscreenEnabled ? 'On' : 'Off'}`;
+  }
+
+  applyFullscreenPreference() {
+    if (this.settings.fullscreenEnabled && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+
+    if (!this.settings.fullscreenEnabled && document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  refreshSettingsDisplay(statusText) {
+    this.audioButton.label.setText(this.getAudioLabel());
+    this.fullscreenButton.label.setText(this.getFullscreenLabel());
+    this.statusText?.setText(statusText);
+    this.root.dataset.audioEnabled = String(this.settings.audioEnabled);
+    this.root.dataset.fullscreenEnabled = String(this.settings.fullscreenEnabled);
+    this.root.dataset.tutorialReplayRequested = String(this.settings.tutorialReplayRequested);
   }
 }
 
@@ -886,7 +1023,7 @@ const config = {
   width: GAMEPLAY_PLAYFIELD.width,
   height: GAMEPLAY_PLAYFIELD.height,
   backgroundColor: '#09111f',
-  scene: [MainMenuScene, GameplayScene, ResultsScene],
+  scene: [MainMenuScene, SettingsScene, GameplayScene, ResultsScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
