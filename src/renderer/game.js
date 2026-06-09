@@ -941,7 +941,11 @@ class GameplayScene extends Phaser.Scene {
       this.scene.start('results', {
         endReason,
         runClock: this.runClock,
-        runStats: this.runStats
+        runStats: this.runStats,
+        runOptions: {
+          runLengthMinutes: this.selectedRunLengthMinutes,
+          difficulty: this.selectedDifficulty
+        }
       });
     }
   }
@@ -1220,11 +1224,13 @@ class GameplayScene extends Phaser.Scene {
 class ResultsScene extends Phaser.Scene {
   constructor() {
     super('results');
+    this.runOptions = null;
   }
 
   create(data) {
     const root = document.querySelector('#game-root');
 
+    this.runOptions = data.runOptions;
     const resultsTitle = createResultsTitle({ endReason: data.endReason });
     const resultsValues = createResultsValues({ clock: data.runClock, stats: data.runStats });
 
@@ -1244,7 +1250,7 @@ class ResultsScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
 
     this.createResultsButton(this.scale.width / 2 - 150, 650, 'Main Menu', () => this.returnToMenu());
-    this.createResultsButton(this.scale.width / 2 + 150, 650, 'Replay', () => {});
+    this.createResultsButton(this.scale.width / 2 + 150, 650, 'Replay', () => this.replayRun());
 
     root.dataset.screen = 'results';
     root.dataset.bossHpHudVisible = 'false';
@@ -1267,6 +1273,12 @@ class ResultsScene extends Phaser.Scene {
 
   returnToMenu() {
     this.scene.start('main-menu');
+  }
+
+  replayRun() {
+    this.scene.start('gameplay', {
+      runOptions: this.runOptions
+    });
   }
 
   createResultsButton(x, y, labelText, action) {

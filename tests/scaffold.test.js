@@ -1741,6 +1741,15 @@ test('results main-menu action returns without mutating stored results', async (
   assert.doesNotMatch(renderer.match(/returnToMenu\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun|resetLocalRecords|resultsScore|resultsLocalRecord/);
 });
 
+test('results replay action starts fresh gameplay with run options', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /this\.scene\.start\('results', \{[\s\S]*?runOptions: \{[\s\S]*?runLengthMinutes: this\.selectedRunLengthMinutes[\s\S]*?difficulty: this\.selectedDifficulty/);
+  assert.match(renderer, /class ResultsScene[\s\S]*replayRun\(\) \{[\s\S]*?this\.scene\.start\('gameplay', \{[\s\S]*?runOptions: this\.runOptions/);
+  assert.match(renderer, /createResultsButton\([^\n]*'Replay', \(\) => this\.replayRun\(\)\)/);
+  assert.doesNotMatch(renderer.match(/replayRun\(\) \{[\s\S]*?\n  \}/)[0], /scene\.restart|runStats|runClock/);
+});
+
 test('results stats include pickup counts and combat stat changes', async () => {
   const { applyPlayerDamage, applyPickupBuff, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
 
