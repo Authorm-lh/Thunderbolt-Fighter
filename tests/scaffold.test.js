@@ -1865,6 +1865,47 @@ test('approved runtime visual assets are loaded and rendered for gameplay presen
   assert.match(renderer, /'life-icon'/);
 });
 
+test('approved runtime audio assets are loaded and played for core feedback moments', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  [
+    'music_menu_loop.wav',
+    'music_run_loop.wav',
+    'music_boss_loop.wav',
+    'ui_select.wav',
+    'ui_confirm.wav',
+    'ui_back.wav',
+    'ui_pause_open.wav',
+    'player_bolt_fire.wav',
+    'player_bolt_hit.wav',
+    'player_damage.wav',
+    'player_destroyed.wav',
+    'enemy_destroyed_basic.wav',
+    'enemy_destroyed_elite.wav',
+    'boss_warning.mp3',
+    'boss_spawn.wav',
+    'boss_destroyed.wav',
+    'pickup_heal.mp3',
+    'pickup_power.wav',
+    'pickup_shield.mp3'
+  ].forEach((assetName) => assert.match(renderer, new RegExp(assetName.replaceAll('.', '\\.'))));
+
+  assert.match(renderer, /loadRuntimeAudioAssets/);
+  assert.match(renderer, /playRuntimeMusic\(this, 'music-menu'/);
+  assert.match(renderer, /playRuntimeMusic\(this, 'music-run'/);
+  assert.match(renderer, /playRuntimeMusic\(this, 'music-boss'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'ui-confirm'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'ui-back'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'ui-pause-open'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'player-bolt-fire'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'player-bolt-hit'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'player-damage'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'player-destroyed'/);
+  assert.match(renderer, /playRuntimeSound\(this, enemyDestroyedSoundKeyFor\(enemy\.type\)\)/);
+  assert.match(renderer, /playRuntimeSound\(this, pickupSoundKeyFor\(pickup\.type\)\)/);
+  assert.match(renderer, /loadSettings\(\)\.audioEnabled/);
+});
+
 test('runtime assets and prototype reference assets are separated', async () => {
   const packageScript = await readText('scripts/package-win.js');
   const runtimeReadme = await readText('assets/runtime/README.md');

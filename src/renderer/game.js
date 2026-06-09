@@ -99,12 +99,78 @@ const RUNTIME_VISUAL_ASSETS = {
   'title-plate': '../../assets/runtime/art/ui/ui_title_plate.png'
 };
 
+const RUNTIME_AUDIO_ASSETS = {
+  'music-menu': '../../assets/runtime/audio/music_menu_loop.wav',
+  'music-run': '../../assets/runtime/audio/music_run_loop.wav',
+  'music-boss': '../../assets/runtime/audio/music_boss_loop.wav',
+  'ui-select': '../../assets/runtime/audio/ui_select.wav',
+  'ui-confirm': '../../assets/runtime/audio/ui_confirm.wav',
+  'ui-back': '../../assets/runtime/audio/ui_back.wav',
+  'ui-pause-open': '../../assets/runtime/audio/ui_pause_open.wav',
+  'player-bolt-fire': '../../assets/runtime/audio/player_bolt_fire.wav',
+  'player-bolt-hit': '../../assets/runtime/audio/player_bolt_hit.wav',
+  'player-damage': '../../assets/runtime/audio/player_damage.wav',
+  'player-destroyed': '../../assets/runtime/audio/player_destroyed.wav',
+  'enemy-destroyed-basic': '../../assets/runtime/audio/enemy_destroyed_basic.wav',
+  'enemy-destroyed-elite': '../../assets/runtime/audio/enemy_destroyed_elite.wav',
+  'boss-warning': '../../assets/runtime/audio/boss_warning.mp3',
+  'boss-spawn': '../../assets/runtime/audio/boss_spawn.wav',
+  'boss-destroyed': '../../assets/runtime/audio/boss_destroyed.wav',
+  'pickup-heal': '../../assets/runtime/audio/pickup_heal.mp3',
+  'pickup-power': '../../assets/runtime/audio/pickup_power.wav',
+  'pickup-shield-sound': '../../assets/runtime/audio/pickup_shield.mp3'
+};
+
+const MUSIC_KEYS = ['music-menu', 'music-run', 'music-boss'];
+
 const loadRuntimeVisualAssets = (scene) => {
   Object.entries(RUNTIME_VISUAL_ASSETS).forEach(([key, path]) => {
     if (!scene.textures.exists(key)) {
       scene.load.image(key, path);
     }
   });
+};
+
+const loadRuntimeAudioAssets = (scene) => {
+  Object.entries(RUNTIME_AUDIO_ASSETS).forEach(([key, path]) => {
+    if (!scene.cache.audio.exists(key)) {
+      scene.load.audio(key, path);
+    }
+  });
+};
+
+const playRuntimeSound = (scene, key, config = {}) => {
+  if (!loadSettings().audioEnabled || !scene.cache.audio.exists(key)) {
+    return;
+  }
+
+  try {
+    scene.sound.play(key, { volume: 0.42, ...config });
+  } catch {
+    // Audio playback can be locked or unavailable in smoke-test environments.
+  }
+};
+
+const playRuntimeMusic = (scene, key) => {
+  try {
+    if (!loadSettings().audioEnabled) {
+      MUSIC_KEYS.forEach((musicKey) => scene.sound.stopByKey(musicKey));
+      return;
+    }
+
+    if (!scene.cache.audio.exists(key) || scene.sound.get(key)?.isPlaying) {
+      return;
+    }
+
+    MUSIC_KEYS.forEach((musicKey) => {
+      if (musicKey !== key) {
+        scene.sound.stopByKey(musicKey);
+      }
+    });
+    scene.sound.play(key, { loop: true, volume: key === 'music-boss' ? 0.34 : 0.26 });
+  } catch {
+    // Audio playback can be locked or unavailable in smoke-test environments.
+  }
 };
 
 const enemyAssetKeyFor = (enemyType) => {
@@ -122,6 +188,30 @@ const enemyAssetKeyFor = (enemyType) => {
 const pickupAssetKeyFor = (pickupType) => {
   if (pickupType === 'healing' || pickupType === 'shield') {
     return 'pickup-shield';
+  }
+
+  return 'pickup-power';
+};
+
+const enemyDestroyedSoundKeyFor = (enemyType) => {
+  if (enemyType === 'elite') {
+    return 'enemy-destroyed-elite';
+  }
+
+  if (enemyType === 'boss-class') {
+    return 'boss-destroyed';
+  }
+
+  return 'enemy-destroyed-basic';
+};
+
+const pickupSoundKeyFor = (pickupType) => {
+  if (pickupType === 'healing') {
+    return 'pickup-heal';
+  }
+
+  if (pickupType === 'shield') {
+    return 'pickup-shield-sound';
   }
 
   return 'pickup-power';
@@ -163,6 +253,7 @@ class TutorialScene extends Phaser.Scene {
 
   preload() {
     loadRuntimeVisualAssets(this);
+    loadRuntimeAudioAssets(this);
   }
 
   create(data = {}) {
@@ -231,7 +322,10 @@ class TutorialScene extends Phaser.Scene {
       stroke: '#0b1c2e',
       strokeThickness: 4
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    const invoke = () => action();
+    const invoke = () => {
+      playRuntimeSound(this, labelText === 'Skip Tutorial' ? 'ui-back' : 'ui-confirm');
+      action();
+    };
 
     hitArea.on('pointerdown', invoke);
     label.on('pointerdown', invoke);
@@ -250,6 +344,7 @@ class MainMenuScene extends Phaser.Scene {
   preload() {
     this.load.image('menu-background', MENU_ASSETS.background);
     loadRuntimeVisualAssets(this);
+    loadRuntimeAudioAssets(this);
   }
 
   create() {
@@ -259,6 +354,7 @@ class MainMenuScene extends Phaser.Scene {
     const centerX = this.scale.width / 2;
     const root = document.querySelector('#game-root');
 
+    playRuntimeMusic(this, 'music-menu');
     this.add.image(centerX, this.scale.height / 2, 'menu-background')
       .setDisplaySize(this.scale.width, this.scale.height);
     this.add.rectangle(300, this.scale.height / 2, 600, this.scale.height, 0x04101d, 0.5);
@@ -325,7 +421,10 @@ class MainMenuScene extends Phaser.Scene {
     this.bindOptionButtons(difficultyButtons, DIFFICULTY_OPTIONS, (option) => updateDifficultySelection(option.difficulty));
 
     const settingsButton = this.createSecondaryButton(contentX, MENU_LAYOUT.settingsButtonY, 'Settings');
-    const openSettings = () => this.scene.start('settings');
+    const openSettings = () => {
+      playRuntimeSound(this, 'ui-confirm');
+      this.scene.start('settings');
+    };
 
     settingsButton.hitArea.on('pointerdown', openSettings);
     settingsButton.label.on('pointerdown', openSettings);
@@ -333,6 +432,7 @@ class MainMenuScene extends Phaser.Scene {
     const startRunButton = this.createActionButton(contentX, MENU_LAYOUT.startButtonY, 'Start Run');
 
     const startRun = () => {
+      playRuntimeSound(this, 'ui-confirm');
       this.scene.start('gameplay', {
         runOptions: {
           runLengthMinutes: this.selectedRunLengthMinutes,
@@ -416,6 +516,9 @@ class MainMenuScene extends Phaser.Scene {
       plate.setFillStyle(isSelected ? 0x1d5a78 : 0x0b2234, isSelected ? 0.9 : 0.72);
       plate.setStrokeStyle(isSelected ? 2 : 1, isSelected ? 0xf8fbff : 0x3db7ff, isSelected ? 0.9 : 0.6);
       label.setColor(isSelected ? '#f8fbff' : '#9ed7ff');
+      if (isSelected) {
+        playRuntimeSound(this, 'ui-select', { volume: 0.18 });
+      }
     });
   }
 }
@@ -430,10 +533,16 @@ class SettingsScene extends Phaser.Scene {
     this.fullscreenButton = null;
   }
 
+  preload() {
+    loadRuntimeVisualAssets(this);
+    loadRuntimeAudioAssets(this);
+  }
+
   create() {
     this.root = document.querySelector('#game-root');
     this.settings = loadSettings();
 
+    playRuntimeMusic(this, 'music-menu');
     this.cameras.main.setBackgroundColor('#09111f');
     this.add.rectangle(this.scale.width / 2, this.scale.height / 2, 640, 560, 0x071827, 0.72)
       .setStrokeStyle(1, 0x3db7ff, 0.48);
@@ -466,7 +575,7 @@ class SettingsScene extends Phaser.Scene {
       this.root.dataset.recordsReset = 'true';
       this.refreshSettingsDisplay('Local records reset');
     });
-    this.createSettingsButton(640, 510, 'Back', () => this.scene.start('main-menu'));
+    this.createSettingsButton(640, 510, 'Back', () => this.scene.start('main-menu'), { soundKey: 'ui-back' });
 
     this.statusText = this.add.text(this.scale.width / 2, 424, '', {
       fontFamily: 'Arial, sans-serif',
@@ -480,7 +589,7 @@ class SettingsScene extends Phaser.Scene {
     this.refreshSettingsDisplay('Adjust desktop preferences');
   }
 
-  createSettingsButton(x, y, labelText, action) {
+  createSettingsButton(x, y, labelText, action, { soundKey = 'ui-confirm' } = {}) {
     const plate = this.add.rectangle(x, y, 280, 68, 0x0b2234, 0.78)
       .setStrokeStyle(1, 0x3db7ff, 0.66);
     const hitArea = this.add.rectangle(x, y, 280, 68, 0x000000, 0)
@@ -493,7 +602,10 @@ class SettingsScene extends Phaser.Scene {
       stroke: '#071827',
       strokeThickness: 3
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    const invoke = () => action();
+    const invoke = () => {
+      playRuntimeSound(this, soundKey);
+      action();
+    };
 
     hitArea.on('pointerdown', invoke);
     label.on('pointerdown', invoke);
@@ -599,6 +711,7 @@ class GameplayScene extends Phaser.Scene {
 
   preload() {
     loadRuntimeVisualAssets(this);
+    loadRuntimeAudioAssets(this);
   }
 
   create(data) {
@@ -620,6 +733,7 @@ class GameplayScene extends Phaser.Scene {
     });
     this.spawnRandomization = createSpawnRandomizationState();
 
+    playRuntimeMusic(this, 'music-run');
     this.cameras.main.setBackgroundColor('#09111f');
     this.createGameplayBackdrop();
 
@@ -636,10 +750,12 @@ class GameplayScene extends Phaser.Scene {
     this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.input.keyboard.on('keydown-ESC', () => {
       if (this.paused) {
+        playRuntimeSound(this, 'ui-back');
         this.closePauseMenu();
         return;
       }
 
+      playRuntimeSound(this, 'ui-pause-open');
       this.openPauseMenu();
     });
 
@@ -932,6 +1048,7 @@ class GameplayScene extends Phaser.Scene {
   showBossWarning() {
     const warning = createBossWarningState();
 
+    playRuntimeSound(this, 'boss-warning', { volume: 0.55 });
     this.bossWarningShown = true;
     this.bossWarningText.setText(warning.text).setVisible(true);
     this.bossWarningDetailText.setText(warning.detailText).setVisible(true);
@@ -968,12 +1085,14 @@ class GameplayScene extends Phaser.Scene {
   }
 
   applyDamage(damage) {
+    playRuntimeSound(this, 'player-damage');
     this.runStats = applyPlayerDamage({ stats: this.runStats, damage });
     this.updateHud();
     this.endRunIfNeeded();
   }
 
   applyPickup(pickupType) {
+    playRuntimeSound(this, pickupSoundKeyFor(pickupType));
     this.runStats = applyPickupBuff({ stats: this.runStats, pickupType });
     this.updateHud();
   }
@@ -982,6 +1101,9 @@ class GameplayScene extends Phaser.Scene {
     const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats, enemies: this.enemies });
 
     if (endReason) {
+      if (endReason === 'health-depleted') {
+        playRuntimeSound(this, 'player-destroyed', { volume: 0.55 });
+      }
       if (shouldPersistRunOutcome({ endReason })) {
         persistCompletedRun({
           runLengthMinutes: this.selectedRunLengthMinutes,
@@ -1010,6 +1132,9 @@ class GameplayScene extends Phaser.Scene {
       return Object.assign(projectile, projectileState);
     });
 
+    if (projectiles.length > 0) {
+      playRuntimeSound(this, 'player-bolt-fire', { volume: 0.16 });
+    }
     this.projectiles.push(...projectiles);
   }
 
@@ -1065,6 +1190,7 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.pickupCount = String(this.pickups.length);
 
     if (result.collectedPickups.length > 0) {
+      result.collectedPickups.forEach((pickup) => playRuntimeSound(this, pickupSoundKeyFor(pickup.type)));
       this.updateHud();
     }
   }
@@ -1093,7 +1219,12 @@ class GameplayScene extends Phaser.Scene {
     this.projectiles = result.projectiles;
     this.enemies = result.enemies;
 
+    if (result.damageDealt > 0) {
+      playRuntimeSound(this, 'player-bolt-hit', { volume: 0.2 });
+    }
+
     if (result.destroyedEnemies.length > 0) {
+      result.destroyedEnemies.forEach((enemy) => playRuntimeSound(this, enemyDestroyedSoundKeyFor(enemy.type)));
       this.runStats = applyDestroyedEnemyRewards({
         stats: this.runStats,
         destroyedEnemies: result.destroyedEnemies,
@@ -1126,6 +1257,8 @@ class GameplayScene extends Phaser.Scene {
 
   spawnBossEnemy() {
     this.bossSpawned = true;
+    playRuntimeMusic(this, 'music-boss');
+    playRuntimeSound(this, 'boss-spawn', { volume: 0.58 });
     this.addEnemy(createBossEnemySpawn({ spawnIndex: 0 }));
     this.root.dataset.bossSpawned = 'true';
     this.updateBossHpHud();
