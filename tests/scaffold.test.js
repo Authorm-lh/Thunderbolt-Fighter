@@ -1005,6 +1005,96 @@ test('a boss-class enemy appears near the end as a high-value target', async () 
   assert.match(renderer, /dataset\.bossSpawned/);
 });
 
+test('Boss HP HUD appears while a boss-class enemy is active', async () => {
+  const { createBossEnemySpawn, createBossHpHudState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const boss = createBossEnemySpawn({ spawnIndex: 0 });
+
+  assert.equal(createBossHpHudState({ enemies: [] }).visible, false);
+  assert.equal(createBossHpHudState({ enemies: [boss] }).visible, true);
+  assert.match(renderer, /bossHpHudText/);
+  assert.match(renderer, /createBossHpHudState/);
+});
+
+test('Boss HP HUD shows current and max boss health', async () => {
+  const { ENEMY_CLASSES, createBossEnemySpawn, createBossHpHudState } = await import('../src/renderer/gameplay-state.js');
+  const boss = createBossEnemySpawn({ spawnIndex: 0 });
+  const bossHpHud = createBossHpHudState({ enemies: [boss] });
+
+  assert.equal(bossHpHud.currentHealth, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.equal(bossHpHud.maxHealth, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.equal(bossHpHud.text, `Boss HP ${ENEMY_CLASSES['boss-class'].maxHealth}/${ENEMY_CLASSES['boss-class'].maxHealth}`);
+});
+
+test('Boss HP HUD updates when player projectiles damage the boss', async () => {
+  const { PLAYER_WEAPON, createBossEnemySpawn, createBossHpHudState, resolvePlayerProjectileEnemyHits } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const boss = { ...createBossEnemySpawn({ spawnIndex: 0 }), y: 96 };
+  const hit = resolvePlayerProjectileEnemyHits({
+    enemies: [boss],
+    projectiles: [{ x: boss.x, y: boss.y, radius: PLAYER_WEAPON.projectileRadius }]
+  });
+  const bossHpHud = createBossHpHudState({ enemies: hit.enemies });
+
+  assert.equal(hit.damageDealt, PLAYER_WEAPON.damage);
+  assert.equal(bossHpHud.currentHealth, boss.health - PLAYER_WEAPON.damage);
+  assert.match(bossHpHud.text, new RegExp(`Boss HP ${boss.health - PLAYER_WEAPON.damage}/`));
+  assert.match(renderer, /result\.damageDealt > 0/);
+});
+
+test('Boss HP HUD cleans up when the boss is defeated or results screen opens', async () => {
+  const { createBossEnemySpawn, createBossHpHudState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const defeatedBoss = { ...createBossEnemySpawn({ spawnIndex: 0 }), health: 0 };
+
+  assert.equal(createBossHpHudState({ enemies: [defeatedBoss] }).visible, false);
+  assert.match(renderer, /root\.dataset\.bossHpHudVisible = 'false'/);
+});
+
+test('Boss HP HUD layout does not cover regular HUD values', async () => {
+  const { createHudLayoutState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const layout = createHudLayoutState();
+
+  assert.deepEqual(layout.regularHud.values, ['score', 'timer', 'health', 'weapon', 'buff', 'pickups', 'bestScore']);
+  assert.ok(layout.regularHud.right < layout.bossHp.left);
+  assert.ok(layout.runSummary.bottom <= layout.regularHud.top);
+  assert.match(renderer, /HUD_LAYOUT\.regularHud/);
+  assert.match(renderer, /HUD_LAYOUT\.bossHp/);
+});
+
+test('Boss HP HUD exposes DOM state for smoke checks', async () => {
+  const { createBossEnemySpawn, createBossHpHudState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const boss = { ...createBossEnemySpawn({ spawnIndex: 0 }), health: 180 };
+  const bossHpHud = createBossHpHudState({ enemies: [boss] });
+
+  assert.equal(bossHpHud.text, 'Boss HP 180/240');
+  assert.match(renderer, /dataset\.bossHpCurrent/);
+  assert.match(renderer, /dataset\.bossHpMax/);
+  assert.match(renderer, /dataset\.bossHpText/);
+});
+
+test('Boss HP HUD updates on boss lifecycle changes instead of every HUD refresh', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const updateHudBody = renderer.match(/  updateHud\(\) \{[\s\S]*?\n  \}/)[0];
+
+  assert.doesNotMatch(updateHudBody, /updateBossHpHud/);
+  assert.match(renderer, /spawnBossEnemy\(\) \{[\s\S]*?this\.updateBossHpHud\(\)/);
+  assert.match(renderer, /result\.damageDealt > 0/);
+  assert.match(renderer, /result\.destroyedEnemies\.length > 0[\s\S]*?this\.updateBossHpHud\(\)/);
+});
+
+test('Boss HP smoke test covers visibility, damage updates, and cleanup', async () => {
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(smokeTest, /data-boss-hp-hud-visible/);
+  assert.match(smokeTest, /data-boss-hp-current/);
+  assert.match(smokeTest, /data-boss-hp-text/);
+  assert.match(smokeTest, /bossHpAfterDamage/);
+  assert.match(smokeTest, /data-screen'\), 'results'/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

@@ -204,6 +204,30 @@ export const TEST_NAME_MARKERS = {
   labelOffset: 18
 };
 
+export const HUD_LAYOUT = {
+  runSummary: {
+    x: 24,
+    y: 24,
+    top: 24,
+    bottom: 52
+  },
+  regularHud: {
+    x: 24,
+    y: 58,
+    top: 58,
+    right: 384,
+    values: ['score', 'timer', 'health', 'weapon', 'buff', 'pickups', 'bestScore']
+  },
+  bossHp: {
+    x: GAMEPLAY_PLAYFIELD.width / 2,
+    y: 28,
+    left: 460,
+    right: 820
+  }
+};
+
+export const createHudLayoutState = () => HUD_LAYOUT;
+
 export const createTestNameMarker = ({ text, target, enabled = TEST_NAME_MARKERS.enabled }) => {
   if (!enabled) {
     return null;
@@ -310,6 +334,18 @@ export const createBossWarningState = () => ({
   text: BOSS_EVENT.warningText,
   detailText: BOSS_EVENT.detailText
 });
+
+export const createBossHpHudState = ({ enemies }) => {
+  const activeBoss = enemies.find((enemy) => enemy.type === 'boss-class' && enemy.health > 0);
+  const bossClass = ENEMY_CLASSES['boss-class'];
+
+  return {
+    visible: Boolean(activeBoss),
+    currentHealth: activeBoss?.health ?? 0,
+    maxHealth: bossClass.maxHealth,
+    text: activeBoss ? `Boss HP ${activeBoss.health}/${bossClass.maxHealth}` : ''
+  };
+};
 
 export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basic', difficulty = 'normal' }) => {
   const enemyClass = getEnemyClass(enemyType);

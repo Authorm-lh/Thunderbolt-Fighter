@@ -3,6 +3,7 @@ import {
   BACKGROUND_SCROLL,
   BASIC_ENEMY,
   GAMEPLAY_PLAYFIELD,
+  HUD_LAYOUT,
   PICKUP_SPAWNING,
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
@@ -18,6 +19,7 @@ import {
   createBasicEnemyProjectile,
   createBossEnemySpawn,
   createBossWarningState,
+  createBossHpHudState,
   createEnemySpawn,
   createHudValues,
   createPickupSpawn,
@@ -253,6 +255,7 @@ class GameplayScene extends Phaser.Scene {
     this.runClock = null;
     this.runStats = null;
     this.hudText = null;
+    this.bossHpHudText = null;
     this.bossWarningText = null;
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
@@ -293,19 +296,27 @@ class GameplayScene extends Phaser.Scene {
     this.cursorKeys = this.input.keyboard.createCursorKeys();
     this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
 
-    this.add.text(24, 24, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
+    this.add.text(HUD_LAYOUT.runSummary.x, HUD_LAYOUT.runSummary.y, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '24px',
       color: '#9ed7ff',
       align: 'left'
     });
-    this.hudText = this.add.text(24, 58, '', {
+    this.hudText = this.add.text(HUD_LAYOUT.regularHud.x, HUD_LAYOUT.regularHud.y, '', {
       fontFamily: 'Arial, sans-serif',
       fontSize: '22px',
       color: '#f8fbff',
       align: 'left',
       lineSpacing: 6
     });
+    this.bossHpHudText = this.add.text(HUD_LAYOUT.bossHp.x, HUD_LAYOUT.bossHp.y, '', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '24px',
+      color: '#ffd166',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 4
+    }).setOrigin(0.5, 0).setVisible(false);
     this.createBossWarningDisplay();
 
     root.dataset.screen = 'gameplay';
@@ -501,6 +512,16 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.hudBestScore = hudValues.bestScore;
   }
 
+  updateBossHpHud() {
+    const bossHpHud = createBossHpHudState({ enemies: this.enemies });
+
+    this.bossHpHudText.setText(bossHpHud.text).setVisible(bossHpHud.visible);
+    this.root.dataset.bossHpHudVisible = String(bossHpHud.visible);
+    this.root.dataset.bossHpCurrent = String(bossHpHud.currentHealth);
+    this.root.dataset.bossHpMax = String(bossHpHud.maxHealth);
+    this.root.dataset.bossHpText = bossHpHud.text;
+  }
+
   applyDamage(damage) {
     this.runStats = applyPlayerDamage({ stats: this.runStats, damage });
     this.updateHud();
@@ -631,6 +652,9 @@ class GameplayScene extends Phaser.Scene {
         difficulty: this.selectedDifficulty
       });
       this.updateHud();
+      this.updateBossHpHud();
+    } else if (result.damageDealt > 0) {
+      this.updateBossHpHud();
     }
 
     this.root.dataset.enemyCount = String(this.enemies.length);
@@ -648,6 +672,7 @@ class GameplayScene extends Phaser.Scene {
     this.bossSpawned = true;
     this.addEnemy(createBossEnemySpawn({ spawnIndex: 0 }));
     this.root.dataset.bossSpawned = 'true';
+    this.updateBossHpHud();
   }
 
   addEnemy(enemy) {
@@ -810,6 +835,7 @@ class ResultsScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
 
     root.dataset.screen = 'results';
+    root.dataset.bossHpHudVisible = 'false';
     root.dataset.endReason = data.endReason;
     root.dataset.resultsScore = String(data.runStats.score);
     root.dataset.resultsKills = String(data.runStats.kills);
@@ -837,4 +863,4 @@ const config = {
   }
 };
 
-new Phaser.Game(config);
+globalThis.__thunderboltFighterGame = new Phaser.Game(config);
