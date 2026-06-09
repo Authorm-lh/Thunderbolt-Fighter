@@ -167,6 +167,13 @@ test('spawn randomization is deterministic for fixed seeds and changes across se
   assert.notDeepEqual(spawnSequenceFor(808), spawnSequenceFor(909));
 });
 
+test('spawn stream hashing preserves stream order for independent random sequences', async () => {
+  const { createSpawnStreamHash } = await import('../src/renderer/gameplay-state.js');
+
+  assert.notEqual(createSpawnStreamHash('ab'), createSpawnStreamHash('ba'));
+  assert.equal(createSpawnStreamHash('enemy-lane'), createSpawnStreamHash('enemy-lane'));
+});
+
 test('gameplay scene uses a 16:9 logical playfield', async () => {
   const { GAMEPLAY_PLAYFIELD } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

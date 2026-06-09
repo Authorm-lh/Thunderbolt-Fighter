@@ -149,9 +149,19 @@ export const createSpawnRandomizationState = ({ seed, seedSource = Date.now } = 
   seed: seed ?? seedSource()
 });
 
+export const createSpawnStreamHash = (stream) => {
+  let hash = 0x811c9dc5;
+
+  [...stream].forEach((character) => {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  });
+
+  return hash;
+};
+
 const createSeededRandomValue = ({ seed, stream, spawnIndex }) => {
-  const streamOffset = [...stream].reduce((offset, character) => offset + character.charCodeAt(0), 0);
-  let value = (seed + streamOffset + Math.imul(spawnIndex + 1, 0x9e3779b1)) >>> 0;
+  let value = (seed + createSpawnStreamHash(stream) + Math.imul(spawnIndex + 1, 0x9e3779b1)) >>> 0;
 
   value = Math.imul(value ^ (value >>> 16), 0x85ebca6b) >>> 0;
   value = Math.imul(value ^ (value >>> 13), 0xc2b2ae35) >>> 0;
