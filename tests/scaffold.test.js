@@ -1452,6 +1452,27 @@ test('tutorial can be skipped and still counts as seen for future launches', asy
   assert.match(renderer, /skipTutorial\(\)/);
 });
 
+test('tutorial replay can be triggered immediately from settings', async () => {
+  const {
+    clearTutorialReplayRequested,
+    createDefaultSettings,
+    markTutorialReplayRequested
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const replaySettings = markTutorialReplayRequested(createDefaultSettings());
+
+  assert.equal(replaySettings.tutorialReplayRequested, true);
+  assert.deepEqual(clearTutorialReplayRequested(replaySettings), {
+    audioEnabled: true,
+    fullscreenEnabled: false,
+    tutorialReplayRequested: false
+  });
+  assert.match(renderer, /this\.scene\.start\('tutorial', \{ returnScene: 'settings', replay: true \}\)/);
+  assert.match(renderer, /this\.returnScene = data\.returnScene \?\? 'main-menu'/);
+  assert.match(renderer, /this\.scene\.start\(this\.returnScene\)/);
+});
+
 test('local best scores are saved separately by run length and difficulty', async () => {
   const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
   const values = new Map();

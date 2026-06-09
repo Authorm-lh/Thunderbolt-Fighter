@@ -33,6 +33,7 @@ import {
   createRunStats,
   createTestNameMarker,
   createTutorialContent,
+  clearTutorialReplayRequested,
   destroyTestNameMarker,
   followTestNameMarkerTarget,
   getEnemyClass,
@@ -110,11 +111,13 @@ class BootScene extends Phaser.Scene {
 class TutorialScene extends Phaser.Scene {
   constructor() {
     super('tutorial');
+    this.returnScene = 'main-menu';
   }
 
-  create() {
+  create(data = {}) {
     const root = document.querySelector('#game-root');
     const tutorialContent = createTutorialContent();
+    this.returnScene = data.returnScene ?? 'main-menu';
 
     this.cameras.main.setBackgroundColor('#09111f');
     this.add.rectangle(this.scale.width / 2, this.scale.height / 2, 760, 520, 0x071827, 0.74)
@@ -148,6 +151,7 @@ class TutorialScene extends Phaser.Scene {
     this.createTutorialButton(this.scale.width / 2, 592, 'Skip Tutorial', () => this.skipTutorial());
 
     root.dataset.screen = 'tutorial';
+    root.dataset.tutorialReplay = String(Boolean(data.replay));
     root.dataset.tutorialTitle = tutorialContent.title;
     root.dataset.tutorialControls = tutorialContent.controls;
     root.dataset.tutorialGoal = tutorialContent.goal;
@@ -155,12 +159,12 @@ class TutorialScene extends Phaser.Scene {
 
   continueTutorial() {
     markTutorialSeen();
-    this.scene.start('main-menu');
+    this.scene.start(this.returnScene);
   }
 
   skipTutorial() {
     markTutorialSkipped();
-    this.scene.start('main-menu');
+    this.scene.start(this.returnScene);
   }
 
   createTutorialButton(x, y, labelText, action) {
@@ -402,6 +406,8 @@ class SettingsScene extends Phaser.Scene {
     this.createSettingsButton(440, 330, 'Replay Tutorial', () => {
       this.settings = saveSettings({ settings: markTutorialReplayRequested(this.settings) });
       this.refreshSettingsDisplay('Tutorial replay queued');
+      this.settings = saveSettings({ settings: clearTutorialReplayRequested(this.settings) });
+      this.scene.start('tutorial', { returnScene: 'settings', replay: true });
     });
     this.createSettingsButton(840, 330, 'Reset Records', () => {
       resetLocalRecords();

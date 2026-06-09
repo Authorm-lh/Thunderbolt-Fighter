@@ -630,6 +630,11 @@ export const markTutorialReplayRequested = (settings = createDefaultSettings()) 
   tutorialReplayRequested: true
 });
 
+export const clearTutorialReplayRequested = (settings = createDefaultSettings()) => ({
+  ...settings,
+  tutorialReplayRequested: false
+});
+
 export const resetLocalRecords = ({ storage = globalThis.localStorage } = {}) => saveLocalRecords({
   storage,
   records: createDefaultLocalRecords()
