@@ -1005,6 +1005,17 @@ test('a boss-class enemy appears near the end as a high-value target', async () 
   assert.match(renderer, /dataset\.bossSpawned/);
 });
 
+test('Boss HP HUD appears while a boss-class enemy is active', async () => {
+  const { createBossEnemySpawn, createBossHpHudState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const boss = createBossEnemySpawn({ spawnIndex: 0 });
+
+  assert.equal(createBossHpHudState({ enemies: [] }).visible, false);
+  assert.equal(createBossHpHudState({ enemies: [boss] }).visible, true);
+  assert.match(renderer, /bossHpHudText/);
+  assert.match(renderer, /createBossHpHudState/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

@@ -18,6 +18,7 @@ import {
   createBasicEnemyProjectile,
   createBossEnemySpawn,
   createBossWarningState,
+  createBossHpHudState,
   createEnemySpawn,
   createHudValues,
   createPickupSpawn,
@@ -253,6 +254,7 @@ class GameplayScene extends Phaser.Scene {
     this.runClock = null;
     this.runStats = null;
     this.hudText = null;
+    this.bossHpHudText = null;
     this.bossWarningText = null;
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
@@ -306,6 +308,14 @@ class GameplayScene extends Phaser.Scene {
       align: 'left',
       lineSpacing: 6
     });
+    this.bossHpHudText = this.add.text(this.scale.width / 2, 28, '', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '24px',
+      color: '#ffd166',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 4
+    }).setOrigin(0.5, 0).setVisible(false);
     this.createBossWarningDisplay();
 
     root.dataset.screen = 'gameplay';
@@ -499,6 +509,14 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.hudBuff = hudValues.buff;
     this.root.dataset.hudPickups = hudValues.pickups;
     this.root.dataset.hudBestScore = hudValues.bestScore;
+    this.updateBossHpHud();
+  }
+
+  updateBossHpHud() {
+    const bossHpHud = createBossHpHudState({ enemies: this.enemies });
+
+    this.bossHpHudText.setText(bossHpHud.text).setVisible(bossHpHud.visible);
+    this.root.dataset.bossHpHudVisible = String(bossHpHud.visible);
   }
 
   applyDamage(damage) {

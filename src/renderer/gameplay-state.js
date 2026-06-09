@@ -311,6 +311,15 @@ export const createBossWarningState = () => ({
   detailText: BOSS_EVENT.detailText
 });
 
+export const createBossHpHudState = ({ enemies }) => {
+  const activeBoss = enemies.find((enemy) => enemy.type === 'boss-class' && enemy.health > 0);
+
+  return {
+    visible: Boolean(activeBoss),
+    text: activeBoss ? 'Boss HP' : ''
+  };
+};
+
 export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basic', difficulty = 'normal' }) => {
   const enemyClass = getEnemyClass(enemyType);
   const fireIntervalMs = enemyClass.fireIntervalMs * getDifficultyTuning(difficulty).enemyFireIntervalMultiplier;
