@@ -1719,6 +1719,61 @@ test('results screen shows baseline run performance stats', async () => {
   assert.match(renderer, /createResultsValues/);
 });
 
+test('results screen shows an action to return to the main menu', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /class ResultsScene[\s\S]*Main Menu/);
+  assert.match(renderer, /dataset\.resultsActions/);
+});
+
+test('results screen shows an action to start another run', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /class ResultsScene[\s\S]*Replay/);
+  assert.match(renderer, /dataset\.resultsActions = 'Main Menu,Replay'/);
+});
+
+test('results main-menu action returns without mutating stored results', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /class ResultsScene[\s\S]*returnToMenu\(\) \{[\s\S]*?this\.scene\.start\('main-menu'\)/);
+  assert.match(renderer, /createResultsButton\([^\n]*'Main Menu', \(\) => this\.returnToMenu\(\)\)/);
+  assert.doesNotMatch(renderer.match(/returnToMenu\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun|resetLocalRecords|resultsScore|resultsLocalRecord/);
+});
+
+test('results replay action starts fresh gameplay with run options', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /this\.scene\.start\('results', \{[\s\S]*?runOptions: \{[\s\S]*?runLengthMinutes: this\.selectedRunLengthMinutes[\s\S]*?difficulty: this\.selectedDifficulty/);
+  assert.match(renderer, /class ResultsScene[\s\S]*replayRun\(\) \{[\s\S]*?this\.scene\.start\('gameplay', \{[\s\S]*?runOptions: this\.runOptions/);
+  assert.match(renderer, /createResultsButton\([^\n]*'Replay', \(\) => this\.replayRun\(\)\)/);
+  assert.doesNotMatch(renderer.match(/replayRun\(\) \{[\s\S]*?\n  \}/)[0], /scene\.restart|runStats|runClock/);
+});
+
+test('results replay preserves the completed run settings', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /root\.dataset\.resultsReplayRunLengthMinutes = String\(this\.runOptions\.runLengthMinutes\)/);
+  assert.match(renderer, /root\.dataset\.resultsReplayDifficulty = this\.runOptions\.difficulty/);
+  assert.match(renderer, /runOptions: this\.runOptions/);
+  assert.match(smokeTest, /data-results-replay-run-length-minutes/);
+  assert.match(smokeTest, /data-results-replay-difficulty/);
+});
+
+test('results actions support mouse interaction and screen metadata checks', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /setInteractive\(\{ useHandCursor: true \}\)/);
+  assert.match(renderer, /root\.dataset\.resultsActions = 'Main Menu,Replay'/);
+  assert.match(smokeTest, /data-results-actions/);
+  assert.match(smokeTest, /clickGamePoint\(1020, 380\)/);
+  assert.match(smokeTest, /clickGamePoint\(260, 380\)/);
+  assert.match(smokeTest, /data-screen="gameplay"/);
+  assert.match(smokeTest, /data-screen="main-menu"/);
+});
+
 test('results stats include pickup counts and combat stat changes', async () => {
   const { applyPlayerDamage, applyPickupBuff, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
 
