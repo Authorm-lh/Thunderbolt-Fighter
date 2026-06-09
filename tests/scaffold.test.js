@@ -2003,6 +2003,19 @@ test('Simplified Chinese README mirrors the user-facing project guidance', async
   assert.match(readme, /下载/);
 });
 
+test('README files document prerequisites and source commands', async () => {
+  const englishReadme = await readText('README.md');
+  const chineseReadme = await readText('README.zh-CN.md');
+
+  [englishReadme, chineseReadme].forEach((readme) => {
+    assert.match(readme, /Node\.js/);
+    assert.match(readme, /npm/);
+    assert.match(readme, /npm install/);
+    assert.match(readme, /npm run dev/);
+    assert.match(readme, /npm run package:win/);
+  });
+});
+
 test('pull request CI keeps validation artifacts separate from Release publishing', async () => {
   const ciWorkflow = await readText('.github/workflows/ci-build-check.yml');
 
