@@ -1014,6 +1014,32 @@ test('runs count down from the selected duration', async () => {
   assert.match(renderer, /advanceRunClock/);
 });
 
+test('HUD shows the relevant local best score for the active run options', async () => {
+  const { applyLocalRecordContext, createHudValues, createRunClock, createRunStats, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  saveBestScoreForRun({ storage, runLengthMinutes: 5, difficulty: 'hard', score: 2400 });
+  saveBestScoreForRun({ storage, runLengthMinutes: 3, difficulty: 'hard', score: 9000 });
+
+  const stats = applyLocalRecordContext({
+    storage,
+    stats: createRunStats(),
+    runLengthMinutes: 5,
+    difficulty: 'hard'
+  });
+  const hudValues = createHudValues({ clock: createRunClock({ runLengthMinutes: 5 }), stats });
+
+  assert.equal(stats.bestScore, 2400);
+  assert.equal(hudValues.bestScore, 'Best 2400');
+  assert.match(renderer, /applyLocalRecordContext/);
+  assert.match(renderer, /dataset\.hudBestScore/);
+});
+
 test('HUD shows baseline survival and scoring values', async () => {
   const { createRunClock, createRunStats, createHudValues } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

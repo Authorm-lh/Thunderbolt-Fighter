@@ -643,6 +643,15 @@ export const saveRecentRun = ({ storage = globalThis.localStorage, run }) => {
   });
 };
 
+export const applyLocalRecordContext = ({ storage = globalThis.localStorage, stats, runLengthMinutes, difficulty }) => ({
+  ...stats,
+  bestScore: getBestScoreForRun({
+    records: loadLocalRecords({ storage }),
+    runLengthMinutes,
+    difficulty
+  })
+});
+
 export const createRunStats = () => ({
   score: 0,
   health: PLAYER_SURVIVAL.maxHealth,

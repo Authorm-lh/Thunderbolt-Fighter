@@ -14,6 +14,7 @@ import {
   advanceRunClock,
   advanceTimedBuffs,
   applyDestroyedEnemyRewards,
+  applyLocalRecordContext,
   applyPickupBuff,
   applyPlayerDamage,
   createBasicEnemyProjectile,
@@ -276,7 +277,11 @@ class GameplayScene extends Phaser.Scene {
     this.bossSpawned = false;
     this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
-    this.runStats = createRunStats();
+    this.runStats = applyLocalRecordContext({
+      stats: createRunStats(),
+      runLengthMinutes: runOptions.runLengthMinutes,
+      difficulty: runOptions.difficulty
+    });
     this.spawnRandomization = createSpawnRandomizationState();
 
     this.cameras.main.setBackgroundColor('#09111f');
