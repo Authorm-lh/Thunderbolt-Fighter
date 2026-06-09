@@ -1962,7 +1962,10 @@ test('desktop smoke test launches the shell and reaches the main menu', async ()
   assert.match(renderer, /dataset\.screen = 'main-menu'/);
   assert.match(renderer, /dataset\.title = 'Thunderbolt Fighter'/);
   assert.match(smokeTest, /_electron/);
+  assert.match(smokeTest, /THUNDERBOLT_FIGHTER_EXECUTABLE/);
+  assert.match(smokeTest, /executablePath/);
   assert.match(smokeTest, /#game-root\[data-screen="main-menu"\]/);
+  assert.match(smokeTest, /#game-root\[data-screen="gameplay"\]/);
   assert.match(smokeTest, /Thunderbolt Fighter/);
 });
 
