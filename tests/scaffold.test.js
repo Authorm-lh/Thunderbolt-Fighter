@@ -705,6 +705,8 @@ test('basic and elite enemies differ in durability, damage, firing, movement, an
 
   assert.equal(ENEMY_CLASSES.basic.type, 'basic');
   assert.equal(ENEMY_CLASSES.elite.type, 'elite');
+  assert.equal(ENEMY_CLASSES.basic.maxHealth, 30);
+  assert.equal(ENEMY_CLASSES.elite.maxHealth, 60);
   assert.ok(ENEMY_CLASSES.elite.maxHealth > ENEMY_CLASSES.basic.maxHealth);
   assert.ok(ENEMY_CLASSES.elite.projectileDamage > ENEMY_CLASSES.basic.projectileDamage);
   assert.ok(ENEMY_CLASSES.elite.contactDamage > ENEMY_CLASSES.basic.contactDamage);
