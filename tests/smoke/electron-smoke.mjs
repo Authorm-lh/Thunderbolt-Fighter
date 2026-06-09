@@ -64,6 +64,47 @@ try {
   assert.equal(await gameRoot.getAttribute('data-hud-pickups'), 'Pickups 0');
   assert.equal(await gameRoot.getAttribute('data-best-score'), '');
 
+  await window.waitForFunction(() => globalThis.__thunderboltFighterGame?.scene?.getScene('gameplay'));
+  await window.evaluate(() => {
+    const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
+
+    gameplay.spawnBossEnemy();
+    gameplay.updateBossHpHud();
+  });
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'true');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-current'), '240');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-max'), '240');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 240/240');
+
+  await window.evaluate(() => {
+    const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
+    const boss = gameplay.enemies.find((enemy) => enemy.type === 'boss-class');
+    const projectile = gameplay.add.circle(boss.x, boss.y, 5, 0xffd166, 1);
+
+    projectile.radius = 5;
+    gameplay.projectiles.push(projectile);
+    gameplay.resolvePlayerProjectileHits();
+  });
+  const bossHpAfterDamage = await gameRoot.getAttribute('data-boss-hp-current');
+  assert.equal(bossHpAfterDamage, '225');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 225/240');
+
+  await window.evaluate(() => {
+    const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
+    const boss = gameplay.enemies.find((enemy) => enemy.type === 'boss-class');
+    const projectile = gameplay.add.circle(boss.x, boss.y, 5, 0xffd166, 1);
+
+    boss.health = 15;
+    projectile.radius = 5;
+    gameplay.projectiles.push(projectile);
+    gameplay.resolvePlayerProjectileHits();
+    gameplay.runClock.remainingMs = 0;
+    gameplay.endRunIfNeeded();
+  });
+  await window.waitForSelector('#game-root[data-screen="results"]', { timeout: 15000 });
+  assert.equal(await gameRoot.getAttribute('data-screen'), 'results');
+  assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'false');
+
   const windowTitle = await window.title();
   assert.equal(windowTitle, 'Thunderbolt Fighter');
 } finally {

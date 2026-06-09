@@ -862,4 +862,4 @@ const config = {
   }
 };
 
-new Phaser.Game(config);
+globalThis.__thunderboltFighterGame = new Phaser.Game(config);

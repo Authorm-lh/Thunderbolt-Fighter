@@ -1075,6 +1075,16 @@ test('Boss HP HUD exposes DOM state for smoke checks', async () => {
   assert.match(renderer, /dataset\.bossHpText/);
 });
 
+test('Boss HP smoke test covers visibility, damage updates, and cleanup', async () => {
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(smokeTest, /data-boss-hp-hud-visible/);
+  assert.match(smokeTest, /data-boss-hp-current/);
+  assert.match(smokeTest, /data-boss-hp-text/);
+  assert.match(smokeTest, /bossHpAfterDamage/);
+  assert.match(smokeTest, /data-screen'\), 'results'/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
