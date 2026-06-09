@@ -101,10 +101,35 @@ export const ENEMY_CLASSES = {
     movementPattern: 'sway',
     maxHorizontalOffset: 42,
     lanes: [300, 540, 780, 1020]
+  },
+  'boss-class': {
+    type: 'boss-class',
+    spawnIntervalMs: 0,
+    speed: 24,
+    radius: 64,
+    maxHealth: 240,
+    fireIntervalMs: 700,
+    projectileSpeed: 390,
+    projectileRadius: 10,
+    projectileDamage: 24,
+    contactDamage: 45,
+    escapedDamage: 0,
+    scoreValue: 1200,
+    movementPattern: 'command-hover',
+    maxHorizontalOffset: 120,
+    holdY: 96,
+    lanes: [GAMEPLAY_PLAYFIELD.width / 2]
   }
 };
 
 export const BASIC_ENEMY = ENEMY_CLASSES.basic;
+
+export const BOSS_EVENT = {
+  warningBeforeEndMs: 12_000,
+  spawnBeforeEndMs: 8_000,
+  warningText: '⚠ BOSS INBOUND ⚠',
+  detailText: 'High-value target entering combat zone'
+};
 
 export const getEnemyClass = (enemyType = 'basic') => ENEMY_CLASSES[enemyType] ?? ENEMY_CLASSES.basic;
 
@@ -273,6 +298,19 @@ export const shouldSpawnBasicEnemy = ({ elapsedMs, lastSpawnedMs, activeEnemyCou
   return activeEnemyCount < tuning.maxActiveEnemies && elapsedMs - lastSpawnedMs >= tuning.enemySpawnIntervalMs;
 };
 
+export const shouldShowBossWarning = ({ remainingMs, bossWarningShown }) => (
+  !bossWarningShown && remainingMs <= BOSS_EVENT.warningBeforeEndMs
+);
+
+export const shouldSpawnBoss = ({ remainingMs, bossSpawned }) => (
+  !bossSpawned && remainingMs <= BOSS_EVENT.spawnBeforeEndMs
+);
+
+export const createBossWarningState = () => ({
+  text: BOSS_EVENT.warningText,
+  detailText: BOSS_EVENT.detailText
+});
+
 export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basic', difficulty = 'normal' }) => {
   const enemyClass = getEnemyClass(enemyType);
   const fireIntervalMs = enemyClass.fireIntervalMs * getDifficultyTuning(difficulty).enemyFireIntervalMultiplier;
@@ -295,6 +333,8 @@ export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic' }) => {
 };
 
 export const createBasicEnemySpawn = ({ spawnIndex }) => createEnemySpawn({ spawnIndex, enemyType: 'basic' });
+
+export const createBossEnemySpawn = ({ spawnIndex = 0 }) => createEnemySpawn({ spawnIndex, enemyType: 'boss-class' });
 
 export const shouldSpawnPickup = ({ elapsedMs, lastSpawnedMs, activePickupCount = 0 }) => (
   activePickupCount < PICKUP_SPAWNING.maxActivePickups && elapsedMs - lastSpawnedMs >= PICKUP_SPAWNING.spawnIntervalMs
@@ -345,8 +385,9 @@ export const resolvePlayerPickupHits = ({ stats, player, pickups }) => {
 
 export const advanceBasicEnemies = ({ enemies, deltaSeconds }) => enemies.map((enemy) => {
   const enemyClass = getEnemyClass(enemy.type);
-  const y = enemy.y + enemyClass.speed * deltaSeconds;
-  const x = enemyClass.movementPattern === 'sway'
+  const nextY = enemy.y + enemyClass.speed * deltaSeconds;
+  const y = enemyClass.movementPattern === 'command-hover' ? Math.min(nextY, enemyClass.holdY) : nextY;
+  const x = ['sway', 'command-hover'].includes(enemyClass.movementPattern)
     ? enemy.movementOriginX + Math.sin((y + enemyClass.radius) / 80) * enemyClass.maxHorizontalOffset
     : enemy.x;
 
@@ -446,6 +487,7 @@ export const createRunStats = () => ({
   activeBuffName: 'None',
   bestScore: null,
   kills: 0,
+  bossesDefeated: 0,
   pickups: 0,
   shotsFired: 0,
   damageDealt: 0,
@@ -460,6 +502,7 @@ export const applyDestroyedEnemyRewards = ({ stats, destroyedEnemies, damageDeal
     0
   ),
   kills: stats.kills + destroyedEnemies.length,
+  bossesDefeated: stats.bossesDefeated + destroyedEnemies.filter((enemy) => enemy.type === 'boss-class').length,
   damageDealt: stats.damageDealt + damageDealt
 });
 
@@ -491,6 +534,7 @@ export const createHudValues = ({ clock, stats }) => ({
 export const createResultsValues = ({ clock, stats }) => ({
   score: `Score ${stats.score}`,
   kills: `Kills ${stats.kills}`,
+  bossesDefeated: `Bosses Defeated ${stats.bossesDefeated}`,
   timeSurvived: `Time Survived ${formatRunTimer(clock.durationMs - clock.remainingMs)}`,
   pickups: `Pickups ${stats.pickups}`,
   shotsFired: `Shots Fired ${stats.shotsFired}`,

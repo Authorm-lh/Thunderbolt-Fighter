@@ -592,6 +592,30 @@ test('basic and elite enemies differ in durability, damage, firing, movement, an
   assert.ok(ENEMY_CLASSES.elite.scoreValue > ENEMY_CLASSES.basic.scoreValue);
 });
 
+test('boss-class enemy tuning is distinct from lower enemy classes', async () => {
+  const { ENEMY_CLASSES, advanceBasicEnemies, createBasicEnemyProjectile, createBossEnemySpawn, shouldBasicEnemyFire } = await import('../src/renderer/gameplay-state.js');
+
+  const bossClass = ENEMY_CLASSES['boss-class'];
+  const boss = createBossEnemySpawn({ spawnIndex: 0 });
+  const [advancedBoss] = advanceBasicEnemies({ enemies: [{ ...boss, y: 100 }], deltaSeconds: 10 });
+  const bossProjectile = createBasicEnemyProjectile({ enemyId: boss.id, x: boss.x, y: advancedBoss.y, enemyType: boss.type });
+
+  assert.ok(bossClass.maxHealth > ENEMY_CLASSES.elite.maxHealth);
+  assert.ok(bossClass.projectileDamage > ENEMY_CLASSES.elite.projectileDamage);
+  assert.ok(bossClass.contactDamage > ENEMY_CLASSES.elite.contactDamage);
+  assert.ok(bossClass.projectileRadius > ENEMY_CLASSES.elite.projectileRadius);
+  assert.ok(bossClass.fireIntervalMs < ENEMY_CLASSES.elite.fireIntervalMs);
+  assert.ok(shouldBasicEnemyFire({ elapsedMs: bossClass.fireIntervalMs * 2, lastFiredMs: 0, enemyType: boss.type }));
+  assert.ok(bossClass.speed < ENEMY_CLASSES.basic.speed);
+  assert.notEqual(bossClass.movementPattern, ENEMY_CLASSES.basic.movementPattern);
+  assert.notEqual(bossClass.movementPattern, ENEMY_CLASSES.elite.movementPattern);
+  assert.equal(advancedBoss.y, bossClass.holdY);
+  assert.ok(Math.abs(advancedBoss.x - boss.movementOriginX) <= bossClass.maxHorizontalOffset);
+  assert.ok(bossClass.scoreValue > ENEMY_CLASSES.elite.scoreValue);
+  assert.equal(bossProjectile.damage, bossClass.projectileDamage);
+  assert.equal(bossProjectile.radius, bossClass.projectileRadius);
+});
+
 test('enemy movement remains readable while elite enemies use bounded sway', async () => {
   const { BASIC_ENEMY, ENEMY_CLASSES, advanceBasicEnemies, createEnemySpawn, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -783,6 +807,25 @@ test('destroying basic enemies increases score, kills, and damage dealt', async 
   assert.match(renderer, /dataset\.kills/);
 });
 
+test('defeating the boss awards score and boss result stats', async () => {
+  const { ENEMY_CLASSES, applyDestroyedEnemyRewards, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const bossDamageDealt = ENEMY_CLASSES['boss-class'].maxHealth;
+  const stats = applyDestroyedEnemyRewards({
+    stats: createRunStats(),
+    destroyedEnemies: [{ id: 'boss-class-0', type: 'boss-class', health: 0 }],
+    damageDealt: bossDamageDealt
+  });
+  const resultsValues = createResultsValues({ clock: createRunClock({ runLengthMinutes: 1 }), stats });
+
+  assert.equal(stats.score, ENEMY_CLASSES['boss-class'].scoreValue);
+  assert.equal(stats.kills, 1);
+  assert.equal(stats.bossesDefeated, 1);
+  assert.equal(stats.damageDealt, bossDamageDealt);
+  assert.equal(resultsValues.bossesDefeated, 'Bosses Defeated 1');
+  assert.match(renderer, /dataset\.resultsBossesDefeated/);
+});
+
 test('gameplay background scrolls slowly to communicate vertical flight', async () => {
   const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -923,6 +966,45 @@ test('the run ends immediately when player health reaches zero', async () => {
   assert.match(renderer, /this\.scene\.start\('results'/);
 });
 
+test('a strong boss warning appears near the end of the run before the boss spawns', async () => {
+  const { BOSS_EVENT, createBossWarningState, shouldShowBossWarning } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(BOSS_EVENT.warningBeforeEndMs, 12_000);
+  assert.equal(BOSS_EVENT.spawnBeforeEndMs, 8_000);
+  assert.equal(shouldShowBossWarning({ remainingMs: BOSS_EVENT.warningBeforeEndMs + 1, bossWarningShown: false }), false);
+  assert.equal(shouldShowBossWarning({ remainingMs: BOSS_EVENT.warningBeforeEndMs, bossWarningShown: false }), true);
+  assert.equal(shouldShowBossWarning({ remainingMs: BOSS_EVENT.warningBeforeEndMs, bossWarningShown: true }), false);
+  assert.equal(shouldShowBossWarning({ remainingMs: BOSS_EVENT.spawnBeforeEndMs, bossWarningShown: false }), true);
+  assert.deepEqual(createBossWarningState(), {
+    text: '⚠ BOSS INBOUND ⚠',
+    detailText: 'High-value target entering combat zone'
+  });
+  assert.ok(BOSS_EVENT.warningBeforeEndMs > BOSS_EVENT.spawnBeforeEndMs);
+  assert.match(renderer, /showBossWarning/);
+  assert.match(renderer, /dataset\.bossWarning/);
+});
+
+test('a boss-class enemy appears near the end as a high-value target', async () => {
+  const { BOSS_EVENT, ENEMY_CLASSES, GAMEPLAY_PLAYFIELD, createBossEnemySpawn, shouldSpawnBoss } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(shouldSpawnBoss({ remainingMs: BOSS_EVENT.spawnBeforeEndMs + 1, bossSpawned: false }), false);
+  assert.equal(shouldSpawnBoss({ remainingMs: BOSS_EVENT.spawnBeforeEndMs, bossSpawned: false }), true);
+  assert.equal(shouldSpawnBoss({ remainingMs: BOSS_EVENT.spawnBeforeEndMs, bossSpawned: true }), false);
+
+  const boss = createBossEnemySpawn({ spawnIndex: 0 });
+
+  assert.equal(boss.id, 'boss-class-0');
+  assert.equal(boss.type, 'boss-class');
+  assert.equal(boss.x, GAMEPLAY_PLAYFIELD.width / 2);
+  assert.ok(boss.y < 0);
+  assert.equal(boss.health, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.ok(ENEMY_CLASSES['boss-class'].scoreValue > ENEMY_CLASSES.elite.scoreValue);
+  assert.match(renderer, /spawnBossEnemy/);
+  assert.match(renderer, /dataset\.bossSpawned/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -939,6 +1021,32 @@ test('the run ends when the selected timer expires', async () => {
   assert.match(renderer, /endRunIfNeeded/);
 });
 
+test('the run can time out while the boss remains alive', async () => {
+  const { ENEMY_CLASSES, advanceRunClock, createBossEnemySpawn, createResultsValues, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const aliveBoss = {
+    ...createBossEnemySpawn({ spawnIndex: 0 }),
+    y: ENEMY_CLASSES['boss-class'].holdY,
+    health: ENEMY_CLASSES['boss-class'].maxHealth
+  };
+  const expiredClock = advanceRunClock({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    deltaMs: 60_000
+  });
+  const stats = createRunStats();
+
+  assert.equal(aliveBoss.type, 'boss-class');
+  assert.ok(aliveBoss.health > 0);
+  assert.equal(getRunEndReason({
+    clock: expiredClock,
+    stats,
+    enemies: [aliveBoss]
+  }), 'timer-expired');
+  assert.equal(createResultsValues({ clock: expiredClock, stats }).bossesDefeated, 'Bosses Defeated 0');
+  assert.match(renderer, /endRunIfNeeded/);
+  assert.match(renderer, /dataset\.resultsBossesDefeated/);
+});
+
 test('results screen shows baseline run performance stats', async () => {
   const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -951,6 +1059,7 @@ test('results screen shows baseline run performance stats', async () => {
   assert.deepEqual(createResultsValues({ clock, stats: createRunStats() }), {
     score: 'Score 0',
     kills: 'Kills 0',
+    bossesDefeated: 'Bosses Defeated 0',
     timeSurvived: 'Time Survived 1:15',
     pickups: 'Pickups 0',
     shotsFired: 'Shots Fired 0',
