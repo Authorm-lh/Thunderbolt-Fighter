@@ -10,6 +10,7 @@ try {
 
   const title = await window.locator('#game-root').getAttribute('data-title');
   assert.equal(title, 'Thunderbolt Fighter');
+  await window.evaluate(() => localStorage.clear());
 
   const gameRoot = window.locator('#game-root');
   const canvasBox = await window.locator('#game-root canvas').boundingBox();
@@ -63,6 +64,7 @@ try {
   assert.equal(await gameRoot.getAttribute('data-pickups'), '0');
   assert.equal(await gameRoot.getAttribute('data-hud-pickups'), 'Pickups 0');
   assert.equal(await gameRoot.getAttribute('data-best-score'), '');
+  assert.equal(await gameRoot.getAttribute('data-hud-best-score'), 'Best —');
 
   await window.waitForFunction(() => globalThis.__thunderboltFighterGame?.scene?.getScene('gameplay'));
   await window.evaluate(() => {
@@ -104,6 +106,8 @@ try {
   await window.waitForSelector('#game-root[data-screen="results"]', { timeout: 15000 });
   assert.equal(await gameRoot.getAttribute('data-screen'), 'results');
   assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'false');
+  assert.equal(await gameRoot.getAttribute('data-results-best-score'), '1500');
+  assert.equal(await gameRoot.getAttribute('data-results-local-record'), '1500');
 
   const windowTitle = await window.title();
   assert.equal(windowTitle, 'Thunderbolt Fighter');

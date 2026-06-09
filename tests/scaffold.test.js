@@ -1533,6 +1533,18 @@ test('results count collected pickups and related combat stats once through the 
   assert.match(renderer, /dataset\.resultsShieldBlocked/);
 });
 
+test('local record tests cover keying, caps, persistence, and smoke-visible context', async () => {
+  const unitTests = await readText('tests/scaffold.test.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(unitTests, /local best scores are saved separately by run length and difficulty/);
+  assert.match(unitTests, /recent run history is saved locally and capped at the last 10 runs/);
+  assert.match(unitTests, /completed runs persist records that load into a later app session/);
+  assert.match(unitTests, /local records use browser storage without network access or accounts/);
+  assert.match(smokeTest, /data-hud-best-score/);
+  assert.match(smokeTest, /data-results-local-record/);
+});
+
 test('local records use browser storage without network access or accounts', async () => {
   const renderer = await readText('src/renderer/game.js');
   const state = await readText('src/renderer/gameplay-state.js');
