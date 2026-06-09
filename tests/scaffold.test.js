@@ -39,7 +39,7 @@ test('desktop shell opens to a polished Thunderbolt Fighter main menu', async ()
   assert.match(renderer, /Start Run/);
   assert.match(renderer, /MainMenuScene/);
   assert.match(renderer, /background_main_menu_1280x720/);
-  assert.doesNotMatch(renderer, /background_sky_1672x941/);
+  assert.match(renderer, /title-plate/);
   assert.match(renderer, /contentX: 320/);
   assert.match(renderer, /mainMenuY: 204/);
   assert.match(renderer, /runLengthY: 300/);
@@ -990,7 +990,7 @@ test('gameplay background scrolls slowly to communicate vertical flight', async 
   assert.equal(BACKGROUND_SCROLL.speed, 36);
   assert.equal(advanceBackgroundOffset({ currentOffset: 0, deltaSeconds: 1, tileHeight: 240 }), 36);
   assert.equal(advanceBackgroundOffset({ currentOffset: 230, deltaSeconds: 1, tileHeight: 240 }), 26);
-  assert.match(renderer, /createBackgroundStarfield/);
+  assert.match(renderer, /createGameplayBackdrop/);
   assert.match(renderer, /advanceBackgroundOffset/);
 });
 
@@ -1832,6 +1832,37 @@ test('desktop smoke test launches the shell and reaches the main menu', async ()
   assert.match(smokeTest, /_electron/);
   assert.match(smokeTest, /#game-root\[data-screen="main-menu"\]/);
   assert.match(smokeTest, /Thunderbolt Fighter/);
+});
+
+test('approved runtime visual assets are loaded and rendered for gameplay presentation', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  [
+    'background_sky_1672x941.png',
+    'background_cloud_layer.png',
+    'player_ship.png',
+    'enemy_basic.png',
+    'enemy_elite.png',
+    'enemy_boss.png',
+    'projectile_player_bolt.png',
+    'projectile_enemy_orb.png',
+    'pickup_power..png',
+    'pickup_shield.png',
+    'ui_button_primary.png',
+    'ui_life_icon.png',
+    'ui_panel_hud.png',
+    'ui_title_plate.png'
+  ].forEach((assetName) => assert.match(renderer, new RegExp(assetName.replaceAll('.', '\\.'))));
+
+  assert.match(renderer, /loadRuntimeVisualAssets/);
+  assert.match(renderer, /this\.add\.image\([^)]*'player-ship'/);
+  assert.match(renderer, /enemyAssetKeyFor\(enemy\.type\)/);
+  assert.match(renderer, /this\.add\.image\([^)]*'player-projectile'/);
+  assert.match(renderer, /this\.add\.image\([^)]*'enemy-projectile'/);
+  assert.match(renderer, /pickupAssetKeyFor\(pickup\.type\)/);
+  assert.match(renderer, /'gameplay-background'/);
+  assert.match(renderer, /'hud-panel'/);
+  assert.match(renderer, /'life-icon'/);
 });
 
 test('runtime assets and prototype reference assets are separated', async () => {

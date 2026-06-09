@@ -82,6 +82,51 @@ const MENU_ASSETS = {
   background: '../../assets/runtime/art/backgrounds/background_main_menu_1280x720.png'
 };
 
+const RUNTIME_VISUAL_ASSETS = {
+  'gameplay-background': '../../assets/runtime/art/backgrounds/background_sky_1672x941.png',
+  'cloud-layer': '../../assets/runtime/art/backgrounds/background_cloud_layer.png',
+  'player-ship': '../../assets/runtime/art/player/player_ship.png',
+  'enemy-basic': '../../assets/runtime/art/enemies/enemy_basic.png',
+  'enemy-elite': '../../assets/runtime/art/enemies/enemy_elite.png',
+  'enemy-boss': '../../assets/runtime/art/enemies/enemy_boss.png',
+  'player-projectile': '../../assets/runtime/art/projectiles/projectile_player_bolt.png',
+  'enemy-projectile': '../../assets/runtime/art/projectiles/projectile_enemy_orb.png',
+  'pickup-power': '../../assets/runtime/art/pickups/pickup_power..png',
+  'pickup-shield': '../../assets/runtime/art/pickups/pickup_shield.png',
+  'button-primary': '../../assets/runtime/art/ui/ui_button_primary.png',
+  'life-icon': '../../assets/runtime/art/ui/ui_life_icon.png',
+  'hud-panel': '../../assets/runtime/art/ui/ui_panel_hud.png',
+  'title-plate': '../../assets/runtime/art/ui/ui_title_plate.png'
+};
+
+const loadRuntimeVisualAssets = (scene) => {
+  Object.entries(RUNTIME_VISUAL_ASSETS).forEach(([key, path]) => {
+    if (!scene.textures.exists(key)) {
+      scene.load.image(key, path);
+    }
+  });
+};
+
+const enemyAssetKeyFor = (enemyType) => {
+  if (enemyType === 'elite') {
+    return 'enemy-elite';
+  }
+
+  if (enemyType === 'boss-class') {
+    return 'enemy-boss';
+  }
+
+  return 'enemy-basic';
+};
+
+const pickupAssetKeyFor = (pickupType) => {
+  if (pickupType === 'healing' || pickupType === 'shield') {
+    return 'pickup-shield';
+  }
+
+  return 'pickup-power';
+};
+
 const MENU_LAYOUT = {
   contentX: 320,
   titleY: 96,
@@ -114,6 +159,10 @@ class TutorialScene extends Phaser.Scene {
   constructor() {
     super('tutorial');
     this.returnScene = 'main-menu';
+  }
+
+  preload() {
+    loadRuntimeVisualAssets(this);
   }
 
   create(data = {}) {
@@ -170,8 +219,8 @@ class TutorialScene extends Phaser.Scene {
   }
 
   createTutorialButton(x, y, labelText, action) {
-    const plate = this.add.rectangle(x, y, 220, 62, 0x12334a, 0.82)
-      .setStrokeStyle(2, 0xffd166, 0.78);
+    const plate = this.add.image(x, y, 'button-primary')
+      .setDisplaySize(220, 62);
     const hitArea = this.add.rectangle(x, y, 220, 62, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
     const label = this.add.text(x, y - 1, labelText, {
@@ -200,6 +249,7 @@ class MainMenuScene extends Phaser.Scene {
 
   preload() {
     this.load.image('menu-background', MENU_ASSETS.background);
+    loadRuntimeVisualAssets(this);
   }
 
   create() {
@@ -216,8 +266,8 @@ class MainMenuScene extends Phaser.Scene {
     this.add.line(0, 0, 602, 0, 602, this.scale.height, 0x3db7ff, 0.28)
       .setOrigin(0, 0);
 
-    this.add.rectangle(contentX, MENU_LAYOUT.titleY, 470, 94, 0x071827, 0.48)
-      .setStrokeStyle(1, 0x9ed7ff, 0.46);
+    this.add.image(contentX, MENU_LAYOUT.titleY, 'title-plate')
+      .setDisplaySize(470, 94);
 
     this.add.text(contentX, MENU_LAYOUT.titleY - 6, 'Thunderbolt Fighter', {
       fontFamily: 'Arial, sans-serif',
@@ -319,8 +369,8 @@ class MainMenuScene extends Phaser.Scene {
   }
 
   createActionButton(x, y, labelText) {
-    const plate = this.add.rectangle(x, y, 220, 62, 0x12334a, 0.82)
-      .setStrokeStyle(2, 0xffd166, 0.78);
+    const plate = this.add.image(x, y, 'button-primary')
+      .setDisplaySize(220, 62);
     const hitArea = this.add.rectangle(x, y, 220, 62, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
     const label = this.add.text(x, y - 1, labelText, {
@@ -547,6 +597,10 @@ class GameplayScene extends Phaser.Scene {
     this.root = null;
   }
 
+  preload() {
+    loadRuntimeVisualAssets(this);
+  }
+
   create(data) {
     this.resetRunState();
 
@@ -567,20 +621,13 @@ class GameplayScene extends Phaser.Scene {
     this.spawnRandomization = createSpawnRandomizationState();
 
     this.cameras.main.setBackgroundColor('#09111f');
-    this.createBackgroundStarfield();
+    this.createGameplayBackdrop();
 
-    this.player = this.add.triangle(
+    this.player = this.add.image(
       this.runBaseline.player.startX,
       this.runBaseline.player.startY,
-      0,
-      this.runBaseline.player.radius * 1.4,
-      this.runBaseline.player.radius,
-      0,
-      this.runBaseline.player.radius * 2,
-      this.runBaseline.player.radius * 1.4,
-      0x9ed7ff,
-      1
-    ).setStrokeStyle(2, 0xf8fbff, 0.9);
+      'player-ship'
+    ).setDisplaySize(this.runBaseline.player.radius * 2.4, this.runBaseline.player.radius * 2.4);
     this.player.radius = PLAYER_FLIGHT.radius;
     this.playerNameMarker = this.createNameMarker(createTestNameMarker({ text: 'Player', target: this.player }));
 
@@ -596,6 +643,11 @@ class GameplayScene extends Phaser.Scene {
       this.openPauseMenu();
     });
 
+    this.add.image(HUD_LAYOUT.regularHud.x + 132, HUD_LAYOUT.regularHud.y + 88, 'hud-panel')
+      .setDisplaySize(300, 198)
+      .setAlpha(0.82);
+    this.add.image(HUD_LAYOUT.runSummary.x - 22, HUD_LAYOUT.runSummary.y + 14, 'life-icon')
+      .setDisplaySize(28, 28);
     this.add.text(HUD_LAYOUT.runSummary.x, HUD_LAYOUT.runSummary.y, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '24px',
@@ -689,19 +741,20 @@ class GameplayScene extends Phaser.Scene {
     this.resolveEnemyPlayerHits();
   }
 
-  createBackgroundStarfield() {
-    const starColumns = [72, 156, 248, 336, 448, 560, 648, 760, 872, 984, 1096, 1208];
+  createGameplayBackdrop() {
     const tileRows = Math.ceil(GAMEPLAY_PLAYFIELD.height / BACKGROUND_SCROLL.tileHeight) + 2;
 
     for (let row = -1; row < tileRows; row += 1) {
-      starColumns.forEach((x, columnIndex) => {
-        const y = row * BACKGROUND_SCROLL.tileHeight + ((columnIndex * 47) % BACKGROUND_SCROLL.tileHeight);
-        const radius = columnIndex % 3 === 0 ? 2 : 1;
-        const star = this.add.circle(x, y, radius, 0x9ed7ff, 0.48);
+      const y = row * BACKGROUND_SCROLL.tileHeight + BACKGROUND_SCROLL.tileHeight / 2;
+      const sky = this.add.image(this.scale.width / 2, y, 'gameplay-background')
+        .setDisplaySize(this.scale.width, BACKGROUND_SCROLL.tileHeight);
+      const clouds = this.add.image(this.scale.width / 2, y + 36, 'cloud-layer')
+        .setDisplaySize(this.scale.width, BACKGROUND_SCROLL.tileHeight)
+        .setAlpha(0.54);
 
-        star.baseY = y;
-        this.backgroundStars.push(star);
-      });
+      sky.baseY = y;
+      clouds.baseY = y + 36;
+      this.backgroundStars.push(sky, clouds);
     }
   }
 
@@ -951,13 +1004,8 @@ class GameplayScene extends Phaser.Scene {
       player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
       stats: this.runStats
     }).map((projectileState) => {
-      const projectile = this.add.circle(
-        projectileState.x,
-        projectileState.y,
-        projectileState.radius,
-        projectileState.piercing ? 0x8be9fd : 0xffd166,
-        1
-      );
+      const projectile = this.add.image(projectileState.x, projectileState.y, 'player-projectile')
+        .setDisplaySize(projectileState.radius * 2.4, projectileState.radius * 5);
 
       return Object.assign(projectile, projectileState);
     });
@@ -1085,9 +1133,8 @@ class GameplayScene extends Phaser.Scene {
 
   addEnemy(enemy) {
     const enemyClass = getEnemyClass(enemy.type);
-    const enemyColor = enemy.type === 'boss-class' ? 0xffd166 : enemy.type === 'elite' ? 0xc084fc : 0xff5f6d;
-    const sprite = this.add.rectangle(enemy.x, enemy.y, enemyClass.radius * 2, enemyClass.radius * 1.4, enemyColor, 1)
-      .setStrokeStyle(2, 0xffd166, 0.8);
+    const sprite = this.add.image(enemy.x, enemy.y, enemyAssetKeyFor(enemy.type))
+      .setDisplaySize(enemyClass.radius * 2.4, enemyClass.radius * (enemy.type === 'boss-class' ? 1.8 : 2));
     const nameMarker = this.createNameMarker(createTestNameMarker({
       text: getEnemyTestNameMarkerText(enemy.type),
       target: { ...enemy, radius: enemyClass.radius }
@@ -1099,8 +1146,8 @@ class GameplayScene extends Phaser.Scene {
 
   spawnPickup() {
     const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount, spawnRandomization: this.spawnRandomization });
-    const sprite = this.add.circle(pickup.x, pickup.y, pickup.radius, 0x45f3ff, 0.9)
-      .setStrokeStyle(2, 0xf8fbff, 0.85);
+    const sprite = this.add.image(pickup.x, pickup.y, pickupAssetKeyFor(pickup.type))
+      .setDisplaySize(pickup.radius * 2.2, pickup.radius * 2.2);
     const nameMarker = this.createNameMarker(createTestNameMarker({
       text: getPickupTestNameMarkerText(pickup.type),
       target: pickup
@@ -1161,7 +1208,8 @@ class GameplayScene extends Phaser.Scene {
       enemyType: enemy.type,
       difficulty: this.selectedDifficulty
     });
-    const sprite = this.add.circle(projectile.x, projectile.y, projectile.radius, 0xff8a65, 1);
+    const sprite = this.add.image(projectile.x, projectile.y, 'enemy-projectile')
+      .setDisplaySize(projectile.radius * 2.4, projectile.radius * 2.4);
 
     this.enemyProjectiles.push({ ...projectile, sprite });
     this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
