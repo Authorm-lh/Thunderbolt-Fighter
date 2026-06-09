@@ -1212,7 +1212,9 @@ test('Boss HP HUD shows current and max boss health', async () => {
   const bossHpHud = createBossHpHudState({ enemies: [boss] });
 
   assert.equal(bossHpHud.currentHealth, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.equal(bossHpHud.maxHealth, 1200);
   assert.equal(bossHpHud.maxHealth, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.equal(bossHpHud.text, 'Boss HP 1200/1200');
   assert.equal(bossHpHud.text, `Boss HP ${ENEMY_CLASSES['boss-class'].maxHealth}/${ENEMY_CLASSES['boss-class'].maxHealth}`);
 });
 
