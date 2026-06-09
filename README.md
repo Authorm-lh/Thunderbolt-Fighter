@@ -28,4 +28,4 @@ npm run package:win
 
 ## Download A Prebuilt Release
 
-Players who do not want to install Node.js can use the prebuilt Windows download from the project's GitHub Releases page.
+Players who do not want to install Node.js can download the prebuilt Windows zip, `thunderbolt-fighter-win32-x64.zip`, from the project's GitHub Releases page: https://github.com/Authorm-lh/Thunderbolt-Fighter/releases

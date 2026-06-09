@@ -28,4 +28,4 @@ npm run package:win
 
 ## 下载预构建版本
 
-不想安装 Node.js 的玩家可以使用项目 GitHub Releases 页面中提供的预构建 Windows 下载包。
+不想安装 Node.js 的玩家可以从项目 GitHub Releases 页面下载预构建 Windows 压缩包 `thunderbolt-fighter-win32-x64.zip`：https://github.com/Authorm-lh/Thunderbolt-Fighter/releases

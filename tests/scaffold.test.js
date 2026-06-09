@@ -2016,6 +2016,17 @@ test('README files document prerequisites and source commands', async () => {
   });
 });
 
+test('README files point players to prebuilt Windows GitHub Releases', async () => {
+  const englishReadme = await readText('README.md');
+  const chineseReadme = await readText('README.zh-CN.md');
+
+  [englishReadme, chineseReadme].forEach((readme) => {
+    assert.match(readme, /https:\/\/github\.com\/Authorm-lh\/Thunderbolt-Fighter\/releases/);
+    assert.match(readme, /thunderbolt-fighter-win32-x64\.zip/);
+    assert.match(readme, /prebuilt Windows|预构建 Windows/);
+  });
+});
+
 test('pull request CI keeps validation artifacts separate from Release publishing', async () => {
   const ciWorkflow = await readText('.github/workflows/ci-build-check.yml');
 
