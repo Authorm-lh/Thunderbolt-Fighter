@@ -119,3 +119,31 @@ When triggered, CI runs on `windows-latest` and performs:
 5. `npm run test:smoke`.
 6. `npm run package:win`.
 7. Upload `release/Thunderbolt Fighter-win32-x64` as a GitHub Actions artifact.
+
+## Release Windows Package
+
+Workflow file: `release-windows-package.yml`
+
+Relevant trigger:
+
+```yaml
+on:
+  release:
+    types: [published]
+```
+
+| Scenario | GitHub event | Workflow triggered | Job runs | Notes |
+| --- | --- | ---: | ---: | --- |
+| Maintainer publishes a GitHub Release | `release.published` | Yes | Yes | Official release packaging runs and attaches `thunderbolt-fighter-win32-x64.zip` to the Release. |
+| Draft Release is created or edited | `release.created` / `release.edited` | No | No | Release packaging waits until the Release is published. |
+| Pull request opens or updates | `pull_request.*` | No | No | PR validation stays in `ci-build-check.yml` and does not publish Release assets. |
+| Push to `main` | `push` | No | No | Main branch pushes run CI only; publish a GitHub Release to trigger official release packaging. |
+
+When triggered, Release Windows Package runs on `windows-latest` and performs:
+
+1. Checkout.
+2. Setup Node.js 22.
+3. `npm ci`.
+4. `npm run package:win`.
+5. Create `release/thunderbolt-fighter-win32-x64.zip` from `release/Thunderbolt Fighter-win32-x64`.
+6. Attach `thunderbolt-fighter-win32-x64.zip` to the published GitHub Release.

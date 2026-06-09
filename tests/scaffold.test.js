@@ -1994,6 +1994,15 @@ test('pull request CI keeps validation artifacts separate from Release publishin
   assert.doesNotMatch(ciWorkflow, /softprops\/action-gh-release/);
 });
 
+test('release workflow reference documents the official Windows release trigger', async () => {
+  const workflowReference = await readText('.github/workflows/workflow-trigger-reference.md');
+
+  assert.match(workflowReference, /## Release Windows Package/);
+  assert.match(workflowReference, /Workflow file: `release-windows-package\.yml`/);
+  assert.match(workflowReference, /publish a GitHub Release/);
+  assert.match(workflowReference, /thunderbolt-fighter-win32-x64\.zip/);
+});
+
 test('desktop smoke test launches the shell and reaches the main menu', async () => {
   const packageJson = await readJson('package.json');
   const renderer = await readText('src/renderer/game.js');
