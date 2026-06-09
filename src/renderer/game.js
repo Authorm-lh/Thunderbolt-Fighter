@@ -1,13 +1,11 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
 import {
-  BACKGROUND_SCROLL,
   BASIC_ENEMY,
   GAMEPLAY_PLAYFIELD,
   HUD_LAYOUT,
   PICKUP_SPAWNING,
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
-  advanceBackgroundOffset,
   advanceBasicEnemies,
   advanceEnemyProjectiles,
   advancePickups,
@@ -657,8 +655,6 @@ class GameplayScene extends Phaser.Scene {
     this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
     this.enemySpawnCount = 0;
     this.pickupSpawnCount = 0;
-    this.backgroundStars = [];
-    this.backgroundOffset = 0;
     this.runBaseline = null;
     this.runClock = null;
     this.runStats = null;
@@ -691,8 +687,6 @@ class GameplayScene extends Phaser.Scene {
     this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
     this.enemySpawnCount = 0;
     this.pickupSpawnCount = 0;
-    this.backgroundStars = [];
-    this.backgroundOffset = 0;
     this.runBaseline = null;
     this.runClock = null;
     this.runStats = null;
@@ -801,7 +795,6 @@ class GameplayScene extends Phaser.Scene {
       return;
     }
 
-    this.updateBackground(delta / 1000);
     this.updateRunClock(delta);
 
     const velocity = resolvePlayerVelocity({
@@ -858,20 +851,11 @@ class GameplayScene extends Phaser.Scene {
   }
 
   createGameplayBackdrop() {
-    const tileRows = Math.ceil(GAMEPLAY_PLAYFIELD.height / BACKGROUND_SCROLL.tileHeight) + 2;
-
-    for (let row = -1; row < tileRows; row += 1) {
-      const y = row * BACKGROUND_SCROLL.tileHeight + BACKGROUND_SCROLL.tileHeight / 2;
-      const sky = this.add.image(this.scale.width / 2, y, 'gameplay-background')
-        .setDisplaySize(this.scale.width, BACKGROUND_SCROLL.tileHeight);
-      const clouds = this.add.image(this.scale.width / 2, y + 36, 'cloud-layer')
-        .setDisplaySize(this.scale.width, BACKGROUND_SCROLL.tileHeight)
-        .setAlpha(0.54);
-
-      sky.baseY = y;
-      clouds.baseY = y + 36;
-      this.backgroundStars.push(sky, clouds);
-    }
+    this.add.image(this.scale.width / 2, this.scale.height / 2, 'gameplay-background')
+      .setDisplaySize(this.scale.width, this.scale.height);
+    this.add.image(this.scale.width / 2, this.scale.height / 2, 'cloud-layer')
+      .setDisplaySize(this.scale.width, this.scale.height)
+      .setAlpha(0.54);
   }
 
   createNameMarker(markerState) {
@@ -996,18 +980,6 @@ class GameplayScene extends Phaser.Scene {
 
     this.root.dataset.audioEnabled = String(settings.audioEnabled);
     this.renderPauseMenu();
-  }
-
-  updateBackground(deltaSeconds) {
-    this.backgroundOffset = advanceBackgroundOffset({
-      currentOffset: this.backgroundOffset,
-      deltaSeconds,
-      tileHeight: BACKGROUND_SCROLL.tileHeight
-    });
-
-    this.backgroundStars.forEach((star) => {
-      star.y = ((star.baseY + this.backgroundOffset + BACKGROUND_SCROLL.tileHeight) % (GAMEPLAY_PLAYFIELD.height + BACKGROUND_SCROLL.tileHeight)) - BACKGROUND_SCROLL.tileHeight;
-    });
   }
 
   updateRunClock(deltaMs) {

@@ -983,15 +983,13 @@ test('defeating the boss ends the run with score and boss result stats', async (
   assert.match(renderer, /dataset\.resultsBossesDefeated/);
 });
 
-test('gameplay background scrolls slowly to communicate vertical flight', async () => {
-  const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
+test('gameplay background uses fixed full-screen runtime art without scroll tiling', async () => {
   const renderer = await readText('src/renderer/game.js');
 
-  assert.equal(BACKGROUND_SCROLL.speed, 36);
-  assert.equal(advanceBackgroundOffset({ currentOffset: 0, deltaSeconds: 1, tileHeight: 240 }), 36);
-  assert.equal(advanceBackgroundOffset({ currentOffset: 230, deltaSeconds: 1, tileHeight: 240 }), 26);
   assert.match(renderer, /createGameplayBackdrop/);
-  assert.match(renderer, /advanceBackgroundOffset/);
+  assert.match(renderer, /'gameplay-background'\)\s*\n\s*\.setDisplaySize\(this\.scale\.width, this\.scale\.height\)/);
+  assert.doesNotMatch(renderer, /advanceBackgroundOffset/);
+  assert.doesNotMatch(renderer, /tileRows/);
 });
 
 test('runs count down from the selected duration', async () => {
