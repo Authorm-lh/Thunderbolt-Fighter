@@ -348,6 +348,53 @@ test('pickup lane and pickup type sequences vary by spawn randomization seed', a
   assert.match(renderer, /createPickupSpawn\(\{ spawnIndex: this\.pickupSpawnCount, spawnRandomization: this\.spawnRandomization \}\)/);
 });
 
+test('spawn randomization respects caps, tuning, and valid spawn values', async () => {
+  const {
+    ENEMY_CLASSES,
+    PICKUP_BUFFS,
+    PICKUP_SPAWNING,
+    createEnemySpawn,
+    createPickupSpawn,
+    createSpawnRandomizationState,
+    getDifficultyTuning,
+    resolveEnemyTypeForSpawn,
+    shouldSpawnBasicEnemy,
+    shouldSpawnPickup
+  } = await import('../src/renderer/gameplay-state.js');
+
+  const spawnRandomization = createSpawnRandomizationState({ seedSource: () => 505 });
+  const enemySpawns = Array.from({ length: 24 }, (_, spawnIndex) => {
+    const enemyType = resolveEnemyTypeForSpawn({ spawnIndex, spawnRandomization });
+
+    return createEnemySpawn({ spawnIndex, enemyType, spawnRandomization });
+  });
+  const pickupSpawns = Array.from({ length: 24 }, (_, spawnIndex) => createPickupSpawn({ spawnIndex, spawnRandomization }));
+
+  assert.equal(shouldSpawnBasicEnemy({
+    elapsedMs: getDifficultyTuning('simple').enemySpawnIntervalMs,
+    lastSpawnedMs: 0,
+    activeEnemyCount: getDifficultyTuning('simple').maxActiveEnemies,
+    difficulty: 'simple'
+  }), false);
+  assert.equal(shouldSpawnBasicEnemy({
+    elapsedMs: getDifficultyTuning('hard').enemySpawnIntervalMs,
+    lastSpawnedMs: 0,
+    activeEnemyCount: getDifficultyTuning('hard').maxActiveEnemies - 1,
+    difficulty: 'hard'
+  }), true);
+  assert.equal(shouldSpawnPickup({
+    elapsedMs: PICKUP_SPAWNING.spawnIntervalMs,
+    lastSpawnedMs: 0,
+    activePickupCount: PICKUP_SPAWNING.maxActivePickups
+  }), false);
+  assert.deepEqual(new Set(enemySpawns.map((enemy) => enemy.type)), new Set(['basic', 'elite']));
+  enemySpawns.forEach((enemy) => assert.ok(ENEMY_CLASSES[enemy.type].lanes.includes(enemy.x)));
+  pickupSpawns.forEach((pickup) => {
+    assert.ok(Object.keys(PICKUP_BUFFS).includes(pickup.type));
+    assert.ok(PICKUP_SPAWNING.lanes.includes(pickup.x));
+  });
+});
+
 test('test name markers do not change core gameplay behavior', async () => {
   const {
     BASIC_ENEMY,
