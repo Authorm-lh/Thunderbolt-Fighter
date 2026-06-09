@@ -1188,6 +1188,7 @@ test('a boss-class enemy appears near the end as a high-value target', async () 
   assert.equal(boss.type, 'boss-class');
   assert.equal(boss.x, GAMEPLAY_PLAYFIELD.width / 2);
   assert.ok(boss.y < 0);
+  assert.equal(boss.health, 1200);
   assert.equal(boss.health, ENEMY_CLASSES['boss-class'].maxHealth);
   assert.ok(ENEMY_CLASSES['boss-class'].scoreValue > ENEMY_CLASSES.elite.scoreValue);
   assert.match(renderer, /spawnBossEnemy/);
