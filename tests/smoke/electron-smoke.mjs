@@ -152,25 +152,27 @@ try {
   assert.equal(await gameRoot.getAttribute('data-difficulty'), 'hard');
   assert.equal(await window.evaluate(() => JSON.parse(localStorage.getItem('thunderbolt-fighter:local-records')).recentRuns.length), 0);
 
-  await window.waitForFunction(() => globalThis.__thunderboltFighterGame?.scene?.getScene('gameplay'));
-  await window.evaluate(() => {
-    const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
+  await window.waitForFunction(() => {
+    const gameplay = globalThis.__thunderboltFighterGame?.scene?.getScene('gameplay');
 
-    gameplay.projectiles = [];
-    gameplay.enemyProjectiles = [];
-    gameplay.enemies = [];
-    gameplay.spawnBossEnemy();
-    gameplay.updateBossHpHud();
+    if (!gameplay) {
+      return false;
+    }
+
+    if (!gameplay.enemies?.some((enemy) => enemy.type === 'boss-class')) {
+      gameplay.projectiles = [];
+      gameplay.enemyProjectiles = [];
+      gameplay.enemies = [];
+      gameplay.spawnBossEnemy();
+      gameplay.updateBossHpHud();
+    }
+
+    return gameplay.enemies.some((enemy) => enemy.type === 'boss-class');
   });
   assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'true');
   assert.equal(await gameRoot.getAttribute('data-boss-hp-current'), '1200');
   assert.equal(await gameRoot.getAttribute('data-boss-hp-max'), '1200');
   assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 1200/1200');
-  await window.waitForFunction(() => {
-    const gameplay = globalThis.__thunderboltFighterGame?.scene?.getScene('gameplay');
-
-    return gameplay?.enemies?.some((enemy) => enemy.type === 'boss-class');
-  });
 
   await window.evaluate(() => {
     const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');

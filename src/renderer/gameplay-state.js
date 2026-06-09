@@ -615,6 +615,15 @@ export const saveSettings = ({ storage = globalThis.localStorage, settings }) =>
   return settings;
 };
 
+export const enableAudioOnLaunch = ({ storage = globalThis.localStorage } = {}) => {
+  const settings = {
+    ...loadSettings({ storage }),
+    audioEnabled: true
+  };
+
+  return saveSettings({ storage, settings });
+};
+
 export const toggleAudioEnabled = (settings = createDefaultSettings()) => ({
   ...settings,
   audioEnabled: !settings.audioEnabled

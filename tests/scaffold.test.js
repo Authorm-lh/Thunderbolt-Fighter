@@ -1387,8 +1387,10 @@ test('results screen receives distinct boss and player defeat reasons', async ()
 test('settings controls expose audio, fullscreen, tutorial replay, and record reset actions', async () => {
   const {
     LOCAL_RECORDS_STORAGE_KEY,
+    SETTINGS_STORAGE_KEY,
     createDefaultLocalRecords,
     createDefaultSettings,
+    enableAudioOnLaunch,
     markTutorialReplayRequested,
     resetLocalRecords,
     toggleAudioEnabled,
@@ -1409,6 +1411,9 @@ test('settings controls expose audio, fullscreen, tutorial replay, and record re
   const replaySettings = markTutorialReplayRequested(fullscreenSettings);
   const recordsAfterReset = resetLocalRecords({ storage });
 
+  storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ audioEnabled: false, fullscreenEnabled: true, tutorialReplayRequested: true }));
+  const launchSettings = enableAudioOnLaunch({ storage });
+
   assert.deepEqual(defaults, {
     audioEnabled: true,
     fullscreenEnabled: false,
@@ -1417,8 +1422,15 @@ test('settings controls expose audio, fullscreen, tutorial replay, and record re
   assert.equal(mutedSettings.audioEnabled, false);
   assert.equal(fullscreenSettings.fullscreenEnabled, true);
   assert.equal(replaySettings.tutorialReplayRequested, true);
+  assert.deepEqual(launchSettings, {
+    audioEnabled: true,
+    fullscreenEnabled: true,
+    tutorialReplayRequested: true
+  });
+  assert.equal(JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY)).audioEnabled, true);
   assert.deepEqual(recordsAfterReset, createDefaultLocalRecords());
   assert.equal(storage.getItem(LOCAL_RECORDS_STORAGE_KEY), JSON.stringify(createDefaultLocalRecords()));
+  assert.match(renderer, /enableAudioOnLaunch\(\)/);
   assert.match(renderer, /SettingsScene/);
   assert.match(renderer, /Audio/);
   assert.match(renderer, /Fullscreen/);

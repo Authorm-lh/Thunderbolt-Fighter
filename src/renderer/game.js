@@ -32,6 +32,7 @@ import {
   createTutorialContent,
   createPauseMenuContent,
   clearTutorialReplayRequested,
+  enableAudioOnLaunch,
   getEnemyClass,
   getRunEndReason,
   loadSettings,
@@ -255,6 +256,8 @@ class BootScene extends Phaser.Scene {
   }
 
   create() {
+    enableAudioOnLaunch();
+
     if (shouldShowTutorialOnLaunch()) {
       this.scene.start('tutorial');
       return;
