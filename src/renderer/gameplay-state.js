@@ -265,6 +265,8 @@ export const HUD_LAYOUT = {
     y: 58,
     top: 58,
     right: 384,
+    panelWidth: 332,
+    panelHeight: 244,
     values: ['score', 'timer', 'health', 'weapon', 'buff', 'pickups', 'bestScore']
   },
   bossHp: {

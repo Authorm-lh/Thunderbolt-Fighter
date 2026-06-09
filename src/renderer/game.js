@@ -778,8 +778,12 @@ class GameplayScene extends Phaser.Scene {
       this.openPauseMenu();
     });
 
-    this.add.image(HUD_LAYOUT.regularHud.x + 132, HUD_LAYOUT.regularHud.y + 88, 'hud-panel')
-      .setDisplaySize(300, 198)
+    this.add.image(
+      HUD_LAYOUT.regularHud.x + HUD_LAYOUT.regularHud.panelWidth / 2,
+      HUD_LAYOUT.regularHud.y + HUD_LAYOUT.regularHud.panelHeight / 2,
+      'hud-panel'
+    )
+      .setDisplaySize(HUD_LAYOUT.regularHud.panelWidth, HUD_LAYOUT.regularHud.panelHeight)
       .setAlpha(0.82);
     this.add.image(HUD_LAYOUT.runSummary.x - 22, HUD_LAYOUT.runSummary.y + 14, 'life-icon')
       .setDisplaySize(28, 28);

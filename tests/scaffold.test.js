@@ -1073,13 +1073,14 @@ test('HUD shows the relevant local best score for the active run options', async
 });
 
 test('HUD shows baseline survival and scoring values', async () => {
-  const { createRunClock, createRunStats, createHudValues } = await import('../src/renderer/gameplay-state.js');
+  const { createRunClock, createRunStats, createHudValues, createHudLayoutState } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
   const hudValues = createHudValues({
     clock: createRunClock({ runLengthMinutes: 1 }),
     stats: createRunStats()
   });
+  const layout = createHudLayoutState();
 
   assert.deepEqual(hudValues, {
     score: 'Score 0',
@@ -1090,6 +1091,8 @@ test('HUD shows baseline survival and scoring values', async () => {
     pickups: 'Pickups 0',
     bestScore: 'Best —'
   });
+  assert.ok(layout.regularHud.panelHeight >= layout.regularHud.values.length * 30 + 28);
+  assert.match(renderer, /setDisplaySize\(HUD_LAYOUT\.regularHud\.panelWidth, HUD_LAYOUT\.regularHud\.panelHeight\)/);
   assert.match(renderer, /createHudValues/);
   assert.match(renderer, /Score/);
   assert.match(renderer, /Health/);
