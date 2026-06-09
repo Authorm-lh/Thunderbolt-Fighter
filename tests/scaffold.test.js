@@ -187,7 +187,7 @@ test('gameplay scene uses a 16:9 logical playfield', async () => {
   assert.match(renderer, /Phaser\.Scale\.FIT/);
 });
 
-test('player test name marker is readable and follows player movement', async () => {
+test('player test name marker helper can describe player movement without affecting runtime presentation', async () => {
   const { PLAYER_FLIGHT, createTestNameMarker, followTestNameMarkerTarget } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
@@ -203,8 +203,8 @@ test('player test name marker is readable and follows player movement', async ()
   assert.equal(marker.y, player.y - PLAYER_FLIGHT.radius - 18);
   assert.equal(movedMarker.x, player.x + 120);
   assert.equal(movedMarker.y, player.y - 80 - PLAYER_FLIGHT.radius - 18);
-  assert.match(renderer, /createTestNameMarker\(\{ text: 'Player'/);
-  assert.match(renderer, /followTestNameMarkerTarget\(\{/);
+  assert.doesNotMatch(renderer, /createTestNameMarker\(\{ text: 'Player'/);
+  assert.doesNotMatch(renderer, /followTestNameMarkerTarget\(\{/);
 });
 
 test('player movement accepts arrow keys and WASD continuously', async () => {
@@ -282,7 +282,7 @@ test('weapon shape pickups replace the currently active weapon shape', async () 
   assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats })[0].piercing, true);
 });
 
-test('pickup test name markers identify every pickup type and follow pickup movement', async () => {
+test('pickup test name marker helpers remain isolated from runtime presentation', async () => {
   const { PICKUP_BUFFS, advancePickups, createPickupSpawn, createTestNameMarker, followTestNameMarkerTarget, getPickupTestNameMarkerText } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
@@ -314,8 +314,8 @@ test('pickup test name markers identify every pickup type and follow pickup move
   assert.equal(marker.text, 'Attack Power Pickup');
   assert.equal(movedMarker.x, advancedPickup.x);
   assert.equal(movedMarker.y, advancedPickup.y - advancedPickup.radius - 18);
-  assert.match(renderer, /getPickupTestNameMarkerText/);
-  assert.match(renderer, /pickup\.nameMarker/);
+  assert.doesNotMatch(renderer, /getPickupTestNameMarkerText/);
+  assert.doesNotMatch(renderer, /pickup\.nameMarker/);
 });
 
 test('gameplay spawns pickup buffs on an independent cadence without blocking core run loops', async () => {
@@ -510,8 +510,8 @@ test('test name markers can be disabled through one isolated helper', async () =
 
   assert.equal(TEST_NAME_MARKERS.enabled, true);
   assert.equal(createTestNameMarker({ text: 'Player', target: player, enabled: false }), null);
-  assert.match(renderer, /createNameMarker\(markerState\)/);
-  assert.match(renderer, /if \(!markerState\)/);
+  assert.doesNotMatch(renderer, /createNameMarker\(markerState\)/);
+  assert.doesNotMatch(renderer, /if \(!markerState\)/);
 });
 
 test('test name marker lifecycle coverage spans player, enemy, pickup, and removal', async () => {
@@ -548,7 +548,7 @@ test('test name marker lifecycle coverage spans player, enemy, pickup, and remov
   assert.deepEqual(markedTargets.map((target) => target.nameMarker), [null, null, null]);
 });
 
-test('test name markers are removed with destroyed, escaped, or collected objects', async () => {
+test('test name marker removal helper stays out of runtime object cleanup', async () => {
   const { destroyTestNameMarker } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
   const destroyed = [];
@@ -562,8 +562,8 @@ test('test name markers are removed with destroyed, escaped, or collected object
 
   assert.deepEqual(destroyed, ['marker']);
   assert.equal(nextObject.nameMarker, null);
-  assert.match(renderer, /destroyNameMarker\(pickup\)/);
-  assert.match(renderer, /destroyNameMarker\(enemy\)/);
+  assert.doesNotMatch(renderer, /destroyNameMarker\(pickup\)/);
+  assert.doesNotMatch(renderer, /destroyNameMarker\(enemy\)/);
 });
 
 test('player collision picks up buffs, removes them from play, and applies every pickup effect', async () => {
@@ -677,7 +677,7 @@ test('support buffs coexist while weapon shapes remain exclusive', async () => {
   assert.equal(replacedShapeStats.pickups, 6);
 });
 
-test('enemy test name markers identify each enemy class including boss-class rules', async () => {
+test('enemy test name marker helpers remain isolated from runtime presentation', async () => {
   const { ENEMY_CLASSES, advanceBasicEnemies, createEnemySpawn, createTestNameMarker, followTestNameMarkerTarget, getEnemyTestNameMarkerText } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
@@ -696,8 +696,8 @@ test('enemy test name markers identify each enemy class including boss-class rul
   assert.equal(getEnemyTestNameMarkerText(bossEnemy.type), 'Boss Enemy');
   assert.equal(movedBasicMarker.x, advancedBasicEnemy.x);
   assert.equal(movedBasicMarker.y, advancedBasicEnemy.y - ENEMY_CLASSES.basic.radius - 18);
-  assert.match(renderer, /getEnemyTestNameMarkerText/);
-  assert.match(renderer, /enemy\.nameMarker/);
+  assert.doesNotMatch(renderer, /getEnemyTestNameMarkerText/);
+  assert.doesNotMatch(renderer, /enemy\.nameMarker/);
 });
 
 test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
@@ -1854,10 +1854,16 @@ test('approved runtime visual assets are loaded and rendered for gameplay presen
 
   assert.match(renderer, /loadRuntimeVisualAssets/);
   assert.match(renderer, /this\.add\.image\([^)]*'player-ship'/);
+  assert.match(renderer, /\* 3\.2, this\.runBaseline\.player\.radius \* 3\.2/);
   assert.match(renderer, /enemyAssetKeyFor\(enemy\.type\)/);
+  assert.match(renderer, /enemyDisplayScaleFor\(enemy\.type\)/);
   assert.match(renderer, /this\.add\.image\([^)]*'player-projectile'/);
+  assert.match(renderer, /projectileState\.radius \* 4, projectileState\.radius \* 8/);
   assert.match(renderer, /this\.add\.image\([^)]*'enemy-projectile'/);
+  assert.match(renderer, /projectile\.radius \* 4, projectile\.radius \* 4/);
   assert.match(renderer, /pickupAssetKeyFor\(pickup\.type\)/);
+  assert.match(renderer, /pickup\.radius \* 3, pickup\.radius \* 3/);
+  assert.doesNotMatch(renderer, /createNameMarker\(/);
   assert.match(renderer, /'gameplay-background'/);
   assert.match(renderer, /'hud-panel'/);
   assert.match(renderer, /'life-icon'/);

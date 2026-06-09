@@ -29,15 +29,10 @@ import {
   createSpawnRandomizationState,
   createRunClock,
   createRunStats,
-  createTestNameMarker,
   createTutorialContent,
   createPauseMenuContent,
   clearTutorialReplayRequested,
-  destroyTestNameMarker,
-  followTestNameMarkerTarget,
   getEnemyClass,
-  getEnemyTestNameMarkerText,
-  getPickupTestNameMarkerText,
   getRunEndReason,
   loadSettings,
   markTutorialReplayRequested,
@@ -189,6 +184,18 @@ const pickupAssetKeyFor = (pickupType) => {
   }
 
   return 'pickup-power';
+};
+
+const enemyDisplayScaleFor = (enemyType) => {
+  if (enemyType === 'elite') {
+    return { width: 3.2, height: 2.8 };
+  }
+
+  if (enemyType === 'boss-class') {
+    return { width: 3.6, height: 2.6 };
+  }
+
+  return { width: 2.7, height: 2.5 };
 };
 
 const enemyDestroyedSoundKeyFor = (enemyType) => {
@@ -649,7 +656,6 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = [];
     this.enemyProjectiles = [];
     this.pickups = [];
-    this.playerNameMarker = null;
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
     this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
@@ -681,7 +687,6 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = [];
     this.enemyProjectiles = [];
     this.pickups = [];
-    this.playerNameMarker = null;
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
     this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
@@ -735,9 +740,8 @@ class GameplayScene extends Phaser.Scene {
       this.runBaseline.player.startX,
       this.runBaseline.player.startY,
       'player-ship'
-    ).setDisplaySize(this.runBaseline.player.radius * 2.4, this.runBaseline.player.radius * 2.4);
+    ).setDisplaySize(this.runBaseline.player.radius * 3.2, this.runBaseline.player.radius * 3.2);
     this.player.radius = PLAYER_FLIGHT.radius;
-    this.playerNameMarker = this.createNameMarker(createTestNameMarker({ text: 'Player', target: this.player }));
 
     this.cursorKeys = this.input.keyboard.createCursorKeys();
     this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
@@ -815,7 +819,6 @@ class GameplayScene extends Phaser.Scene {
 
     this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
     this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
-    this.followNameMarker(this.playerNameMarker, this.player);
 
     if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs, stats: this.runStats })) {
       this.spawnPlayerProjectile();
@@ -856,39 +859,6 @@ class GameplayScene extends Phaser.Scene {
     this.add.image(this.scale.width / 2, this.scale.height / 2, 'cloud-layer')
       .setDisplaySize(this.scale.width, this.scale.height)
       .setAlpha(0.54);
-  }
-
-  createNameMarker(markerState) {
-    if (!markerState) {
-      return null;
-    }
-
-    return Object.assign(this.add.text(markerState.x, markerState.y, markerState.text, {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '16px',
-      color: '#f8fbff',
-      align: 'center',
-      stroke: '#0b1c2e',
-      strokeThickness: 4
-    }).setOrigin(0.5, 1), markerState);
-  }
-
-  followNameMarker(marker, target) {
-    if (!marker) {
-      return;
-    }
-
-    const nextMarker = followTestNameMarkerTarget({ marker, target });
-
-    marker.x = nextMarker.x;
-    marker.y = nextMarker.y;
-    marker.targetRadius = nextMarker.targetRadius;
-  }
-
-  destroyNameMarker(target) {
-    const nextTarget = destroyTestNameMarker(target);
-
-    target.nameMarker = nextTarget.nameMarker;
   }
 
   openPauseMenu() {
@@ -1099,7 +1069,7 @@ class GameplayScene extends Phaser.Scene {
       stats: this.runStats
     }).map((projectileState) => {
       const projectile = this.add.image(projectileState.x, projectileState.y, 'player-projectile')
-        .setDisplaySize(projectileState.radius * 2.4, projectileState.radius * 5);
+        .setDisplaySize(projectileState.radius * 4, projectileState.radius * 8);
 
       return Object.assign(projectile, projectileState);
     });
@@ -1129,11 +1099,9 @@ class GameplayScene extends Phaser.Scene {
 
     this.pickups = advancedPickups.filter((pickup) => {
       pickup.sprite.y = pickup.y;
-      this.followNameMarker(pickup.nameMarker, pickup);
 
       if (pickup.y > GAMEPLAY_PLAYFIELD.height + pickup.radius) {
         pickup.sprite.destroy();
-        this.destroyNameMarker(pickup);
         return false;
       }
 
@@ -1153,7 +1121,6 @@ class GameplayScene extends Phaser.Scene {
     this.pickups.forEach((pickup) => {
       if (!remainingPickupIds.has(pickup.id)) {
         pickup.sprite.destroy();
-        this.destroyNameMarker(pickup);
       }
     });
 
@@ -1184,7 +1151,6 @@ class GameplayScene extends Phaser.Scene {
     this.enemies.forEach((enemy) => {
       if (!remainingEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
-        this.destroyNameMarker(enemy);
       }
     });
 
@@ -1238,27 +1204,20 @@ class GameplayScene extends Phaser.Scene {
 
   addEnemy(enemy) {
     const enemyClass = getEnemyClass(enemy.type);
+    const displayScale = enemyDisplayScaleFor(enemy.type);
     const sprite = this.add.image(enemy.x, enemy.y, enemyAssetKeyFor(enemy.type))
-      .setDisplaySize(enemyClass.radius * 2.4, enemyClass.radius * (enemy.type === 'boss-class' ? 1.8 : 2));
-    const nameMarker = this.createNameMarker(createTestNameMarker({
-      text: getEnemyTestNameMarkerText(enemy.type),
-      target: { ...enemy, radius: enemyClass.radius }
-    }));
+      .setDisplaySize(enemyClass.radius * displayScale.width, enemyClass.radius * displayScale.height);
 
-    this.enemies.push({ ...enemy, sprite, nameMarker });
+    this.enemies.push({ ...enemy, sprite });
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
 
   spawnPickup() {
     const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount, spawnRandomization: this.spawnRandomization });
     const sprite = this.add.image(pickup.x, pickup.y, pickupAssetKeyFor(pickup.type))
-      .setDisplaySize(pickup.radius * 2.2, pickup.radius * 2.2);
-    const nameMarker = this.createNameMarker(createTestNameMarker({
-      text: getPickupTestNameMarkerText(pickup.type),
-      target: pickup
-    }));
+      .setDisplaySize(pickup.radius * 3, pickup.radius * 3);
 
-    this.pickups.push({ ...pickup, sprite, nameMarker });
+    this.pickups.push({ ...pickup, sprite });
     this.pickupSpawnCount += 1;
     this.root.dataset.pickupCount = String(this.pickups.length);
   }
@@ -1269,7 +1228,6 @@ class GameplayScene extends Phaser.Scene {
     advancedEnemies.forEach((enemy) => {
       enemy.sprite.x = enemy.x;
       enemy.sprite.y = enemy.y;
-      this.followNameMarker(enemy.nameMarker, { ...enemy, radius: getEnemyClass(enemy.type).radius });
     });
 
     const escapedResult = resolveEscapedEnemyHits({
@@ -1282,7 +1240,6 @@ class GameplayScene extends Phaser.Scene {
     advancedEnemies.forEach((enemy) => {
       if (escapedEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
-        this.destroyNameMarker(enemy);
       }
     });
 
@@ -1314,7 +1271,7 @@ class GameplayScene extends Phaser.Scene {
       difficulty: this.selectedDifficulty
     });
     const sprite = this.add.image(projectile.x, projectile.y, 'enemy-projectile')
-      .setDisplaySize(projectile.radius * 2.4, projectile.radius * 2.4);
+      .setDisplaySize(projectile.radius * 4, projectile.radius * 4);
 
     this.enemyProjectiles.push({ ...projectile, sprite });
     this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
@@ -1355,7 +1312,6 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = this.enemies.filter((enemy) => {
       if (contactEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
-        this.destroyNameMarker(enemy);
         return false;
       }
 
