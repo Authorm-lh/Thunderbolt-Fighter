@@ -26,6 +26,8 @@ npm run dev
 npm run package:win
 ```
 
+The packaged executable is written to `release/Thunderbolt Fighter-win32-x64/Thunderbolt Fighter.exe`.
+
 ## Download A Prebuilt Release
 
 Players who do not want to install Node.js can download the prebuilt Windows zip, `thunderbolt-fighter-win32-x64.zip`, from the project's GitHub Releases page: https://github.com/Authorm-lh/Thunderbolt-Fighter/releases

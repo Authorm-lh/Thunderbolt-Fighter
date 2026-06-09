@@ -26,6 +26,8 @@ npm run dev
 npm run package:win
 ```
 
+打包后的可执行文件会写入 `release/Thunderbolt Fighter-win32-x64/Thunderbolt Fighter.exe`。
+
 ## 下载预构建版本
 
 不想安装 Node.js 的玩家可以从项目 GitHub Releases 页面下载预构建 Windows 压缩包 `thunderbolt-fighter-win32-x64.zip`：https://github.com/Authorm-lh/Thunderbolt-Fighter/releases

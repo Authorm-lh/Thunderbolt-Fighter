@@ -2027,6 +2027,22 @@ test('README files point players to prebuilt Windows GitHub Releases', async () 
   });
 });
 
+test('README build docs match the Windows package script output', async () => {
+  const packageJson = await readJson('package.json');
+  const packageScript = await readText('scripts/package-win.js');
+  const englishReadme = await readText('README.md');
+  const chineseReadme = await readText('README.zh-CN.md');
+
+  assert.equal(packageJson.scripts['package:win'], 'node scripts/package-win.js');
+  assert.match(packageScript, /path\.join\(releaseDir, `\$\{appName\}-win32-x64`\)/);
+  assert.match(packageScript, /path\.join\(outputDir, `\$\{appName\}\.exe`\)/);
+
+  [englishReadme, chineseReadme].forEach((readme) => {
+    assert.match(readme, /npm run package:win/);
+    assert.match(readme, /release\/Thunderbolt Fighter-win32-x64\/Thunderbolt Fighter\.exe/);
+  });
+});
+
 test('pull request CI keeps validation artifacts separate from Release publishing', async () => {
   const ciWorkflow = await readText('.github/workflows/ci-build-check.yml');
 
