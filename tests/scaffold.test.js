@@ -1137,6 +1137,24 @@ test('the run keeps going when the timer expires while the boss remains alive', 
   assert.match(renderer, /dataset\.resultsBossesDefeated/);
 });
 
+test('player defeat still ends the run during a boss fight', async () => {
+  const { ENEMY_CLASSES, applyPlayerDamage, createBossEnemySpawn, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const aliveBoss = {
+    ...createBossEnemySpawn({ spawnIndex: 0 }),
+    y: ENEMY_CLASSES['boss-class'].holdY,
+    health: ENEMY_CLASSES['boss-class'].maxHealth
+  };
+  const depletedStats = applyPlayerDamage({ stats: createRunStats(), damage: 100 });
+
+  assert.equal(getRunEndReason({
+    clock: createRunClock({ runLengthMinutes: 1 }),
+    stats: depletedStats,
+    enemies: [aliveBoss]
+  }), 'health-depleted');
+  assert.match(renderer, /dataset\.endReason = data\.endReason/);
+});
+
 test('results screen shows baseline run performance stats', async () => {
   const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
