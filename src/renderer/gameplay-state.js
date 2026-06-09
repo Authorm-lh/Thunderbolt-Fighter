@@ -653,7 +653,10 @@ export const applyLocalRecordContext = ({ storage = globalThis.localStorage, sta
 });
 
 export const persistCompletedRun = ({ storage = globalThis.localStorage, runLengthMinutes, difficulty, endReason, clock, stats }) => {
-  const recordsWithBestScore = saveBestScoreForRun({ storage, runLengthMinutes, difficulty, score: stats.score });
+  const recordsBeforeRun = loadLocalRecords({ storage });
+  const localRecordBeforeRun = getBestScoreForRun({ records: recordsBeforeRun, runLengthMinutes, difficulty });
+
+  saveBestScoreForRun({ storage, runLengthMinutes, difficulty, score: stats.score });
 
   return saveRecentRun({
     storage,
@@ -666,7 +669,7 @@ export const persistCompletedRun = ({ storage = globalThis.localStorage, runLeng
       kills: stats.kills,
       bossesDefeated: stats.bossesDefeated,
       pickups: stats.pickups,
-      localRecord: getBestScoreForRun({ records: recordsWithBestScore, runLengthMinutes, difficulty })
+      localRecord: localRecordBeforeRun
     }
   });
 };

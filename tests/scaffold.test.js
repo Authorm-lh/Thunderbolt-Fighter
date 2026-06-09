@@ -1439,6 +1439,31 @@ test('completed runs persist records that load into a later app session', async 
   assert.equal(records.recentRuns[0].endReason, 'timer-expired');
 });
 
+test('completed run history stores the local record context from before the run', async () => {
+  const { createRunClock, createRunStats, getBestScoreForRun, loadLocalRecords, persistCompletedRun, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  saveBestScoreForRun({ storage, runLengthMinutes: 5, difficulty: 'hard', score: 2000 });
+  persistCompletedRun({
+    storage,
+    runLengthMinutes: 5,
+    difficulty: 'hard',
+    endReason: 'boss-defeated',
+    clock: createRunClock({ runLengthMinutes: 5 }),
+    stats: { ...createRunStats(), score: 2500, kills: 9, bossesDefeated: 1 }
+  });
+
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(records.recentRuns[0].score, 2500);
+  assert.equal(records.recentRuns[0].localRecord, 2000);
+  assert.equal(getBestScoreForRun({ records, runLengthMinutes: 5, difficulty: 'hard' }), 2500);
+});
+
 test('results screen shows current stats with local record context', async () => {
   const { createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
