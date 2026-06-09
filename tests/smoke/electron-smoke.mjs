@@ -166,6 +166,11 @@ try {
   assert.equal(await gameRoot.getAttribute('data-boss-hp-current'), '1200');
   assert.equal(await gameRoot.getAttribute('data-boss-hp-max'), '1200');
   assert.equal(await gameRoot.getAttribute('data-boss-hp-text'), 'Boss HP 1200/1200');
+  await window.waitForFunction(() => {
+    const gameplay = globalThis.__thunderboltFighterGame?.scene?.getScene('gameplay');
+
+    return gameplay?.enemies?.some((enemy) => enemy.type === 'boss-class');
+  });
 
   await window.evaluate(() => {
     const gameplay = globalThis.__thunderboltFighterGame.scene.getScene('gameplay');
@@ -203,6 +208,8 @@ try {
   assert.equal(await gameRoot.getAttribute('data-boss-hp-hud-visible'), 'false');
   assert.equal(await gameRoot.getAttribute('data-results-best-score'), '1200');
   assert.equal(await gameRoot.getAttribute('data-results-local-record'), '1500');
+  assert.equal(await gameRoot.getAttribute('data-results-replay-run-length-minutes'), '5');
+  assert.equal(await gameRoot.getAttribute('data-results-replay-difficulty'), 'hard');
 
   const windowTitle = await window.title();
   assert.equal(windowTitle, 'Thunderbolt Fighter');

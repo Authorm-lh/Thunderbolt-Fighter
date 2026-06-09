@@ -1750,6 +1750,17 @@ test('results replay action starts fresh gameplay with run options', async () =>
   assert.doesNotMatch(renderer.match(/replayRun\(\) \{[\s\S]*?\n  \}/)[0], /scene\.restart|runStats|runClock/);
 });
 
+test('results replay preserves the completed run settings', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /root\.dataset\.resultsReplayRunLengthMinutes = String\(this\.runOptions\.runLengthMinutes\)/);
+  assert.match(renderer, /root\.dataset\.resultsReplayDifficulty = this\.runOptions\.difficulty/);
+  assert.match(renderer, /runOptions: this\.runOptions/);
+  assert.match(smokeTest, /data-results-replay-run-length-minutes/);
+  assert.match(smokeTest, /data-results-replay-difficulty/);
+});
+
 test('results stats include pickup counts and combat stat changes', async () => {
   const { applyPlayerDamage, applyPickupBuff, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
 

@@ -1268,6 +1268,8 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.resultsWeaponShape = data.runStats.weaponName;
     root.dataset.resultsBestScore = data.runStats.bestScore === null ? '' : String(data.runStats.bestScore);
     root.dataset.resultsLocalRecord = String(Math.max(data.runStats.score, data.runStats.bestScore ?? 0));
+    root.dataset.resultsReplayRunLengthMinutes = String(this.runOptions.runLengthMinutes);
+    root.dataset.resultsReplayDifficulty = this.runOptions.difficulty;
     root.dataset.resultsActions = 'Main Menu,Replay';
   }
 
