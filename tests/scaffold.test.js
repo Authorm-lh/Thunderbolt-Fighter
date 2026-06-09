@@ -1499,6 +1499,23 @@ test('pause menu supports continue, restart, return to menu, audio toggle, and k
   assert.match(renderer, /Key Reference/);
 });
 
+test('restart and return-to-menu avoid abandoned-run records while completed runs still persist', async () => {
+  const { shouldPersistRunOutcome } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(shouldPersistRunOutcome({ endReason: 'timer-expired' }), true);
+  assert.equal(shouldPersistRunOutcome({ endReason: 'health-depleted' }), true);
+  assert.equal(shouldPersistRunOutcome({ endReason: 'boss-defeated' }), true);
+  assert.equal(shouldPersistRunOutcome({ endReason: 'restart' }), false);
+  assert.equal(shouldPersistRunOutcome({ endReason: 'return-to-menu' }), false);
+  assert.equal(shouldPersistRunOutcome({ endReason: null }), false);
+  assert.match(renderer, /shouldPersistRunOutcome\(\{ endReason \}\)/);
+  assert.match(renderer, /restartRun\(\) \{[\s\S]*?this\.scene\.restart\(\{[\s\S]*?runLengthMinutes: this\.selectedRunLengthMinutes[\s\S]*?difficulty: this\.selectedDifficulty/);
+  assert.match(renderer, /returnToMenu\(\) \{[\s\S]*?this\.scene\.start\('main-menu'\)/);
+  assert.doesNotMatch(renderer.match(/restartRun\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun/);
+  assert.doesNotMatch(renderer.match(/returnToMenu\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun/);
+});
+
 test('local best scores are saved separately by run length and difficulty', async () => {
   const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
   const values = new Map();

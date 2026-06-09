@@ -1028,6 +1028,8 @@ export const getRunEndReason = ({ clock, stats, enemies = [] }) => {
   return null;
 };
 
+export const shouldPersistRunOutcome = ({ endReason }) => ['timer-expired', 'health-depleted', 'boss-defeated'].includes(endReason);
+
 export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeight }) => (
   currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds
 ) % tileHeight;

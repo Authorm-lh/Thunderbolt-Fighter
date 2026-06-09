@@ -55,6 +55,7 @@ import {
   resolvePlayerVelocity,
   saveSettings,
   shouldAutoFire,
+  shouldPersistRunOutcome,
   shouldShowTutorialOnLaunch,
   shouldBasicEnemyFire,
   shouldShowBossWarning,
@@ -894,13 +895,15 @@ class GameplayScene extends Phaser.Scene {
     const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats, enemies: this.enemies });
 
     if (endReason) {
-      persistCompletedRun({
-        runLengthMinutes: this.selectedRunLengthMinutes,
-        difficulty: this.selectedDifficulty,
-        endReason,
-        clock: this.runClock,
-        stats: this.runStats
-      });
+      if (shouldPersistRunOutcome({ endReason })) {
+        persistCompletedRun({
+          runLengthMinutes: this.selectedRunLengthMinutes,
+          difficulty: this.selectedDifficulty,
+          endReason,
+          clock: this.runClock,
+          stats: this.runStats
+        });
+      }
       this.scene.start('results', {
         endReason,
         runClock: this.runClock,
