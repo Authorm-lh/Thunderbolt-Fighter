@@ -652,6 +652,25 @@ export const applyLocalRecordContext = ({ storage = globalThis.localStorage, sta
   })
 });
 
+export const persistCompletedRun = ({ storage = globalThis.localStorage, runLengthMinutes, difficulty, endReason, clock, stats }) => {
+  const recordsWithBestScore = saveBestScoreForRun({ storage, runLengthMinutes, difficulty, score: stats.score });
+
+  return saveRecentRun({
+    storage,
+    run: {
+      score: stats.score,
+      runLengthMinutes,
+      difficulty,
+      endReason,
+      timeSurvivedMs: clock.durationMs - clock.remainingMs,
+      kills: stats.kills,
+      bossesDefeated: stats.bossesDefeated,
+      pickups: stats.pickups,
+      localRecord: getBestScoreForRun({ records: recordsWithBestScore, runLengthMinutes, difficulty })
+    }
+  });
+};
+
 export const createRunStats = () => ({
   score: 0,
   health: PLAYER_SURVIVAL.maxHealth,

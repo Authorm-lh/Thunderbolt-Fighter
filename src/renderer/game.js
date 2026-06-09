@@ -38,6 +38,7 @@ import {
   getEnemyTestNameMarkerText,
   getPickupTestNameMarkerText,
   getRunEndReason,
+  persistCompletedRun,
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
   resolveEnemyTypeForSpawn,
@@ -265,6 +266,7 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningShown = false;
     this.bossSpawned = false;
     this.root = null;
+    this.selectedRunLengthMinutes = 1;
     this.selectedDifficulty = 'normal';
   }
 
@@ -272,6 +274,7 @@ class GameplayScene extends Phaser.Scene {
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
     this.root = root;
+    this.selectedRunLengthMinutes = runOptions.runLengthMinutes;
     this.selectedDifficulty = runOptions.difficulty;
     this.bossWarningShown = false;
     this.bossSpawned = false;
@@ -546,10 +549,20 @@ class GameplayScene extends Phaser.Scene {
     const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats, enemies: this.enemies });
 
     if (endReason) {
+      persistCompletedRun({
+        runLengthMinutes: this.selectedRunLengthMinutes,
+        difficulty: this.selectedDifficulty,
+        endReason,
+        clock: this.runClock,
+        stats: this.runStats
+      });
       this.scene.start('results', {
         endReason,
         runClock: this.runClock,
-        runStats: this.runStats
+        runStats: {
+          ...this.runStats,
+          bestScore: Math.max(this.runStats.score, this.runStats.bestScore ?? 0)
+        }
       });
     }
   }

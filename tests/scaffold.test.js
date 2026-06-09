@@ -1407,6 +1407,38 @@ test('recent run history is saved locally and capped at the last 10 runs', async
   ]);
 });
 
+test('completed runs persist records that load into a later app session', async () => {
+  const { applyLocalRecordContext, createRunClock, createRunStats, loadLocalRecords, persistCompletedRun } = await import('../src/renderer/gameplay-state.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  persistCompletedRun({
+    storage,
+    runLengthMinutes: 5,
+    difficulty: 'hard',
+    endReason: 'timer-expired',
+    clock: createRunClock({ runLengthMinutes: 5 }),
+    stats: { ...createRunStats(), score: 3200, kills: 8 }
+  });
+
+  const restartedSessionStats = applyLocalRecordContext({
+    storage,
+    stats: createRunStats(),
+    runLengthMinutes: 5,
+    difficulty: 'hard'
+  });
+  const records = loadLocalRecords({ storage });
+
+  assert.equal(restartedSessionStats.bestScore, 3200);
+  assert.equal(records.recentRuns[0].score, 3200);
+  assert.equal(records.recentRuns[0].runLengthMinutes, 5);
+  assert.equal(records.recentRuns[0].difficulty, 'hard');
+  assert.equal(records.recentRuns[0].endReason, 'timer-expired');
+});
+
 test('results screen shows current stats with local record context', async () => {
   const { createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -1499,6 +1531,20 @@ test('results count collected pickups and related combat stats once through the 
   assert.match(renderer, /dataset\.resultsPickups/);
   assert.match(renderer, /dataset\.resultsDamageBoosted/);
   assert.match(renderer, /dataset\.resultsShieldBlocked/);
+});
+
+test('local records use browser storage without network access or accounts', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const state = await readText('src/renderer/gameplay-state.js');
+
+  assert.match(state, /localStorage/);
+  assert.match(renderer, /persistCompletedRun/);
+  assert.doesNotMatch(state, /fetch\(/);
+  assert.doesNotMatch(renderer, /fetch\(/);
+  assert.doesNotMatch(state, /https?:\/\//);
+  assert.doesNotMatch(renderer, /https?:\/\//);
+  assert.doesNotMatch(state, /account/i);
+  assert.doesNotMatch(renderer, /account/i);
 });
 
 test('gameplay tests cover fair run baseline without permanent upgrades', async () => {
