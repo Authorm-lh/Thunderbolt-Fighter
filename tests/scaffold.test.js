@@ -1,9 +1,26 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const readJson = async (path) => JSON.parse(await readFile(path, 'utf8'));
 const readText = (path) => readFile(path, 'utf8');
+
+const listFiles = async (directory) => {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const path = `${directory}/${entry.name}`;
+
+      if (entry.isDirectory()) {
+        return listFiles(path);
+      }
+
+      return path;
+    })
+  );
+
+  return files.flat();
+};
 
 test('project exposes an offline Electron and Phaser app scaffold', async () => {
   const packageJson = await readJson('package.json');
@@ -39,7 +56,7 @@ test('desktop shell opens to a polished Thunderbolt Fighter main menu', async ()
   assert.match(renderer, /Start Run/);
   assert.match(renderer, /MainMenuScene/);
   assert.match(renderer, /background_main_menu_1280x720/);
-  assert.doesNotMatch(renderer, /background_sky_1672x941/);
+  assert.match(renderer, /title-plate/);
   assert.match(renderer, /contentX: 320/);
   assert.match(renderer, /mainMenuY: 204/);
   assert.match(renderer, /runLengthY: 300/);
@@ -187,7 +204,7 @@ test('gameplay scene uses a 16:9 logical playfield', async () => {
   assert.match(renderer, /Phaser\.Scale\.FIT/);
 });
 
-test('player test name marker is readable and follows player movement', async () => {
+test('player test name marker helper can describe player movement without affecting runtime presentation', async () => {
   const { PLAYER_FLIGHT, createTestNameMarker, followTestNameMarkerTarget } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
@@ -203,8 +220,8 @@ test('player test name marker is readable and follows player movement', async ()
   assert.equal(marker.y, player.y - PLAYER_FLIGHT.radius - 18);
   assert.equal(movedMarker.x, player.x + 120);
   assert.equal(movedMarker.y, player.y - 80 - PLAYER_FLIGHT.radius - 18);
-  assert.match(renderer, /createTestNameMarker\(\{ text: 'Player'/);
-  assert.match(renderer, /followTestNameMarkerTarget\(\{/);
+  assert.doesNotMatch(renderer, /createTestNameMarker\(\{ text: 'Player'/);
+  assert.doesNotMatch(renderer, /followTestNameMarkerTarget\(\{/);
 });
 
 test('player movement accepts arrow keys and WASD continuously', async () => {
@@ -282,7 +299,7 @@ test('weapon shape pickups replace the currently active weapon shape', async () 
   assert.equal(createPlayerProjectiles({ player: basePlayer, stats: piercingStats })[0].piercing, true);
 });
 
-test('pickup test name markers identify every pickup type and follow pickup movement', async () => {
+test('pickup test name marker helpers remain isolated from runtime presentation', async () => {
   const { PICKUP_BUFFS, advancePickups, createPickupSpawn, createTestNameMarker, followTestNameMarkerTarget, getPickupTestNameMarkerText } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
@@ -314,8 +331,8 @@ test('pickup test name markers identify every pickup type and follow pickup move
   assert.equal(marker.text, 'Attack Power Pickup');
   assert.equal(movedMarker.x, advancedPickup.x);
   assert.equal(movedMarker.y, advancedPickup.y - advancedPickup.radius - 18);
-  assert.match(renderer, /getPickupTestNameMarkerText/);
-  assert.match(renderer, /pickup\.nameMarker/);
+  assert.doesNotMatch(renderer, /getPickupTestNameMarkerText/);
+  assert.doesNotMatch(renderer, /pickup\.nameMarker/);
 });
 
 test('gameplay spawns pickup buffs on an independent cadence without blocking core run loops', async () => {
@@ -510,8 +527,8 @@ test('test name markers can be disabled through one isolated helper', async () =
 
   assert.equal(TEST_NAME_MARKERS.enabled, true);
   assert.equal(createTestNameMarker({ text: 'Player', target: player, enabled: false }), null);
-  assert.match(renderer, /createNameMarker\(markerState\)/);
-  assert.match(renderer, /if \(!markerState\)/);
+  assert.doesNotMatch(renderer, /createNameMarker\(markerState\)/);
+  assert.doesNotMatch(renderer, /if \(!markerState\)/);
 });
 
 test('test name marker lifecycle coverage spans player, enemy, pickup, and removal', async () => {
@@ -548,7 +565,7 @@ test('test name marker lifecycle coverage spans player, enemy, pickup, and remov
   assert.deepEqual(markedTargets.map((target) => target.nameMarker), [null, null, null]);
 });
 
-test('test name markers are removed with destroyed, escaped, or collected objects', async () => {
+test('test name marker removal helper stays out of runtime object cleanup', async () => {
   const { destroyTestNameMarker } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
   const destroyed = [];
@@ -562,8 +579,8 @@ test('test name markers are removed with destroyed, escaped, or collected object
 
   assert.deepEqual(destroyed, ['marker']);
   assert.equal(nextObject.nameMarker, null);
-  assert.match(renderer, /destroyNameMarker\(pickup\)/);
-  assert.match(renderer, /destroyNameMarker\(enemy\)/);
+  assert.doesNotMatch(renderer, /destroyNameMarker\(pickup\)/);
+  assert.doesNotMatch(renderer, /destroyNameMarker\(enemy\)/);
 });
 
 test('player collision picks up buffs, removes them from play, and applies every pickup effect', async () => {
@@ -677,7 +694,7 @@ test('support buffs coexist while weapon shapes remain exclusive', async () => {
   assert.equal(replacedShapeStats.pickups, 6);
 });
 
-test('enemy test name markers identify each enemy class including boss-class rules', async () => {
+test('enemy test name marker helpers remain isolated from runtime presentation', async () => {
   const { ENEMY_CLASSES, advanceBasicEnemies, createEnemySpawn, createTestNameMarker, followTestNameMarkerTarget, getEnemyTestNameMarkerText } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
@@ -696,8 +713,8 @@ test('enemy test name markers identify each enemy class including boss-class rul
   assert.equal(getEnemyTestNameMarkerText(bossEnemy.type), 'Boss Enemy');
   assert.equal(movedBasicMarker.x, advancedBasicEnemy.x);
   assert.equal(movedBasicMarker.y, advancedBasicEnemy.y - ENEMY_CLASSES.basic.radius - 18);
-  assert.match(renderer, /getEnemyTestNameMarkerText/);
-  assert.match(renderer, /enemy\.nameMarker/);
+  assert.doesNotMatch(renderer, /getEnemyTestNameMarkerText/);
+  assert.doesNotMatch(renderer, /enemy\.nameMarker/);
 });
 
 test('basic and elite enemies differ in durability, damage, firing, movement, and score value', async () => {
@@ -962,6 +979,31 @@ test('destroying basic enemies increases score, kills, and damage dealt', async 
   assert.match(renderer, /dataset\.kills/);
 });
 
+test('destroyed basic and elite enemies flash hit sparks at their destroyed position', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /fx_hit_spark\.png/);
+  assert.match(renderer, /spawnHitSpark\(enemy\)/);
+  assert.match(renderer, /this\.add\.image\(enemy\.x, enemy\.y, 'hit-spark'/);
+  assert.match(renderer, /duration: 1000/);
+  assert.match(renderer, /onComplete: \(\) => spark\.destroy\(\)/);
+});
+
+test('destroyed boss plays a runtime explosion animation before delayed results', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.match(renderer, /fx_explosion_spritesheet\.png/);
+  assert.match(renderer, /scene\.load\.spritesheet\(key, asset\.path, asset\.config\)/);
+  assert.match(renderer, /frameWidth: 256/);
+  assert.match(renderer, /frameHeight: 256/);
+  assert.match(renderer, /createBossExplosionAnimation/);
+  assert.match(renderer, /duration: 3000/);
+  assert.match(renderer, /repeat: 0/);
+  assert.match(renderer, /spawnBossExplosion\(enemy\)/);
+  assert.match(renderer, /animationcomplete/);
+  assert.match(renderer, /this\.time\.delayedCall\(2000, \(\) => this\.finishBossExplosion\(\)\)/);
+});
+
 test('defeating the boss ends the run with score and boss result stats', async () => {
   const { ENEMY_CLASSES, applyDestroyedEnemyRewards, createResultsValues, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -982,19 +1024,18 @@ test('defeating the boss ends the run with score and boss result stats', async (
     stats
   }), 'boss-defeated');
   assert.equal(resultsValues.bossesDefeated, 'Bosses Defeated 1');
-  assert.match(renderer, /result\.destroyedEnemies\.some\(\(enemy\) => enemy\.type === 'boss-class'\)[\s\S]*?this\.endRunIfNeeded\(\)/);
+  assert.match(renderer, /result\.destroyedEnemies\.forEach\(\(enemy\) => this\.playEnemyDestroyedEffect\(enemy\)\)/);
+  assert.match(renderer, /finishBossExplosion\(\)/);
   assert.match(renderer, /dataset\.resultsBossesDefeated/);
 });
 
-test('gameplay background scrolls slowly to communicate vertical flight', async () => {
-  const { BACKGROUND_SCROLL, advanceBackgroundOffset } = await import('../src/renderer/gameplay-state.js');
+test('gameplay background uses fixed full-screen runtime art without scroll tiling', async () => {
   const renderer = await readText('src/renderer/game.js');
 
-  assert.equal(BACKGROUND_SCROLL.speed, 36);
-  assert.equal(advanceBackgroundOffset({ currentOffset: 0, deltaSeconds: 1, tileHeight: 240 }), 36);
-  assert.equal(advanceBackgroundOffset({ currentOffset: 230, deltaSeconds: 1, tileHeight: 240 }), 26);
-  assert.match(renderer, /createBackgroundStarfield/);
-  assert.match(renderer, /advanceBackgroundOffset/);
+  assert.match(renderer, /createGameplayBackdrop/);
+  assert.match(renderer, /'gameplay-background'\)\s*\n\s*\.setDisplaySize\(this\.scale\.width, this\.scale\.height\)/);
+  assert.doesNotMatch(renderer, /advanceBackgroundOffset/);
+  assert.doesNotMatch(renderer, /tileRows/);
 });
 
 test('runs count down from the selected duration', async () => {
@@ -1049,13 +1090,14 @@ test('HUD shows the relevant local best score for the active run options', async
 });
 
 test('HUD shows baseline survival and scoring values', async () => {
-  const { createRunClock, createRunStats, createHudValues } = await import('../src/renderer/gameplay-state.js');
+  const { createRunClock, createRunStats, createHudValues, createHudLayoutState } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
 
   const hudValues = createHudValues({
     clock: createRunClock({ runLengthMinutes: 1 }),
     stats: createRunStats()
   });
+  const layout = createHudLayoutState();
 
   assert.deepEqual(hudValues, {
     score: 'Score 0',
@@ -1066,6 +1108,17 @@ test('HUD shows baseline survival and scoring values', async () => {
     pickups: 'Pickups 0',
     bestScore: 'Best —'
   });
+  const innerLeft = layout.panel.x + layout.panel.padding;
+  const innerTop = layout.panel.y + layout.panel.padding;
+  const innerRight = layout.panel.x + layout.panel.width - layout.panel.padding;
+  const innerBottom = layout.panel.y + layout.panel.height - layout.panel.padding;
+  const regularHudBottom = layout.regularHud.y + layout.regularHud.values.length * 30;
+
+  assert.ok(layout.regularHud.top >= innerTop);
+  assert.ok(layout.regularHud.x >= innerLeft);
+  assert.ok(layout.regularHud.right <= innerRight);
+  assert.ok(regularHudBottom <= innerBottom);
+  assert.match(renderer, /setDisplaySize\(HUD_LAYOUT\.panel\.width, HUD_LAYOUT\.panel\.height\)/);
   assert.match(renderer, /createHudValues/);
   assert.match(renderer, /Score/);
   assert.match(renderer, /Health/);
@@ -1363,8 +1416,10 @@ test('results screen receives distinct boss and player defeat reasons', async ()
 test('settings controls expose audio, fullscreen, tutorial replay, and record reset actions', async () => {
   const {
     LOCAL_RECORDS_STORAGE_KEY,
+    SETTINGS_STORAGE_KEY,
     createDefaultLocalRecords,
     createDefaultSettings,
+    enableAudioOnLaunch,
     markTutorialReplayRequested,
     resetLocalRecords,
     toggleAudioEnabled,
@@ -1385,6 +1440,9 @@ test('settings controls expose audio, fullscreen, tutorial replay, and record re
   const replaySettings = markTutorialReplayRequested(fullscreenSettings);
   const recordsAfterReset = resetLocalRecords({ storage });
 
+  storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ audioEnabled: false, fullscreenEnabled: true, tutorialReplayRequested: true }));
+  const launchSettings = enableAudioOnLaunch({ storage });
+
   assert.deepEqual(defaults, {
     audioEnabled: true,
     fullscreenEnabled: false,
@@ -1393,8 +1451,15 @@ test('settings controls expose audio, fullscreen, tutorial replay, and record re
   assert.equal(mutedSettings.audioEnabled, false);
   assert.equal(fullscreenSettings.fullscreenEnabled, true);
   assert.equal(replaySettings.tutorialReplayRequested, true);
+  assert.deepEqual(launchSettings, {
+    audioEnabled: true,
+    fullscreenEnabled: true,
+    tutorialReplayRequested: true
+  });
+  assert.equal(JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY)).audioEnabled, true);
   assert.deepEqual(recordsAfterReset, createDefaultLocalRecords());
   assert.equal(storage.getItem(LOCAL_RECORDS_STORAGE_KEY), JSON.stringify(createDefaultLocalRecords()));
+  assert.match(renderer, /enableAudioOnLaunch\(\)/);
   assert.match(renderer, /SettingsScene/);
   assert.match(renderer, /Audio/);
   assert.match(renderer, /Fullscreen/);
@@ -1879,6 +1944,12 @@ test('project exposes a Windows desktop packaging command', async () => {
   assert.match(packageScript, /`\$\{appName\}\.exe`/);
   assert.match(packageScript, /resources', 'app/);
   assert.match(packageScript, /node_modules', 'phaser/);
+  assert.match(packageScript, /copyApprovedRuntimeAssets/);
+  assert.match(packageScript, /APPROVED_RUNTIME_ASSET_EXTENSIONS/);
+  assert.match(packageScript, /\.png/);
+  assert.match(packageScript, /\.wav/);
+  assert.match(packageScript, /\.mp3/);
+  assert.doesNotMatch(packageScript, /cp\(path\.join\(root, 'assets', 'runtime'\)/);
 });
 
 test('desktop smoke test launches the shell and reaches the main menu', async () => {
@@ -1887,12 +1958,100 @@ test('desktop smoke test launches the shell and reaches the main menu', async ()
   const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
 
   assert.equal(packageJson.scripts['test:smoke'], 'node tests/smoke/electron-smoke.mjs');
+  assert.equal(packageJson.scripts['test:smoke:package-win'], 'npm run package:win && node tests/smoke/package-win-smoke.mjs');
+  const packagedSmokeTest = await readText('tests/smoke/package-win-smoke.mjs');
   assert.equal(packageJson.devDependencies['@playwright/test'], '^1.57.0');
   assert.match(renderer, /dataset\.screen = 'main-menu'/);
   assert.match(renderer, /dataset\.title = 'Thunderbolt Fighter'/);
   assert.match(smokeTest, /_electron/);
+  assert.match(smokeTest, /THUNDERBOLT_FIGHTER_EXECUTABLE/);
+  assert.match(smokeTest, /executablePath/);
+  assert.match(packagedSmokeTest, /THUNDERBOLT_FIGHTER_EXECUTABLE/);
+  assert.match(packagedSmokeTest, /Thunderbolt Fighter\.exe/);
+  assert.match(packagedSmokeTest, /electron-smoke\.mjs/);
   assert.match(smokeTest, /#game-root\[data-screen="main-menu"\]/);
+  assert.match(smokeTest, /#game-root\[data-screen="gameplay"\]/);
   assert.match(smokeTest, /Thunderbolt Fighter/);
+});
+
+test('approved runtime visual assets are loaded and rendered for gameplay presentation', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  [
+    'background_sky_1672x941.png',
+    'background_cloud_layer.png',
+    'player_ship.png',
+    'enemy_basic.png',
+    'enemy_elite.png',
+    'enemy_boss.png',
+    'projectile_player_bolt.png',
+    'projectile_enemy_orb.png',
+    'pickup_power..png',
+    'pickup_shield.png',
+    'fx_hit_spark.png',
+    'fx_explosion_spritesheet.png',
+    'ui_button_primary.png',
+    'ui_life_icon.png',
+    'ui_panel_hud.png',
+    'ui_title_plate.png'
+  ].forEach((assetName) => assert.match(renderer, new RegExp(assetName.replaceAll('.', '\\.'))));
+
+  assert.match(renderer, /loadRuntimeVisualAssets/);
+  assert.match(renderer, /this\.add\.image\([^)]*'player-ship'/);
+  assert.match(renderer, /\* 3\.2, this\.runBaseline\.player\.radius \* 3\.2/);
+  assert.match(renderer, /enemyAssetKeyFor\(enemy\.type\)/);
+  assert.match(renderer, /enemyDisplayScaleFor\(enemy\.type\)/);
+  assert.match(renderer, /this\.add\.image\([^)]*'player-projectile'/);
+  assert.match(renderer, /projectileState\.radius \* 5, projectileState\.radius \* 10/);
+  assert.match(renderer, /this\.add\.image\([^)]*'enemy-projectile'/);
+  assert.match(renderer, /projectile\.radius \* 5, projectile\.radius \* 5/);
+  assert.match(renderer, /pickupAssetKeyFor\(pickup\.type\)/);
+  assert.match(renderer, /pickup\.radius \* 3, pickup\.radius \* 3/);
+  assert.doesNotMatch(renderer, /createNameMarker\(/);
+  assert.match(renderer, /'gameplay-background'/);
+  assert.match(renderer, /'hud-panel'/);
+  assert.match(renderer, /'life-icon'/);
+});
+
+test('approved runtime audio assets are loaded and played for core feedback moments', async () => {
+  const renderer = await readText('src/renderer/game.js');
+
+  [
+    'music_menu_loop.wav',
+    'music_run_loop.wav',
+    'music_boss_loop.wav',
+    'ui_select.wav',
+    'ui_confirm.wav',
+    'ui_back.wav',
+    'ui_pause_open.wav',
+    'player_bolt_fire.wav',
+    'player_bolt_hit.wav',
+    'player_damage.wav',
+    'player_destroyed.wav',
+    'enemy_destroyed_basic.wav',
+    'enemy_destroyed_elite.wav',
+    'boss_warning.mp3',
+    'boss_spawn.wav',
+    'boss_destroyed.wav',
+    'pickup_heal.mp3',
+    'pickup_power.wav',
+    'pickup_shield.mp3'
+  ].forEach((assetName) => assert.match(renderer, new RegExp(assetName.replaceAll('.', '\\.'))));
+
+  assert.match(renderer, /loadRuntimeAudioAssets/);
+  assert.match(renderer, /playRuntimeMusic\(this, 'music-menu'/);
+  assert.match(renderer, /playRuntimeMusic\(this, 'music-run'/);
+  assert.match(renderer, /playRuntimeMusic\(this, 'music-boss'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'ui-confirm'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'ui-back'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'ui-pause-open'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'player-bolt-fire'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'player-bolt-hit'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'player-damage'/);
+  assert.match(renderer, /playRuntimeSound\(this, 'player-destroyed'/);
+  assert.match(renderer, /playRuntimeSound\(this, enemyDestroyedSoundKeyFor\(enemy\.type\)\)/);
+  assert.match(renderer, /playRuntimeSound\(this, pickupSoundKeyFor\(pickup\.type\)\)/);
+  assert.match(renderer, /loadSettings\(\)\.audioEnabled/);
 });
 
 test('runtime assets and prototype reference assets are separated', async () => {
@@ -1900,8 +2059,13 @@ test('runtime assets and prototype reference assets are separated', async () => 
   const runtimeReadme = await readText('assets/runtime/README.md');
   const prototypeReadme = await readText('assets/prototype/README.md');
 
+  const runtimeFiles = await listFiles('assets/runtime');
+  const prototypeFiles = await listFiles('assets/prototype');
+
   assert.match(runtimeReadme, /Shipped runtime assets/);
   assert.match(prototypeReadme, /Prototype and reference assets/);
   assert.match(packageScript, /assets', 'runtime/);
   assert.doesNotMatch(packageScript, /assets', 'prototype/);
+  assert.equal(runtimeFiles.some((file) => /generation-prompts\.md$/.test(file)), false);
+  assert.ok(prototypeFiles.some((file) => /generation-prompts\.md$/.test(file)));
 });

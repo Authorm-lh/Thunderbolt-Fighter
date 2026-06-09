@@ -10,7 +10,8 @@
     "dev": "electron .",
     "package:win": "node scripts/package-win.js",
     "test": "node --test tests/*.test.js",
-    "test:smoke": "node tests/smoke/electron-smoke.mjs"
+    "test:smoke": "node tests/smoke/electron-smoke.mjs",
+    "test:smoke:package-win": "npm run package:win && node tests/smoke/package-win-smoke.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"

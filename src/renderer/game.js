@@ -1,13 +1,11 @@
 import * as Phaser from '../../node_modules/phaser/dist/phaser.esm.js';
 import {
-  BACKGROUND_SCROLL,
   BASIC_ENEMY,
   GAMEPLAY_PLAYFIELD,
   HUD_LAYOUT,
   PICKUP_SPAWNING,
   PLAYER_FLIGHT,
   PLAYER_WEAPON,
-  advanceBackgroundOffset,
   advanceBasicEnemies,
   advanceEnemyProjectiles,
   advancePickups,
@@ -31,15 +29,11 @@ import {
   createSpawnRandomizationState,
   createRunClock,
   createRunStats,
-  createTestNameMarker,
   createTutorialContent,
   createPauseMenuContent,
   clearTutorialReplayRequested,
-  destroyTestNameMarker,
-  followTestNameMarkerTarget,
+  enableAudioOnLaunch,
   getEnemyClass,
-  getEnemyTestNameMarkerText,
-  getPickupTestNameMarkerText,
   getRunEndReason,
   loadSettings,
   markTutorialReplayRequested,
@@ -82,6 +76,167 @@ const MENU_ASSETS = {
   background: '../../assets/runtime/art/backgrounds/background_main_menu_1280x720.png'
 };
 
+const RUNTIME_VISUAL_ASSETS = {
+  'gameplay-background': '../../assets/runtime/art/backgrounds/background_sky_1672x941.png',
+  'cloud-layer': '../../assets/runtime/art/backgrounds/background_cloud_layer.png',
+  'player-ship': '../../assets/runtime/art/player/player_ship.png',
+  'enemy-basic': '../../assets/runtime/art/enemies/enemy_basic.png',
+  'enemy-elite': '../../assets/runtime/art/enemies/enemy_elite.png',
+  'enemy-boss': '../../assets/runtime/art/enemies/enemy_boss.png',
+  'player-projectile': '../../assets/runtime/art/projectiles/projectile_player_bolt.png',
+  'enemy-projectile': '../../assets/runtime/art/projectiles/projectile_enemy_orb.png',
+  'pickup-power': '../../assets/runtime/art/pickups/pickup_power..png',
+  'pickup-shield': '../../assets/runtime/art/pickups/pickup_shield.png',
+  'hit-spark': '../../assets/runtime/art/fx/fx_hit_spark.png',
+  'button-primary': '../../assets/runtime/art/ui/ui_button_primary.png',
+  'life-icon': '../../assets/runtime/art/ui/ui_life_icon.png',
+  'hud-panel': '../../assets/runtime/art/ui/ui_panel_hud.png',
+  'title-plate': '../../assets/runtime/art/ui/ui_title_plate.png'
+};
+
+const RUNTIME_SPRITESHEET_ASSETS = {
+  'boss-explosion': {
+    path: '../../assets/runtime/art/fx/fx_explosion_spritesheet.png',
+    config: { frameWidth: 256, frameHeight: 256 }
+  }
+};
+
+const RUNTIME_AUDIO_ASSETS = {
+  'music-menu': '../../assets/runtime/audio/music_menu_loop.wav',
+  'music-run': '../../assets/runtime/audio/music_run_loop.wav',
+  'music-boss': '../../assets/runtime/audio/music_boss_loop.wav',
+  'ui-select': '../../assets/runtime/audio/ui_select.wav',
+  'ui-confirm': '../../assets/runtime/audio/ui_confirm.wav',
+  'ui-back': '../../assets/runtime/audio/ui_back.wav',
+  'ui-pause-open': '../../assets/runtime/audio/ui_pause_open.wav',
+  'player-bolt-fire': '../../assets/runtime/audio/player_bolt_fire.wav',
+  'player-bolt-hit': '../../assets/runtime/audio/player_bolt_hit.wav',
+  'player-damage': '../../assets/runtime/audio/player_damage.wav',
+  'player-destroyed': '../../assets/runtime/audio/player_destroyed.wav',
+  'enemy-destroyed-basic': '../../assets/runtime/audio/enemy_destroyed_basic.wav',
+  'enemy-destroyed-elite': '../../assets/runtime/audio/enemy_destroyed_elite.wav',
+  'boss-warning': '../../assets/runtime/audio/boss_warning.mp3',
+  'boss-spawn': '../../assets/runtime/audio/boss_spawn.wav',
+  'boss-destroyed': '../../assets/runtime/audio/boss_destroyed.wav',
+  'pickup-heal': '../../assets/runtime/audio/pickup_heal.mp3',
+  'pickup-power': '../../assets/runtime/audio/pickup_power.wav',
+  'pickup-shield-sound': '../../assets/runtime/audio/pickup_shield.mp3'
+};
+
+const MUSIC_KEYS = ['music-menu', 'music-run', 'music-boss'];
+
+const loadRuntimeVisualAssets = (scene) => {
+  Object.entries(RUNTIME_VISUAL_ASSETS).forEach(([key, path]) => {
+    if (!scene.textures.exists(key)) {
+      scene.load.image(key, path);
+    }
+  });
+
+  Object.entries(RUNTIME_SPRITESHEET_ASSETS).forEach(([key, asset]) => {
+    if (!scene.textures.exists(key)) {
+      scene.load.spritesheet(key, asset.path, asset.config);
+    }
+  });
+};
+
+const loadRuntimeAudioAssets = (scene) => {
+  Object.entries(RUNTIME_AUDIO_ASSETS).forEach(([key, path]) => {
+    if (!scene.cache.audio.exists(key)) {
+      scene.load.audio(key, path);
+    }
+  });
+};
+
+const playRuntimeSound = (scene, key, config = {}) => {
+  if (!loadSettings().audioEnabled || !scene.cache.audio.exists(key)) {
+    return;
+  }
+
+  try {
+    scene.sound.play(key, { volume: 0.42, ...config });
+  } catch {
+    // Audio playback can be locked or unavailable in smoke-test environments.
+  }
+};
+
+const playRuntimeMusic = (scene, key) => {
+  try {
+    if (!loadSettings().audioEnabled) {
+      MUSIC_KEYS.forEach((musicKey) => scene.sound.stopByKey(musicKey));
+      return;
+    }
+
+    if (!scene.cache.audio.exists(key) || scene.sound.get(key)?.isPlaying) {
+      return;
+    }
+
+    MUSIC_KEYS.forEach((musicKey) => {
+      if (musicKey !== key) {
+        scene.sound.stopByKey(musicKey);
+      }
+    });
+    scene.sound.play(key, { loop: true, volume: key === 'music-boss' ? 0.34 : 0.26 });
+  } catch {
+    // Audio playback can be locked or unavailable in smoke-test environments.
+  }
+};
+
+const enemyAssetKeyFor = (enemyType) => {
+  if (enemyType === 'elite') {
+    return 'enemy-elite';
+  }
+
+  if (enemyType === 'boss-class') {
+    return 'enemy-boss';
+  }
+
+  return 'enemy-basic';
+};
+
+const pickupAssetKeyFor = (pickupType) => {
+  if (pickupType === 'healing' || pickupType === 'shield') {
+    return 'pickup-shield';
+  }
+
+  return 'pickup-power';
+};
+
+const enemyDisplayScaleFor = (enemyType) => {
+  if (enemyType === 'elite') {
+    return { width: 3.2, height: 2.8 };
+  }
+
+  if (enemyType === 'boss-class') {
+    return { width: 3.6, height: 2.6 };
+  }
+
+  return { width: 2.7, height: 2.5 };
+};
+
+const enemyDestroyedSoundKeyFor = (enemyType) => {
+  if (enemyType === 'elite') {
+    return 'enemy-destroyed-elite';
+  }
+
+  if (enemyType === 'boss-class') {
+    return 'boss-destroyed';
+  }
+
+  return 'enemy-destroyed-basic';
+};
+
+const pickupSoundKeyFor = (pickupType) => {
+  if (pickupType === 'healing') {
+    return 'pickup-heal';
+  }
+
+  if (pickupType === 'shield') {
+    return 'pickup-shield-sound';
+  }
+
+  return 'pickup-power';
+};
+
 const MENU_LAYOUT = {
   contentX: 320,
   titleY: 96,
@@ -101,6 +256,8 @@ class BootScene extends Phaser.Scene {
   }
 
   create() {
+    enableAudioOnLaunch();
+
     if (shouldShowTutorialOnLaunch()) {
       this.scene.start('tutorial');
       return;
@@ -114,6 +271,11 @@ class TutorialScene extends Phaser.Scene {
   constructor() {
     super('tutorial');
     this.returnScene = 'main-menu';
+  }
+
+  preload() {
+    loadRuntimeVisualAssets(this);
+    loadRuntimeAudioAssets(this);
   }
 
   create(data = {}) {
@@ -170,8 +332,8 @@ class TutorialScene extends Phaser.Scene {
   }
 
   createTutorialButton(x, y, labelText, action) {
-    const plate = this.add.rectangle(x, y, 220, 62, 0x12334a, 0.82)
-      .setStrokeStyle(2, 0xffd166, 0.78);
+    const plate = this.add.image(x, y, 'button-primary')
+      .setDisplaySize(220, 62);
     const hitArea = this.add.rectangle(x, y, 220, 62, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
     const label = this.add.text(x, y - 1, labelText, {
@@ -182,7 +344,10 @@ class TutorialScene extends Phaser.Scene {
       stroke: '#0b1c2e',
       strokeThickness: 4
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    const invoke = () => action();
+    const invoke = () => {
+      playRuntimeSound(this, labelText === 'Skip Tutorial' ? 'ui-back' : 'ui-confirm');
+      action();
+    };
 
     hitArea.on('pointerdown', invoke);
     label.on('pointerdown', invoke);
@@ -200,6 +365,8 @@ class MainMenuScene extends Phaser.Scene {
 
   preload() {
     this.load.image('menu-background', MENU_ASSETS.background);
+    loadRuntimeVisualAssets(this);
+    loadRuntimeAudioAssets(this);
   }
 
   create() {
@@ -209,6 +376,7 @@ class MainMenuScene extends Phaser.Scene {
     const centerX = this.scale.width / 2;
     const root = document.querySelector('#game-root');
 
+    playRuntimeMusic(this, 'music-menu');
     this.add.image(centerX, this.scale.height / 2, 'menu-background')
       .setDisplaySize(this.scale.width, this.scale.height);
     this.add.rectangle(300, this.scale.height / 2, 600, this.scale.height, 0x04101d, 0.5);
@@ -216,8 +384,8 @@ class MainMenuScene extends Phaser.Scene {
     this.add.line(0, 0, 602, 0, 602, this.scale.height, 0x3db7ff, 0.28)
       .setOrigin(0, 0);
 
-    this.add.rectangle(contentX, MENU_LAYOUT.titleY, 470, 94, 0x071827, 0.48)
-      .setStrokeStyle(1, 0x9ed7ff, 0.46);
+    this.add.image(contentX, MENU_LAYOUT.titleY, 'title-plate')
+      .setDisplaySize(470, 94);
 
     this.add.text(contentX, MENU_LAYOUT.titleY - 6, 'Thunderbolt Fighter', {
       fontFamily: 'Arial, sans-serif',
@@ -275,7 +443,10 @@ class MainMenuScene extends Phaser.Scene {
     this.bindOptionButtons(difficultyButtons, DIFFICULTY_OPTIONS, (option) => updateDifficultySelection(option.difficulty));
 
     const settingsButton = this.createSecondaryButton(contentX, MENU_LAYOUT.settingsButtonY, 'Settings');
-    const openSettings = () => this.scene.start('settings');
+    const openSettings = () => {
+      playRuntimeSound(this, 'ui-confirm');
+      this.scene.start('settings');
+    };
 
     settingsButton.hitArea.on('pointerdown', openSettings);
     settingsButton.label.on('pointerdown', openSettings);
@@ -283,6 +454,7 @@ class MainMenuScene extends Phaser.Scene {
     const startRunButton = this.createActionButton(contentX, MENU_LAYOUT.startButtonY, 'Start Run');
 
     const startRun = () => {
+      playRuntimeSound(this, 'ui-confirm');
       this.scene.start('gameplay', {
         runOptions: {
           runLengthMinutes: this.selectedRunLengthMinutes,
@@ -319,8 +491,8 @@ class MainMenuScene extends Phaser.Scene {
   }
 
   createActionButton(x, y, labelText) {
-    const plate = this.add.rectangle(x, y, 220, 62, 0x12334a, 0.82)
-      .setStrokeStyle(2, 0xffd166, 0.78);
+    const plate = this.add.image(x, y, 'button-primary')
+      .setDisplaySize(220, 62);
     const hitArea = this.add.rectangle(x, y, 220, 62, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
     const label = this.add.text(x, y - 1, labelText, {
@@ -366,6 +538,9 @@ class MainMenuScene extends Phaser.Scene {
       plate.setFillStyle(isSelected ? 0x1d5a78 : 0x0b2234, isSelected ? 0.9 : 0.72);
       plate.setStrokeStyle(isSelected ? 2 : 1, isSelected ? 0xf8fbff : 0x3db7ff, isSelected ? 0.9 : 0.6);
       label.setColor(isSelected ? '#f8fbff' : '#9ed7ff');
+      if (isSelected) {
+        playRuntimeSound(this, 'ui-select', { volume: 0.18 });
+      }
     });
   }
 }
@@ -380,10 +555,16 @@ class SettingsScene extends Phaser.Scene {
     this.fullscreenButton = null;
   }
 
+  preload() {
+    loadRuntimeVisualAssets(this);
+    loadRuntimeAudioAssets(this);
+  }
+
   create() {
     this.root = document.querySelector('#game-root');
     this.settings = loadSettings();
 
+    playRuntimeMusic(this, 'music-menu');
     this.cameras.main.setBackgroundColor('#09111f');
     this.add.rectangle(this.scale.width / 2, this.scale.height / 2, 640, 560, 0x071827, 0.72)
       .setStrokeStyle(1, 0x3db7ff, 0.48);
@@ -416,7 +597,7 @@ class SettingsScene extends Phaser.Scene {
       this.root.dataset.recordsReset = 'true';
       this.refreshSettingsDisplay('Local records reset');
     });
-    this.createSettingsButton(640, 510, 'Back', () => this.scene.start('main-menu'));
+    this.createSettingsButton(640, 510, 'Back', () => this.scene.start('main-menu'), { soundKey: 'ui-back' });
 
     this.statusText = this.add.text(this.scale.width / 2, 424, '', {
       fontFamily: 'Arial, sans-serif',
@@ -430,7 +611,7 @@ class SettingsScene extends Phaser.Scene {
     this.refreshSettingsDisplay('Adjust desktop preferences');
   }
 
-  createSettingsButton(x, y, labelText, action) {
+  createSettingsButton(x, y, labelText, action, { soundKey = 'ui-confirm' } = {}) {
     const plate = this.add.rectangle(x, y, 280, 68, 0x0b2234, 0.78)
       .setStrokeStyle(1, 0x3db7ff, 0.66);
     const hitArea = this.add.rectangle(x, y, 280, 68, 0x000000, 0)
@@ -443,7 +624,10 @@ class SettingsScene extends Phaser.Scene {
       stroke: '#071827',
       strokeThickness: 3
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    const invoke = () => action();
+    const invoke = () => {
+      playRuntimeSound(this, soundKey);
+      action();
+    };
 
     hitArea.on('pointerdown', invoke);
     label.on('pointerdown', invoke);
@@ -489,14 +673,11 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = [];
     this.enemyProjectiles = [];
     this.pickups = [];
-    this.playerNameMarker = null;
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
     this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
     this.enemySpawnCount = 0;
     this.pickupSpawnCount = 0;
-    this.backgroundStars = [];
-    this.backgroundOffset = 0;
     this.runBaseline = null;
     this.runClock = null;
     this.runStats = null;
@@ -507,6 +688,7 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
     this.bossSpawned = false;
+    this.bossExplosionPending = false;
     this.pauseOverlay = [];
     this.pauseKey = null;
     this.paused = false;
@@ -523,14 +705,11 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = [];
     this.enemyProjectiles = [];
     this.pickups = [];
-    this.playerNameMarker = null;
     this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
     this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
     this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
     this.enemySpawnCount = 0;
     this.pickupSpawnCount = 0;
-    this.backgroundStars = [];
-    this.backgroundOffset = 0;
     this.runBaseline = null;
     this.runClock = null;
     this.runStats = null;
@@ -541,10 +720,16 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
     this.bossSpawned = false;
+    this.bossExplosionPending = false;
     this.pauseOverlay = [];
     this.pauseKey = null;
     this.paused = false;
     this.root = null;
+  }
+
+  preload() {
+    loadRuntimeVisualAssets(this);
+    loadRuntimeAudioAssets(this);
   }
 
   create(data) {
@@ -557,6 +742,7 @@ class GameplayScene extends Phaser.Scene {
     this.selectedDifficulty = runOptions.difficulty;
     this.bossWarningShown = false;
     this.bossSpawned = false;
+    this.bossExplosionPending = false;
     this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = applyLocalRecordContext({
@@ -566,36 +752,41 @@ class GameplayScene extends Phaser.Scene {
     });
     this.spawnRandomization = createSpawnRandomizationState();
 
+    playRuntimeMusic(this, 'music-run');
     this.cameras.main.setBackgroundColor('#09111f');
-    this.createBackgroundStarfield();
+    this.createBossExplosionAnimation();
+    this.createGameplayBackdrop();
 
-    this.player = this.add.triangle(
+    this.player = this.add.image(
       this.runBaseline.player.startX,
       this.runBaseline.player.startY,
-      0,
-      this.runBaseline.player.radius * 1.4,
-      this.runBaseline.player.radius,
-      0,
-      this.runBaseline.player.radius * 2,
-      this.runBaseline.player.radius * 1.4,
-      0x9ed7ff,
-      1
-    ).setStrokeStyle(2, 0xf8fbff, 0.9);
+      'player-ship'
+    ).setDisplaySize(this.runBaseline.player.radius * 3.2, this.runBaseline.player.radius * 3.2);
     this.player.radius = PLAYER_FLIGHT.radius;
-    this.playerNameMarker = this.createNameMarker(createTestNameMarker({ text: 'Player', target: this.player }));
 
     this.cursorKeys = this.input.keyboard.createCursorKeys();
     this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
     this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.input.keyboard.on('keydown-ESC', () => {
       if (this.paused) {
+        playRuntimeSound(this, 'ui-back');
         this.closePauseMenu();
         return;
       }
 
+      playRuntimeSound(this, 'ui-pause-open');
       this.openPauseMenu();
     });
 
+    this.add.image(
+      HUD_LAYOUT.panel.x + HUD_LAYOUT.panel.width / 2,
+      HUD_LAYOUT.panel.y + HUD_LAYOUT.panel.height / 2,
+      'hud-panel'
+    )
+      .setDisplaySize(HUD_LAYOUT.panel.width, HUD_LAYOUT.panel.height)
+      .setAlpha(0.82);
+    this.add.image(HUD_LAYOUT.runSummary.iconX, HUD_LAYOUT.runSummary.iconY, 'life-icon')
+      .setDisplaySize(28, 28);
     this.add.text(HUD_LAYOUT.runSummary.x, HUD_LAYOUT.runSummary.y, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',
       fontSize: '24px',
@@ -633,7 +824,6 @@ class GameplayScene extends Phaser.Scene {
       return;
     }
 
-    this.updateBackground(delta / 1000);
     this.updateRunClock(delta);
 
     const velocity = resolvePlayerVelocity({
@@ -654,7 +844,6 @@ class GameplayScene extends Phaser.Scene {
 
     this.player.x = Phaser.Math.Clamp(this.player.x + velocity.x * deltaSeconds, minX, maxX);
     this.player.y = Phaser.Math.Clamp(this.player.y + velocity.y * deltaSeconds, minY, maxY);
-    this.followNameMarker(this.playerNameMarker, this.player);
 
     if (shouldAutoFire({ elapsedMs: _time, lastFiredMs: this.lastFiredMs, stats: this.runStats })) {
       this.spawnPlayerProjectile();
@@ -689,53 +878,25 @@ class GameplayScene extends Phaser.Scene {
     this.resolveEnemyPlayerHits();
   }
 
-  createBackgroundStarfield() {
-    const starColumns = [72, 156, 248, 336, 448, 560, 648, 760, 872, 984, 1096, 1208];
-    const tileRows = Math.ceil(GAMEPLAY_PLAYFIELD.height / BACKGROUND_SCROLL.tileHeight) + 2;
-
-    for (let row = -1; row < tileRows; row += 1) {
-      starColumns.forEach((x, columnIndex) => {
-        const y = row * BACKGROUND_SCROLL.tileHeight + ((columnIndex * 47) % BACKGROUND_SCROLL.tileHeight);
-        const radius = columnIndex % 3 === 0 ? 2 : 1;
-        const star = this.add.circle(x, y, radius, 0x9ed7ff, 0.48);
-
-        star.baseY = y;
-        this.backgroundStars.push(star);
-      });
-    }
+  createGameplayBackdrop() {
+    this.add.image(this.scale.width / 2, this.scale.height / 2, 'gameplay-background')
+      .setDisplaySize(this.scale.width, this.scale.height);
+    this.add.image(this.scale.width / 2, this.scale.height / 2, 'cloud-layer')
+      .setDisplaySize(this.scale.width, this.scale.height)
+      .setAlpha(0.54);
   }
 
-  createNameMarker(markerState) {
-    if (!markerState) {
-      return null;
-    }
-
-    return Object.assign(this.add.text(markerState.x, markerState.y, markerState.text, {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '16px',
-      color: '#f8fbff',
-      align: 'center',
-      stroke: '#0b1c2e',
-      strokeThickness: 4
-    }).setOrigin(0.5, 1), markerState);
-  }
-
-  followNameMarker(marker, target) {
-    if (!marker) {
+  createBossExplosionAnimation() {
+    if (this.anims.exists('boss-explosion-flow')) {
       return;
     }
 
-    const nextMarker = followTestNameMarkerTarget({ marker, target });
-
-    marker.x = nextMarker.x;
-    marker.y = nextMarker.y;
-    marker.targetRadius = nextMarker.targetRadius;
-  }
-
-  destroyNameMarker(target) {
-    const nextTarget = destroyTestNameMarker(target);
-
-    target.nameMarker = nextTarget.nameMarker;
+    this.anims.create({
+      key: 'boss-explosion-flow',
+      frames: this.anims.generateFrameNumbers('boss-explosion', { start: 0, end: 15 }),
+      duration: 3000,
+      repeat: 0
+    });
   }
 
   openPauseMenu() {
@@ -829,18 +990,6 @@ class GameplayScene extends Phaser.Scene {
     this.renderPauseMenu();
   }
 
-  updateBackground(deltaSeconds) {
-    this.backgroundOffset = advanceBackgroundOffset({
-      currentOffset: this.backgroundOffset,
-      deltaSeconds,
-      tileHeight: BACKGROUND_SCROLL.tileHeight
-    });
-
-    this.backgroundStars.forEach((star) => {
-      star.y = ((star.baseY + this.backgroundOffset + BACKGROUND_SCROLL.tileHeight) % (GAMEPLAY_PLAYFIELD.height + BACKGROUND_SCROLL.tileHeight)) - BACKGROUND_SCROLL.tileHeight;
-    });
-  }
-
   updateRunClock(deltaMs) {
     this.runClock = advanceRunClock({ clock: this.runClock, deltaMs });
     this.runStats = advanceTimedBuffs({ stats: this.runStats, deltaMs });
@@ -879,6 +1028,7 @@ class GameplayScene extends Phaser.Scene {
   showBossWarning() {
     const warning = createBossWarningState();
 
+    playRuntimeSound(this, 'boss-warning', { volume: 0.55 });
     this.bossWarningShown = true;
     this.bossWarningText.setText(warning.text).setVisible(true);
     this.bossWarningDetailText.setText(warning.detailText).setVisible(true);
@@ -915,20 +1065,29 @@ class GameplayScene extends Phaser.Scene {
   }
 
   applyDamage(damage) {
+    playRuntimeSound(this, 'player-damage');
     this.runStats = applyPlayerDamage({ stats: this.runStats, damage });
     this.updateHud();
     this.endRunIfNeeded();
   }
 
   applyPickup(pickupType) {
+    playRuntimeSound(this, pickupSoundKeyFor(pickupType));
     this.runStats = applyPickupBuff({ stats: this.runStats, pickupType });
     this.updateHud();
   }
 
   endRunIfNeeded() {
+    if (this.bossExplosionPending) {
+      return;
+    }
+
     const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats, enemies: this.enemies });
 
     if (endReason) {
+      if (endReason === 'health-depleted') {
+        playRuntimeSound(this, 'player-destroyed', { volume: 0.55 });
+      }
       if (shouldPersistRunOutcome({ endReason })) {
         persistCompletedRun({
           runLengthMinutes: this.selectedRunLengthMinutes,
@@ -955,17 +1114,15 @@ class GameplayScene extends Phaser.Scene {
       player: { x: this.player.x, y: this.player.y, radius: PLAYER_FLIGHT.radius },
       stats: this.runStats
     }).map((projectileState) => {
-      const projectile = this.add.circle(
-        projectileState.x,
-        projectileState.y,
-        projectileState.radius,
-        projectileState.piercing ? 0x8be9fd : 0xffd166,
-        1
-      );
+      const projectile = this.add.image(projectileState.x, projectileState.y, 'player-projectile')
+        .setDisplaySize(projectileState.radius * 5, projectileState.radius * 10);
 
       return Object.assign(projectile, projectileState);
     });
 
+    if (projectiles.length > 0) {
+      playRuntimeSound(this, 'player-bolt-fire', { volume: 0.16 });
+    }
     this.projectiles.push(...projectiles);
   }
 
@@ -988,11 +1145,9 @@ class GameplayScene extends Phaser.Scene {
 
     this.pickups = advancedPickups.filter((pickup) => {
       pickup.sprite.y = pickup.y;
-      this.followNameMarker(pickup.nameMarker, pickup);
 
       if (pickup.y > GAMEPLAY_PLAYFIELD.height + pickup.radius) {
         pickup.sprite.destroy();
-        this.destroyNameMarker(pickup);
         return false;
       }
 
@@ -1012,7 +1167,6 @@ class GameplayScene extends Phaser.Scene {
     this.pickups.forEach((pickup) => {
       if (!remainingPickupIds.has(pickup.id)) {
         pickup.sprite.destroy();
-        this.destroyNameMarker(pickup);
       }
     });
 
@@ -1021,6 +1175,7 @@ class GameplayScene extends Phaser.Scene {
     this.root.dataset.pickupCount = String(this.pickups.length);
 
     if (result.collectedPickups.length > 0) {
+      result.collectedPickups.forEach((pickup) => playRuntimeSound(this, pickupSoundKeyFor(pickup.type)));
       this.updateHud();
     }
   }
@@ -1042,14 +1197,19 @@ class GameplayScene extends Phaser.Scene {
     this.enemies.forEach((enemy) => {
       if (!remainingEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
-        this.destroyNameMarker(enemy);
       }
     });
 
     this.projectiles = result.projectiles;
     this.enemies = result.enemies;
 
+    if (result.damageDealt > 0) {
+      playRuntimeSound(this, 'player-bolt-hit', { volume: 0.2 });
+    }
+
     if (result.destroyedEnemies.length > 0) {
+      result.destroyedEnemies.forEach((enemy) => playRuntimeSound(this, enemyDestroyedSoundKeyFor(enemy.type)));
+      result.destroyedEnemies.forEach((enemy) => this.playEnemyDestroyedEffect(enemy));
       this.runStats = applyDestroyedEnemyRewards({
         stats: this.runStats,
         destroyedEnemies: result.destroyedEnemies,
@@ -1059,13 +1219,58 @@ class GameplayScene extends Phaser.Scene {
       this.updateHud();
       this.updateBossHpHud();
       if (result.destroyedEnemies.some((enemy) => enemy.type === 'boss-class')) {
-        this.endRunIfNeeded();
+        return;
       }
     } else if (result.damageDealt > 0) {
       this.updateBossHpHud();
     }
 
     this.root.dataset.enemyCount = String(this.enemies.length);
+  }
+
+  playEnemyDestroyedEffect(enemy) {
+    if (enemy.type === 'boss-class') {
+      this.spawnBossExplosion(enemy);
+      return;
+    }
+
+    this.spawnHitSpark(enemy);
+  }
+
+  spawnHitSpark(enemy) {
+    const spark = this.add.image(enemy.x, enemy.y, 'hit-spark')
+      .setDisplaySize(96, 96)
+      .setAlpha(0.9);
+
+    this.tweens.add({
+      targets: spark,
+      alpha: 0,
+      scale: 1.35,
+      duration: 1000,
+      onComplete: () => spark.destroy()
+    });
+  }
+
+  spawnBossExplosion(enemy) {
+    if (this.bossExplosionPending) {
+      return;
+    }
+
+    this.bossExplosionPending = true;
+    const explosion = this.add.sprite(enemy.x, enemy.y, 'boss-explosion')
+      .setDisplaySize(300, 300)
+      .setDepth(10);
+
+    explosion.once('animationcomplete', () => {
+      explosion.destroy();
+      this.time.delayedCall(2000, () => this.finishBossExplosion());
+    });
+    explosion.play('boss-explosion-flow');
+  }
+
+  finishBossExplosion() {
+    this.bossExplosionPending = false;
+    this.endRunIfNeeded();
   }
 
   spawnBasicEnemy() {
@@ -1082,6 +1287,8 @@ class GameplayScene extends Phaser.Scene {
 
   spawnBossEnemy() {
     this.bossSpawned = true;
+    playRuntimeMusic(this, 'music-boss');
+    playRuntimeSound(this, 'boss-spawn', { volume: 0.58 });
     this.addEnemy(createBossEnemySpawn({ spawnIndex: 0 }));
     this.root.dataset.bossSpawned = 'true';
     this.updateBossHpHud();
@@ -1089,28 +1296,20 @@ class GameplayScene extends Phaser.Scene {
 
   addEnemy(enemy) {
     const enemyClass = getEnemyClass(enemy.type);
-    const enemyColor = enemy.type === 'boss-class' ? 0xffd166 : enemy.type === 'elite' ? 0xc084fc : 0xff5f6d;
-    const sprite = this.add.rectangle(enemy.x, enemy.y, enemyClass.radius * 2, enemyClass.radius * 1.4, enemyColor, 1)
-      .setStrokeStyle(2, 0xffd166, 0.8);
-    const nameMarker = this.createNameMarker(createTestNameMarker({
-      text: getEnemyTestNameMarkerText(enemy.type),
-      target: { ...enemy, radius: enemyClass.radius }
-    }));
+    const displayScale = enemyDisplayScaleFor(enemy.type);
+    const sprite = this.add.image(enemy.x, enemy.y, enemyAssetKeyFor(enemy.type))
+      .setDisplaySize(enemyClass.radius * displayScale.width, enemyClass.radius * displayScale.height);
 
-    this.enemies.push({ ...enemy, sprite, nameMarker });
+    this.enemies.push({ ...enemy, sprite });
     this.root.dataset.enemyCount = String(this.enemies.length);
   }
 
   spawnPickup() {
     const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount, spawnRandomization: this.spawnRandomization });
-    const sprite = this.add.circle(pickup.x, pickup.y, pickup.radius, 0x45f3ff, 0.9)
-      .setStrokeStyle(2, 0xf8fbff, 0.85);
-    const nameMarker = this.createNameMarker(createTestNameMarker({
-      text: getPickupTestNameMarkerText(pickup.type),
-      target: pickup
-    }));
+    const sprite = this.add.image(pickup.x, pickup.y, pickupAssetKeyFor(pickup.type))
+      .setDisplaySize(pickup.radius * 3, pickup.radius * 3);
 
-    this.pickups.push({ ...pickup, sprite, nameMarker });
+    this.pickups.push({ ...pickup, sprite });
     this.pickupSpawnCount += 1;
     this.root.dataset.pickupCount = String(this.pickups.length);
   }
@@ -1121,7 +1320,6 @@ class GameplayScene extends Phaser.Scene {
     advancedEnemies.forEach((enemy) => {
       enemy.sprite.x = enemy.x;
       enemy.sprite.y = enemy.y;
-      this.followNameMarker(enemy.nameMarker, { ...enemy, radius: getEnemyClass(enemy.type).radius });
     });
 
     const escapedResult = resolveEscapedEnemyHits({
@@ -1134,7 +1332,6 @@ class GameplayScene extends Phaser.Scene {
     advancedEnemies.forEach((enemy) => {
       if (escapedEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
-        this.destroyNameMarker(enemy);
       }
     });
 
@@ -1165,7 +1362,8 @@ class GameplayScene extends Phaser.Scene {
       enemyType: enemy.type,
       difficulty: this.selectedDifficulty
     });
-    const sprite = this.add.circle(projectile.x, projectile.y, projectile.radius, 0xff8a65, 1);
+    const sprite = this.add.image(projectile.x, projectile.y, 'enemy-projectile')
+      .setDisplaySize(projectile.radius * 5, projectile.radius * 5);
 
     this.enemyProjectiles.push({ ...projectile, sprite });
     this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
@@ -1206,7 +1404,6 @@ class GameplayScene extends Phaser.Scene {
     this.enemies = this.enemies.filter((enemy) => {
       if (contactEnemyIds.has(enemy.id)) {
         enemy.sprite.destroy();
-        this.destroyNameMarker(enemy);
         return false;
       }
 

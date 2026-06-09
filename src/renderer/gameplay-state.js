@@ -254,17 +254,26 @@ export const TEST_NAME_MARKERS = {
 };
 
 export const HUD_LAYOUT = {
+  panel: {
+    x: 8,
+    y: 44,
+    width: 380,
+    height: 276,
+    padding: 22
+  },
   runSummary: {
-    x: 24,
+    iconX: 38,
+    iconY: 38,
+    x: 60,
     y: 24,
     top: 24,
     bottom: 52
   },
   regularHud: {
-    x: 24,
-    y: 58,
-    top: 58,
-    right: 384,
+    x: 32,
+    y: 72,
+    top: 72,
+    right: 348,
     values: ['score', 'timer', 'health', 'weapon', 'buff', 'pickups', 'bestScore']
   },
   bossHp: {
@@ -613,6 +622,15 @@ export const saveSettings = ({ storage = globalThis.localStorage, settings }) =>
   storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 
   return settings;
+};
+
+export const enableAudioOnLaunch = ({ storage = globalThis.localStorage } = {}) => {
+  const settings = {
+    ...loadSettings({ storage }),
+    audioEnabled: true
+  };
+
+  return saveSettings({ storage, settings });
 };
 
 export const toggleAudioEnabled = (settings = createDefaultSettings()) => ({
