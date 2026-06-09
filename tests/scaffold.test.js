@@ -1858,9 +1858,9 @@ test('approved runtime visual assets are loaded and rendered for gameplay presen
   assert.match(renderer, /enemyAssetKeyFor\(enemy\.type\)/);
   assert.match(renderer, /enemyDisplayScaleFor\(enemy\.type\)/);
   assert.match(renderer, /this\.add\.image\([^)]*'player-projectile'/);
-  assert.match(renderer, /projectileState\.radius \* 4, projectileState\.radius \* 8/);
+  assert.match(renderer, /projectileState\.radius \* 5, projectileState\.radius \* 10/);
   assert.match(renderer, /this\.add\.image\([^)]*'enemy-projectile'/);
-  assert.match(renderer, /projectile\.radius \* 4, projectile\.radius \* 4/);
+  assert.match(renderer, /projectile\.radius \* 5, projectile\.radius \* 5/);
   assert.match(renderer, /pickupAssetKeyFor\(pickup\.type\)/);
   assert.match(renderer, /pickup\.radius \* 3, pickup\.radius \* 3/);
   assert.doesNotMatch(renderer, /createNameMarker\(/);

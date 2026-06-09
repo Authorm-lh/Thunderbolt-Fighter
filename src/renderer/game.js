@@ -1069,7 +1069,7 @@ class GameplayScene extends Phaser.Scene {
       stats: this.runStats
     }).map((projectileState) => {
       const projectile = this.add.image(projectileState.x, projectileState.y, 'player-projectile')
-        .setDisplaySize(projectileState.radius * 4, projectileState.radius * 8);
+        .setDisplaySize(projectileState.radius * 5, projectileState.radius * 10);
 
       return Object.assign(projectile, projectileState);
     });
@@ -1271,7 +1271,7 @@ class GameplayScene extends Phaser.Scene {
       difficulty: this.selectedDifficulty
     });
     const sprite = this.add.image(projectile.x, projectile.y, 'enemy-projectile')
-      .setDisplaySize(projectile.radius * 4, projectile.radius * 4);
+      .setDisplaySize(projectile.radius * 5, projectile.radius * 5);
 
     this.enemyProjectiles.push({ ...projectile, sprite });
     this.root.dataset.enemyProjectileCount = String(this.enemyProjectiles.length);
