@@ -27,6 +27,7 @@ import {
   createResultsTitle,
   createResultsValues,
   createRunBaseline,
+  createSpawnRandomizationState,
   createRunClock,
   createRunStats,
   createTestNameMarker,
@@ -255,6 +256,7 @@ class GameplayScene extends Phaser.Scene {
     this.runBaseline = null;
     this.runClock = null;
     this.runStats = null;
+    this.spawnRandomization = null;
     this.hudText = null;
     this.bossHpHudText = null;
     this.bossWarningText = null;
@@ -275,6 +277,7 @@ class GameplayScene extends Phaser.Scene {
     this.runBaseline = createRunBaseline({ difficulty: runOptions.difficulty });
     this.runClock = createRunClock({ runLengthMinutes: runOptions.runLengthMinutes });
     this.runStats = createRunStats();
+    this.spawnRandomization = createSpawnRandomizationState();
 
     this.cameras.main.setBackgroundColor('#09111f');
     this.createBackgroundStarfield();
@@ -665,8 +668,12 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnBasicEnemy() {
-    const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount });
-    const enemy = createEnemySpawn({ spawnIndex: this.enemySpawnCount, enemyType });
+    const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: this.enemySpawnCount, spawnRandomization: this.spawnRandomization });
+    const enemy = createEnemySpawn({
+      spawnIndex: this.enemySpawnCount,
+      enemyType,
+      spawnRandomization: this.spawnRandomization
+    });
 
     this.addEnemy(enemy);
     this.enemySpawnCount += 1;
@@ -694,7 +701,7 @@ class GameplayScene extends Phaser.Scene {
   }
 
   spawnPickup() {
-    const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount });
+    const pickup = createPickupSpawn({ spawnIndex: this.pickupSpawnCount, spawnRandomization: this.spawnRandomization });
     const sprite = this.add.circle(pickup.x, pickup.y, pickup.radius, 0x45f3ff, 0.9)
       .setStrokeStyle(2, 0xf8fbff, 0.85);
     const nameMarker = this.createNameMarker(createTestNameMarker({

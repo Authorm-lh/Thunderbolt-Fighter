@@ -119,6 +119,61 @@ test('gameplay baseline carries the selected difficulty tuning', async () => {
   assert.match(renderer, /createRunBaseline\(\{ difficulty: runOptions\.difficulty \}\)/);
 });
 
+test('new gameplay runs initialize spawn randomization from a changing seed source', async () => {
+  const { createSpawnRandomizationState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const firstRun = createSpawnRandomizationState({ seedSource: () => 101 });
+  const secondRun = createSpawnRandomizationState({ seedSource: () => 202 });
+
+  assert.equal(firstRun.seed, 101);
+  assert.equal(secondRun.seed, 202);
+  assert.notEqual(firstRun.seed, secondRun.seed);
+  assert.match(renderer, /createSpawnRandomizationState\(\)/);
+});
+
+test('automated tests can inject a fixed spawn randomization seed directly', async () => {
+  const { createEnemySpawn, createSpawnRandomizationState, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
+
+  const spawnRandomization = createSpawnRandomizationState({ seed: 707 });
+  const enemyType = resolveEnemyTypeForSpawn({ spawnIndex: 0, spawnRandomization });
+  const enemy = createEnemySpawn({ spawnIndex: 0, enemyType, spawnRandomization });
+
+  assert.equal(spawnRandomization.seed, 707);
+  assert.equal(enemy.id, `${enemy.type}-0`);
+});
+
+test('spawn randomization is deterministic for fixed seeds and changes across seeds', async () => {
+  const { createEnemySpawn, createPickupSpawn, createSpawnRandomizationState, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
+
+  const spawnSequenceFor = (seed) => {
+    const spawnRandomization = createSpawnRandomizationState({ seed });
+
+    return Array.from({ length: 10 }, (_, spawnIndex) => {
+      const enemyType = resolveEnemyTypeForSpawn({ spawnIndex, spawnRandomization });
+      const enemy = createEnemySpawn({ spawnIndex, enemyType, spawnRandomization });
+      const pickup = createPickupSpawn({ spawnIndex, spawnRandomization });
+
+      return {
+        enemyType: enemy.type,
+        enemyX: enemy.x,
+        pickupType: pickup.type,
+        pickupX: pickup.x
+      };
+    });
+  };
+
+  assert.deepEqual(spawnSequenceFor(808), spawnSequenceFor(808));
+  assert.notDeepEqual(spawnSequenceFor(808), spawnSequenceFor(909));
+});
+
+test('spawn stream hashing preserves stream order for independent random sequences', async () => {
+  const { createSpawnStreamHash } = await import('../src/renderer/gameplay-state.js');
+
+  assert.notEqual(createSpawnStreamHash('ab'), createSpawnStreamHash('ba'));
+  assert.equal(createSpawnStreamHash('enemy-lane'), createSpawnStreamHash('enemy-lane'));
+});
+
 test('gameplay scene uses a 16:9 logical playfield', async () => {
   const { GAMEPLAY_PLAYFIELD } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -309,6 +364,77 @@ test('gameplay spawns pickup buffs on an independent cadence without blocking co
   assert.match(renderer, /this\.pickups/);
   assert.match(renderer, /shouldSpawnPickup/);
   assert.match(renderer, /spawnPickup/);
+});
+
+test('pickup lane and pickup type sequences vary by spawn randomization seed', async () => {
+  const { PICKUP_BUFFS, PICKUP_SPAWNING, createPickupSpawn, createSpawnRandomizationState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const pickupSequenceFor = (seed) => {
+    const spawnRandomization = createSpawnRandomizationState({ seedSource: () => seed });
+
+    return Array.from({ length: 8 }, (_, spawnIndex) => {
+      const pickup = createPickupSpawn({ spawnIndex, spawnRandomization });
+
+      return { type: pickup.type, x: pickup.x };
+    });
+  };
+  const firstRunSequence = pickupSequenceFor(303);
+  const secondRunSequence = pickupSequenceFor(404);
+
+  assert.notDeepEqual(firstRunSequence, secondRunSequence);
+  firstRunSequence.concat(secondRunSequence).forEach((pickup) => {
+    assert.ok(Object.keys(PICKUP_BUFFS).includes(pickup.type));
+    assert.ok(PICKUP_SPAWNING.lanes.includes(pickup.x));
+  });
+  assert.match(renderer, /createPickupSpawn\(\{ spawnIndex: this\.pickupSpawnCount, spawnRandomization: this\.spawnRandomization \}\)/);
+});
+
+test('spawn randomization respects caps, tuning, and valid spawn values', async () => {
+  const {
+    ENEMY_CLASSES,
+    PICKUP_BUFFS,
+    PICKUP_SPAWNING,
+    createEnemySpawn,
+    createPickupSpawn,
+    createSpawnRandomizationState,
+    getDifficultyTuning,
+    resolveEnemyTypeForSpawn,
+    shouldSpawnBasicEnemy,
+    shouldSpawnPickup
+  } = await import('../src/renderer/gameplay-state.js');
+
+  const spawnRandomization = createSpawnRandomizationState({ seedSource: () => 505 });
+  const enemySpawns = Array.from({ length: 24 }, (_, spawnIndex) => {
+    const enemyType = resolveEnemyTypeForSpawn({ spawnIndex, spawnRandomization });
+
+    return createEnemySpawn({ spawnIndex, enemyType, spawnRandomization });
+  });
+  const pickupSpawns = Array.from({ length: 24 }, (_, spawnIndex) => createPickupSpawn({ spawnIndex, spawnRandomization }));
+
+  assert.equal(shouldSpawnBasicEnemy({
+    elapsedMs: getDifficultyTuning('simple').enemySpawnIntervalMs,
+    lastSpawnedMs: 0,
+    activeEnemyCount: getDifficultyTuning('simple').maxActiveEnemies,
+    difficulty: 'simple'
+  }), false);
+  assert.equal(shouldSpawnBasicEnemy({
+    elapsedMs: getDifficultyTuning('hard').enemySpawnIntervalMs,
+    lastSpawnedMs: 0,
+    activeEnemyCount: getDifficultyTuning('hard').maxActiveEnemies - 1,
+    difficulty: 'hard'
+  }), true);
+  assert.equal(shouldSpawnPickup({
+    elapsedMs: PICKUP_SPAWNING.spawnIntervalMs,
+    lastSpawnedMs: 0,
+    activePickupCount: PICKUP_SPAWNING.maxActivePickups
+  }), false);
+  assert.deepEqual(new Set(enemySpawns.map((enemy) => enemy.type)), new Set(['basic', 'elite']));
+  enemySpawns.forEach((enemy) => assert.ok(ENEMY_CLASSES[enemy.type].lanes.includes(enemy.x)));
+  pickupSpawns.forEach((pickup) => {
+    assert.ok(Object.keys(PICKUP_BUFFS).includes(pickup.type));
+    assert.ok(PICKUP_SPAWNING.lanes.includes(pickup.x));
+  });
 });
 
 test('test name markers do not change core gameplay behavior', async () => {
@@ -631,6 +757,32 @@ test('enemy movement remains readable while elite enemies use bounded sway', asy
   assert.ok(Math.abs(advancedElite.x - eliteEnemy.movementOriginX) <= ENEMY_CLASSES.elite.maxHorizontalOffset);
   assert.ok(ENEMY_CLASSES.elite.maxHorizontalOffset < Math.min(...BASIC_ENEMY.lanes.slice(1).map((lane, index) => lane - BASIC_ENEMY.lanes[index])) / 2);
   assert.match(renderer, /resolveEnemyTypeForSpawn/);
+});
+
+test('enemy lane and eligible enemy type sequences vary by spawn randomization seed', async () => {
+  const { ENEMY_CLASSES, createEnemySpawn, createSpawnRandomizationState, resolveEnemyTypeForSpawn } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const enemySequenceFor = (seed) => {
+    const spawnRandomization = createSpawnRandomizationState({ seedSource: () => seed });
+
+    return Array.from({ length: 8 }, (_, spawnIndex) => {
+      const enemyType = resolveEnemyTypeForSpawn({ spawnIndex, spawnRandomization });
+      const enemy = createEnemySpawn({ spawnIndex, enemyType, spawnRandomization });
+
+      return { type: enemy.type, x: enemy.x };
+    });
+  };
+  const firstRunSequence = enemySequenceFor(101);
+  const secondRunSequence = enemySequenceFor(202);
+
+  assert.notDeepEqual(firstRunSequence, secondRunSequence);
+  firstRunSequence.concat(secondRunSequence).forEach((enemy) => {
+    assert.ok(['basic', 'elite'].includes(enemy.type));
+    assert.ok(ENEMY_CLASSES[enemy.type].lanes.includes(enemy.x));
+  });
+  assert.match(renderer, /spawnRandomization/);
+  assert.match(renderer, /resolveEnemyTypeForSpawn\(\{ spawnIndex: this\.enemySpawnCount, spawnRandomization: this\.spawnRandomization \}\)/);
 });
 
 test('basic enemies spawn from the top and descend in readable lanes', async () => {

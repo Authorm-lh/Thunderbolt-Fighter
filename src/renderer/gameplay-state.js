@@ -145,6 +145,44 @@ export const getEnemyTestNameMarkerText = (enemyType = 'basic') => {
   return 'Basic Enemy';
 };
 
+export const createSpawnRandomizationState = ({ seed, seedSource = Date.now } = {}) => ({
+  seed: seed ?? seedSource()
+});
+
+export const createSpawnStreamHash = (stream) => {
+  let hash = 0x811c9dc5;
+
+  [...stream].forEach((character) => {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  });
+
+  return hash;
+};
+
+const createSeededRandomValue = ({ seed, stream, spawnIndex }) => {
+  let value = (seed + createSpawnStreamHash(stream) + Math.imul(spawnIndex + 1, 0x9e3779b1)) >>> 0;
+
+  value = Math.imul(value ^ (value >>> 16), 0x85ebca6b) >>> 0;
+  value = Math.imul(value ^ (value >>> 13), 0xc2b2ae35) >>> 0;
+
+  return ((value ^ (value >>> 16)) >>> 0) / 0x100000000;
+};
+
+const selectSpawnValue = ({ values, spawnIndex, spawnRandomization, stream }) => {
+  if (!spawnRandomization) {
+    return values[spawnIndex % values.length];
+  }
+
+  const randomIndex = Math.floor(createSeededRandomValue({
+    seed: spawnRandomization.seed,
+    stream,
+    spawnIndex
+  }) * values.length);
+
+  return values[randomIndex];
+};
+
 export const getPickupTestNameMarkerText = (pickupType) => {
   const label = PICKUP_BUFFS[pickupType]?.label ?? pickupType;
 
@@ -163,7 +201,18 @@ export const getPickupTestNameMarkerText = (pickupType) => {
   return `${label} Pickup`;
 };
 
-export const resolveEnemyTypeForSpawn = ({ spawnIndex }) => (spawnIndex > 0 && spawnIndex % 4 === 3 ? 'elite' : 'basic');
+export const resolveEnemyTypeForSpawn = ({ spawnIndex, spawnRandomization }) => {
+  if (!spawnRandomization) {
+    return spawnIndex > 0 && spawnIndex % 4 === 3 ? 'elite' : 'basic';
+  }
+
+  return selectSpawnValue({
+    values: ['basic', 'basic', 'basic', 'elite'],
+    spawnIndex,
+    spawnRandomization,
+    stream: 'enemy-type'
+  });
+};
 
 export const DIFFICULTY_TUNING = {
   simple: {
@@ -354,17 +403,23 @@ export const shouldBasicEnemyFire = ({ elapsedMs, lastFiredMs, enemyType = 'basi
   return elapsedMs - lastFiredMs >= fireIntervalMs;
 };
 
-export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic' }) => {
+export const createEnemySpawn = ({ spawnIndex, enemyType = 'basic', spawnRandomization }) => {
   const enemyClass = getEnemyClass(enemyType);
+  const x = selectSpawnValue({
+    values: enemyClass.lanes,
+    spawnIndex,
+    spawnRandomization,
+    stream: `${enemyClass.type}-lane`
+  });
 
   return {
     id: `${enemyClass.type}-${spawnIndex}`,
     type: enemyClass.type,
-    x: enemyClass.lanes[spawnIndex % enemyClass.lanes.length],
+    x,
     y: -enemyClass.radius,
     health: enemyClass.maxHealth,
     lastFiredMs: -enemyClass.fireIntervalMs,
-    movementOriginX: enemyClass.lanes[spawnIndex % enemyClass.lanes.length]
+    movementOriginX: x
   };
 };
 
@@ -376,10 +431,20 @@ export const shouldSpawnPickup = ({ elapsedMs, lastSpawnedMs, activePickupCount 
   activePickupCount < PICKUP_SPAWNING.maxActivePickups && elapsedMs - lastSpawnedMs >= PICKUP_SPAWNING.spawnIntervalMs
 );
 
-export const createPickupSpawn = ({ spawnIndex }) => {
+export const createPickupSpawn = ({ spawnIndex, spawnRandomization }) => {
   const pickupTypes = Object.keys(PICKUP_BUFFS);
-  const type = pickupTypes[spawnIndex % pickupTypes.length];
-  const x = PICKUP_SPAWNING.lanes[spawnIndex % PICKUP_SPAWNING.lanes.length];
+  const type = selectSpawnValue({
+    values: pickupTypes,
+    spawnIndex,
+    spawnRandomization,
+    stream: 'pickup-type'
+  });
+  const x = selectSpawnValue({
+    values: PICKUP_SPAWNING.lanes,
+    spawnIndex,
+    spawnRandomization,
+    stream: 'pickup-lane'
+  });
 
   return {
     id: `pickup-${spawnIndex}-${type}`,
