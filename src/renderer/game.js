@@ -649,6 +649,8 @@ class GameplayScene extends Phaser.Scene {
         difficulty: this.selectedDifficulty
       });
       this.updateHud();
+    } else if (result.damageDealt > 0) {
+      this.updateBossHpHud();
     }
 
     this.root.dataset.enemyCount = String(this.enemies.length);

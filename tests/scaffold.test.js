@@ -1026,6 +1026,22 @@ test('Boss HP HUD shows current and max boss health', async () => {
   assert.equal(bossHpHud.text, `Boss HP ${ENEMY_CLASSES['boss-class'].maxHealth}/${ENEMY_CLASSES['boss-class'].maxHealth}`);
 });
 
+test('Boss HP HUD updates when player projectiles damage the boss', async () => {
+  const { PLAYER_WEAPON, createBossEnemySpawn, createBossHpHudState, resolvePlayerProjectileEnemyHits } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const boss = { ...createBossEnemySpawn({ spawnIndex: 0 }), y: 96 };
+  const hit = resolvePlayerProjectileEnemyHits({
+    enemies: [boss],
+    projectiles: [{ x: boss.x, y: boss.y, radius: PLAYER_WEAPON.projectileRadius }]
+  });
+  const bossHpHud = createBossHpHudState({ enemies: hit.enemies });
+
+  assert.equal(hit.damageDealt, PLAYER_WEAPON.damage);
+  assert.equal(bossHpHud.currentHealth, boss.health - PLAYER_WEAPON.damage);
+  assert.match(bossHpHud.text, new RegExp(`Boss HP ${boss.health - PLAYER_WEAPON.damage}/`));
+  assert.match(renderer, /result\.damageDealt > 0/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
