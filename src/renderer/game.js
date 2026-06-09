@@ -830,6 +830,7 @@ class ResultsScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
 
     root.dataset.screen = 'results';
+    root.dataset.bossHpHudVisible = 'false';
     root.dataset.endReason = data.endReason;
     root.dataset.resultsScore = String(data.runStats.score);
     root.dataset.resultsKills = String(data.runStats.kills);

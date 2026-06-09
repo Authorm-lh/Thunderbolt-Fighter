@@ -1042,6 +1042,15 @@ test('Boss HP HUD updates when player projectiles damage the boss', async () => 
   assert.match(renderer, /result\.damageDealt > 0/);
 });
 
+test('Boss HP HUD cleans up when the boss is defeated or results screen opens', async () => {
+  const { createBossEnemySpawn, createBossHpHudState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const defeatedBoss = { ...createBossEnemySpawn({ spawnIndex: 0 }), health: 0 };
+
+  assert.equal(createBossHpHudState({ enemies: [defeatedBoss] }).visible, false);
+  assert.match(renderer, /root\.dataset\.bossHpHudVisible = 'false'/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
