@@ -1761,6 +1761,19 @@ test('results replay preserves the completed run settings', async () => {
   assert.match(smokeTest, /data-results-replay-difficulty/);
 });
 
+test('results actions support mouse interaction and screen metadata checks', async () => {
+  const renderer = await readText('src/renderer/game.js');
+  const smokeTest = await readText('tests/smoke/electron-smoke.mjs');
+
+  assert.match(renderer, /setInteractive\(\{ useHandCursor: true \}\)/);
+  assert.match(renderer, /root\.dataset\.resultsActions = 'Main Menu,Replay'/);
+  assert.match(smokeTest, /data-results-actions/);
+  assert.match(smokeTest, /clickGamePoint\(790, 650\)/);
+  assert.match(smokeTest, /clickGamePoint\(490, 650\)/);
+  assert.match(smokeTest, /data-screen="gameplay"/);
+  assert.match(smokeTest, /data-screen="main-menu"/);
+});
+
 test('results stats include pickup counts and combat stat changes', async () => {
   const { applyPlayerDamage, applyPickupBuff, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
 
