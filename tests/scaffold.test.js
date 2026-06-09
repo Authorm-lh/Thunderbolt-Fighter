@@ -1016,6 +1016,16 @@ test('Boss HP HUD appears while a boss-class enemy is active', async () => {
   assert.match(renderer, /createBossHpHudState/);
 });
 
+test('Boss HP HUD shows current and max boss health', async () => {
+  const { ENEMY_CLASSES, createBossEnemySpawn, createBossHpHudState } = await import('../src/renderer/gameplay-state.js');
+  const boss = createBossEnemySpawn({ spawnIndex: 0 });
+  const bossHpHud = createBossHpHudState({ enemies: [boss] });
+
+  assert.equal(bossHpHud.currentHealth, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.equal(bossHpHud.maxHealth, ENEMY_CLASSES['boss-class'].maxHealth);
+  assert.equal(bossHpHud.text, `Boss HP ${ENEMY_CLASSES['boss-class'].maxHealth}/${ENEMY_CLASSES['boss-class'].maxHealth}`);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

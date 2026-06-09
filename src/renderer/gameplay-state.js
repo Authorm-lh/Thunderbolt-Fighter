@@ -313,10 +313,13 @@ export const createBossWarningState = () => ({
 
 export const createBossHpHudState = ({ enemies }) => {
   const activeBoss = enemies.find((enemy) => enemy.type === 'boss-class' && enemy.health > 0);
+  const bossClass = ENEMY_CLASSES['boss-class'];
 
   return {
     visible: Boolean(activeBoss),
-    text: activeBoss ? 'Boss HP' : ''
+    currentHealth: activeBoss?.health ?? 0,
+    maxHealth: bossClass.maxHealth,
+    text: activeBoss ? `Boss HP ${activeBoss.health}/${bossClass.maxHealth}` : ''
   };
 };
 
