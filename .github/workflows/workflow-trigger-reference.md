@@ -76,25 +76,30 @@ Relevant trigger:
 ```yaml
 on:
   pull_request:
+    types: [opened, reopened, ready_for_review]
   push:
     branches:
       - main
       - master
+
+jobs:
+  windows-check:
+    if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
 ```
 
 | Scenario | GitHub event | Workflow triggered | Job runs | Notes |
 | --- | --- | ---: | ---: | --- |
-| New Ready PR | `pull_request.opened` | Yes | Yes | `pull_request` has no explicit `types`, so GitHub uses default PR trigger types. |
-| New Draft PR | `pull_request.opened` | Yes | Yes | CI does not distinguish Draft vs Ready PRs. |
-| Push new commit to PR branch | `pull_request.synchronize` | Yes | Yes | Applies to both Ready and Draft PRs. |
-| Reopen PR | `pull_request.reopened` | Yes | Yes | Included in the default `pull_request` behavior. |
-| Draft PR becomes Ready for review | `pull_request.ready_for_review` | Usually no | No | Not explicitly listed; may only run if another default PR event also occurs. |
+| New Ready PR | `pull_request.opened` | Yes | Yes | CI runs when a PR first becomes a candidate for the main branch. |
+| New Draft PR | `pull_request.opened` | Yes | No | Workflow starts, but the job is skipped by the draft guard. |
+| Push new commit to PR branch | `pull_request.synchronize` | No | No | `synchronize` is intentionally omitted so heavy CI does not run on every PR commit. |
+| Reopen PR | `pull_request.reopened` | Yes | Yes | Reopened PRs are rechecked before they can affect the main branch. |
+| Draft PR becomes Ready for review | `pull_request.ready_for_review` | Yes | Yes | Heavy CI runs when draft work is promoted to review-ready. |
 | Human creates a new PR comment | `issue_comment.created` | No | No | CI does not listen to comments. |
 | Human creates a normal issue comment | `issue_comment.created` | No | No | CI does not listen to comments. |
 | Push to `main` | `push` | Yes | Yes | Merging a PR into `main` also creates a push to `main`. |
 | Push to `master` | `push` | Yes | Yes | Kept for compatibility if a repository uses `master`. |
 | Push to feature branch without PR | `push` | No | No | `push` is limited to `main` and `master`. |
-| Edit PR title or description | `pull_request.edited` | No | No | Default `pull_request` behavior does not include `edited`. |
+| Edit PR title or description | `pull_request.edited` | No | No | `edited` is not listed in `pull_request.types`. |
 | Close PR without merge | `pull_request.closed` | No | No | The PR close event itself does not run CI. |
 | Merge PR into `main` | `push` | Yes | Yes | The merge creates a push to `main`. |
 
