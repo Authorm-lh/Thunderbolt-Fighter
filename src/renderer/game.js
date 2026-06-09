@@ -32,25 +32,38 @@ import {
   createRunClock,
   createRunStats,
   createTestNameMarker,
+  createTutorialContent,
+  createPauseMenuContent,
+  clearTutorialReplayRequested,
   destroyTestNameMarker,
   followTestNameMarkerTarget,
   getEnemyClass,
   getEnemyTestNameMarkerText,
   getPickupTestNameMarkerText,
   getRunEndReason,
+  loadSettings,
+  markTutorialReplayRequested,
+  markTutorialSeen,
+  markTutorialSkipped,
   persistCompletedRun,
+  resetLocalRecords,
   resolveEscapedEnemyHits,
   resolveEnemyPlayerHits,
   resolveEnemyTypeForSpawn,
   resolvePlayerPickupHits,
   resolvePlayerProjectileEnemyHits,
   resolvePlayerVelocity,
+  saveSettings,
   shouldAutoFire,
+  shouldPersistRunOutcome,
+  shouldShowTutorialOnLaunch,
   shouldBasicEnemyFire,
   shouldShowBossWarning,
   shouldSpawnBasicEnemy,
   shouldSpawnBoss,
-  shouldSpawnPickup
+  shouldSpawnPickup,
+  toggleAudioEnabled,
+  toggleFullscreenEnabled
 } from './gameplay-state.js';
 
 const RUN_LENGTH_OPTIONS = [
@@ -78,8 +91,105 @@ const MENU_LAYOUT = {
   runLengthButtonY: 354,
   difficultyY: 440,
   difficultyButtonY: 494,
+  settingsButtonY: 548,
   startButtonY: 616
 };
+
+class BootScene extends Phaser.Scene {
+  constructor() {
+    super('boot');
+  }
+
+  create() {
+    if (shouldShowTutorialOnLaunch()) {
+      this.scene.start('tutorial');
+      return;
+    }
+
+    this.scene.start('main-menu');
+  }
+}
+
+class TutorialScene extends Phaser.Scene {
+  constructor() {
+    super('tutorial');
+    this.returnScene = 'main-menu';
+  }
+
+  create(data = {}) {
+    const root = document.querySelector('#game-root');
+    const tutorialContent = createTutorialContent();
+    this.returnScene = data.returnScene ?? 'main-menu';
+
+    this.cameras.main.setBackgroundColor('#09111f');
+    this.add.rectangle(this.scale.width / 2, this.scale.height / 2, 760, 520, 0x071827, 0.74)
+      .setStrokeStyle(1, 0x3db7ff, 0.52);
+    this.add.text(this.scale.width / 2, 126, tutorialContent.title, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '42px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 5
+    }).setOrigin(0.5);
+    this.add.text(this.scale.width / 2, 246, tutorialContent.controls, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '28px',
+      color: '#9ed7ff',
+      align: 'center',
+      wordWrap: { width: 620 },
+      lineSpacing: 8
+    }).setOrigin(0.5);
+    this.add.text(this.scale.width / 2, 378, tutorialContent.goal, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '26px',
+      color: '#ffd166',
+      align: 'center',
+      wordWrap: { width: 620 },
+      lineSpacing: 8
+    }).setOrigin(0.5);
+
+    this.createTutorialButton(this.scale.width / 2, 506, 'Continue', () => this.continueTutorial());
+    this.createTutorialButton(this.scale.width / 2, 592, 'Skip Tutorial', () => this.skipTutorial());
+
+    root.dataset.screen = 'tutorial';
+    root.dataset.tutorialReplay = String(Boolean(data.replay));
+    root.dataset.tutorialTitle = tutorialContent.title;
+    root.dataset.tutorialControls = tutorialContent.controls;
+    root.dataset.tutorialGoal = tutorialContent.goal;
+  }
+
+  continueTutorial() {
+    markTutorialSeen();
+    this.scene.start(this.returnScene);
+  }
+
+  skipTutorial() {
+    markTutorialSkipped();
+    this.scene.start(this.returnScene);
+  }
+
+  createTutorialButton(x, y, labelText, action) {
+    const plate = this.add.rectangle(x, y, 220, 62, 0x12334a, 0.82)
+      .setStrokeStyle(2, 0xffd166, 0.78);
+    const hitArea = this.add.rectangle(x, y, 220, 62, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y - 1, labelText, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '28px',
+      color: '#ffd166',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 4
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const invoke = () => action();
+
+    hitArea.on('pointerdown', invoke);
+    label.on('pointerdown', invoke);
+
+    return { plate, hitArea, label };
+  }
+}
 
 class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -164,6 +274,12 @@ class MainMenuScene extends Phaser.Scene {
 
     this.bindOptionButtons(difficultyButtons, DIFFICULTY_OPTIONS, (option) => updateDifficultySelection(option.difficulty));
 
+    const settingsButton = this.createSecondaryButton(contentX, MENU_LAYOUT.settingsButtonY, 'Settings');
+    const openSettings = () => this.scene.start('settings');
+
+    settingsButton.hitArea.on('pointerdown', openSettings);
+    settingsButton.label.on('pointerdown', openSettings);
+
     const startRunButton = this.createActionButton(contentX, MENU_LAYOUT.startButtonY, 'Start Run');
 
     const startRun = () => {
@@ -219,6 +335,23 @@ class MainMenuScene extends Phaser.Scene {
     return { plate, hitArea, label };
   }
 
+  createSecondaryButton(x, y, labelText) {
+    const plate = this.add.rectangle(x, y, 220, 44, 0x0b2234, 0.72)
+      .setStrokeStyle(1, 0x3db7ff, 0.6);
+    const hitArea = this.add.rectangle(x, y, 220, 44, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y, labelText, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '22px',
+      color: '#9ed7ff',
+      align: 'center',
+      stroke: '#071827',
+      strokeThickness: 3
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    return { plate, hitArea, label };
+  }
+
   bindOptionButtons(buttons, options, selectOption) {
     buttons.forEach((button, index) => {
       button.option = options[index];
@@ -234,6 +367,115 @@ class MainMenuScene extends Phaser.Scene {
       plate.setStrokeStyle(isSelected ? 2 : 1, isSelected ? 0xf8fbff : 0x3db7ff, isSelected ? 0.9 : 0.6);
       label.setColor(isSelected ? '#f8fbff' : '#9ed7ff');
     });
+  }
+}
+
+class SettingsScene extends Phaser.Scene {
+  constructor() {
+    super('settings');
+    this.settings = null;
+    this.root = null;
+    this.statusText = null;
+    this.audioButton = null;
+    this.fullscreenButton = null;
+  }
+
+  create() {
+    this.root = document.querySelector('#game-root');
+    this.settings = loadSettings();
+
+    this.cameras.main.setBackgroundColor('#09111f');
+    this.add.rectangle(this.scale.width / 2, this.scale.height / 2, 640, 560, 0x071827, 0.72)
+      .setStrokeStyle(1, 0x3db7ff, 0.48);
+    this.add.text(this.scale.width / 2, 104, 'Settings', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '42px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#0b1c2e',
+      strokeThickness: 5
+    }).setOrigin(0.5);
+
+    this.audioButton = this.createSettingsButton(440, 210, this.getAudioLabel(), () => {
+      this.settings = saveSettings({ settings: toggleAudioEnabled(this.settings) });
+      this.refreshSettingsDisplay('Audio preference updated');
+    });
+    this.fullscreenButton = this.createSettingsButton(840, 210, this.getFullscreenLabel(), () => {
+      this.settings = saveSettings({ settings: toggleFullscreenEnabled(this.settings) });
+      this.applyFullscreenPreference();
+      this.refreshSettingsDisplay('Fullscreen preference updated');
+    });
+    this.createSettingsButton(440, 330, 'Replay Tutorial', () => {
+      this.settings = saveSettings({ settings: markTutorialReplayRequested(this.settings) });
+      this.refreshSettingsDisplay('Tutorial replay queued');
+      this.settings = saveSettings({ settings: clearTutorialReplayRequested(this.settings) });
+      this.scene.start('tutorial', { returnScene: 'settings', replay: true });
+    });
+    this.createSettingsButton(840, 330, 'Reset Records', () => {
+      resetLocalRecords();
+      this.root.dataset.recordsReset = 'true';
+      this.refreshSettingsDisplay('Local records reset');
+    });
+    this.createSettingsButton(640, 510, 'Back', () => this.scene.start('main-menu'));
+
+    this.statusText = this.add.text(this.scale.width / 2, 424, '', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '22px',
+      color: '#9ed7ff',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.root.dataset.screen = 'settings';
+    this.root.dataset.recordsReset = 'false';
+    this.refreshSettingsDisplay('Adjust desktop preferences');
+  }
+
+  createSettingsButton(x, y, labelText, action) {
+    const plate = this.add.rectangle(x, y, 280, 68, 0x0b2234, 0.78)
+      .setStrokeStyle(1, 0x3db7ff, 0.66);
+    const hitArea = this.add.rectangle(x, y, 280, 68, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y, labelText, {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '24px',
+      color: '#f8fbff',
+      align: 'center',
+      stroke: '#071827',
+      strokeThickness: 3
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const invoke = () => action();
+
+    hitArea.on('pointerdown', invoke);
+    label.on('pointerdown', invoke);
+
+    return { plate, hitArea, label };
+  }
+
+  getAudioLabel() {
+    return `Audio ${this.settings.audioEnabled ? 'On' : 'Off'}`;
+  }
+
+  getFullscreenLabel() {
+    return `Fullscreen ${this.settings.fullscreenEnabled ? 'On' : 'Off'}`;
+  }
+
+  applyFullscreenPreference() {
+    if (this.settings.fullscreenEnabled && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+
+    if (!this.settings.fullscreenEnabled && document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  refreshSettingsDisplay(statusText) {
+    this.audioButton.label.setText(this.getAudioLabel());
+    this.fullscreenButton.label.setText(this.getFullscreenLabel());
+    this.statusText?.setText(statusText);
+    this.root.dataset.audioEnabled = String(this.settings.audioEnabled);
+    this.root.dataset.fullscreenEnabled = String(this.settings.fullscreenEnabled);
+    this.root.dataset.tutorialReplayRequested = String(this.settings.tutorialReplayRequested);
   }
 }
 
@@ -265,12 +507,49 @@ class GameplayScene extends Phaser.Scene {
     this.bossWarningDetailText = null;
     this.bossWarningShown = false;
     this.bossSpawned = false;
+    this.pauseOverlay = [];
+    this.pauseKey = null;
+    this.paused = false;
     this.root = null;
     this.selectedRunLengthMinutes = 1;
     this.selectedDifficulty = 'normal';
   }
 
+  resetRunState() {
+    this.player = null;
+    this.cursorKeys = null;
+    this.wasdKeys = null;
+    this.projectiles = [];
+    this.enemies = [];
+    this.enemyProjectiles = [];
+    this.pickups = [];
+    this.playerNameMarker = null;
+    this.lastFiredMs = -PLAYER_WEAPON.fireIntervalMs;
+    this.lastEnemySpawnedMs = -BASIC_ENEMY.spawnIntervalMs;
+    this.lastPickupSpawnedMs = -PICKUP_SPAWNING.spawnIntervalMs;
+    this.enemySpawnCount = 0;
+    this.pickupSpawnCount = 0;
+    this.backgroundStars = [];
+    this.backgroundOffset = 0;
+    this.runBaseline = null;
+    this.runClock = null;
+    this.runStats = null;
+    this.spawnRandomization = null;
+    this.hudText = null;
+    this.bossHpHudText = null;
+    this.bossWarningText = null;
+    this.bossWarningDetailText = null;
+    this.bossWarningShown = false;
+    this.bossSpawned = false;
+    this.pauseOverlay = [];
+    this.pauseKey = null;
+    this.paused = false;
+    this.root = null;
+  }
+
   create(data) {
+    this.resetRunState();
+
     const runOptions = data.runOptions;
     const root = document.querySelector('#game-root');
     this.root = root;
@@ -307,6 +586,15 @@ class GameplayScene extends Phaser.Scene {
 
     this.cursorKeys = this.input.keyboard.createCursorKeys();
     this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
+    this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (this.paused) {
+        this.closePauseMenu();
+        return;
+      }
+
+      this.openPauseMenu();
+    });
 
     this.add.text(HUD_LAYOUT.runSummary.x, HUD_LAYOUT.runSummary.y, `${runOptions.runLengthMinutes} min / ${runOptions.difficulty}`, {
       fontFamily: 'Arial, sans-serif',
@@ -336,11 +624,12 @@ class GameplayScene extends Phaser.Scene {
     root.dataset.difficulty = runOptions.difficulty;
     root.dataset.bossWarning = '';
     root.dataset.bossSpawned = 'false';
+    root.dataset.paused = 'false';
     this.updateHud();
   }
 
   update(_time, delta) {
-    if (!this.player || !this.cursorKeys || !this.wasdKeys) {
+    if (!this.player || !this.cursorKeys || !this.wasdKeys || this.paused) {
       return;
     }
 
@@ -449,6 +738,97 @@ class GameplayScene extends Phaser.Scene {
     target.nameMarker = nextTarget.nameMarker;
   }
 
+  openPauseMenu() {
+    if (this.paused) {
+      return;
+    }
+
+    this.paused = true;
+    this.root.dataset.paused = 'true';
+    this.renderPauseMenu();
+  }
+
+  closePauseMenu() {
+    this.paused = false;
+    this.root.dataset.paused = 'false';
+    this.pauseOverlay.forEach((element) => element.destroy());
+    this.pauseOverlay = [];
+  }
+
+  renderPauseMenu() {
+    const settings = loadSettings();
+    const content = createPauseMenuContent(settings);
+    const centerX = this.scale.width / 2;
+
+    this.pauseOverlay.forEach((element) => element.destroy());
+    this.pauseOverlay = [
+      this.add.rectangle(centerX, this.scale.height / 2, 620, 560, 0x071827, 0.86)
+        .setStrokeStyle(1, 0x3db7ff, 0.52),
+      this.add.text(centerX, 118, content.title, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '42px',
+        color: '#f8fbff',
+        align: 'center',
+        stroke: '#0b1c2e',
+        strokeThickness: 5
+      }).setOrigin(0.5),
+      this.add.text(centerX, 448, `Key Reference\n${content.keyReference}`, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '21px',
+        color: '#9ed7ff',
+        align: 'center',
+        wordWrap: { width: 520 },
+        lineSpacing: 8
+      }).setOrigin(0.5)
+    ];
+
+    [
+      ['Continue', () => this.closePauseMenu()],
+      ['Restart', () => this.restartRun()],
+      ['Return to Menu', () => this.returnToMenu()],
+      [content.actions.at(-1), () => this.togglePauseAudio()]
+    ].forEach(([labelText, action], index) => {
+      const y = 206 + index * 68;
+      const plate = this.add.rectangle(centerX, y, 280, 52, 0x0b2234, 0.78)
+        .setStrokeStyle(1, 0x3db7ff, 0.66);
+      const hitArea = this.add.rectangle(centerX, y, 280, 52, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+      const label = this.add.text(centerX, y, labelText, {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '24px',
+        color: '#f8fbff',
+        align: 'center',
+        stroke: '#071827',
+        strokeThickness: 3
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      const invoke = () => action();
+
+      hitArea.on('pointerdown', invoke);
+      label.on('pointerdown', invoke);
+      this.pauseOverlay.push(plate, hitArea, label);
+    });
+  }
+
+  restartRun() {
+    this.scene.restart({
+      runOptions: {
+        runLengthMinutes: this.selectedRunLengthMinutes,
+        difficulty: this.selectedDifficulty
+      }
+    });
+  }
+
+  returnToMenu() {
+    this.scene.start('main-menu');
+  }
+
+  togglePauseAudio() {
+    const settings = saveSettings({ settings: toggleAudioEnabled(loadSettings()) });
+
+    this.root.dataset.audioEnabled = String(settings.audioEnabled);
+    this.renderPauseMenu();
+  }
+
   updateBackground(deltaSeconds) {
     this.backgroundOffset = advanceBackgroundOffset({
       currentOffset: this.backgroundOffset,
@@ -549,13 +929,15 @@ class GameplayScene extends Phaser.Scene {
     const endReason = getRunEndReason({ clock: this.runClock, stats: this.runStats, enemies: this.enemies });
 
     if (endReason) {
-      persistCompletedRun({
-        runLengthMinutes: this.selectedRunLengthMinutes,
-        difficulty: this.selectedDifficulty,
-        endReason,
-        clock: this.runClock,
-        stats: this.runStats
-      });
+      if (shouldPersistRunOutcome({ endReason })) {
+        persistCompletedRun({
+          runLengthMinutes: this.selectedRunLengthMinutes,
+          difficulty: this.selectedDifficulty,
+          endReason,
+          clock: this.runClock,
+          stats: this.runStats
+        });
+      }
       this.scene.start('results', {
         endReason,
         runClock: this.runClock,
@@ -886,7 +1268,7 @@ const config = {
   width: GAMEPLAY_PLAYFIELD.width,
   height: GAMEPLAY_PLAYFIELD.height,
   backgroundColor: '#09111f',
-  scene: [MainMenuScene, GameplayScene, ResultsScene],
+  scene: [BootScene, TutorialScene, MainMenuScene, SettingsScene, GameplayScene, ResultsScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH

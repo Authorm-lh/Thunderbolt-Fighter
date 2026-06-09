@@ -575,12 +575,119 @@ export const formatRunTimer = (remainingMs) => {
 };
 
 export const LOCAL_RECORDS_STORAGE_KEY = 'thunderbolt-fighter:local-records';
+export const SETTINGS_STORAGE_KEY = 'thunderbolt-fighter:settings';
+export const TUTORIAL_STORAGE_KEY = 'thunderbolt-fighter:tutorial';
 export const RECENT_RUN_LIMIT = 10;
 
 export const createDefaultLocalRecords = () => ({
   bestScores: {},
   recentRuns: []
 });
+
+export const createDefaultSettings = () => ({
+  audioEnabled: true,
+  fullscreenEnabled: false,
+  tutorialReplayRequested: false
+});
+
+export const loadSettings = ({ storage = globalThis.localStorage } = {}) => {
+  if (!storage) {
+    return createDefaultSettings();
+  }
+
+  try {
+    return {
+      ...createDefaultSettings(),
+      ...JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}')
+    };
+  } catch {
+    return createDefaultSettings();
+  }
+};
+
+export const saveSettings = ({ storage = globalThis.localStorage, settings }) => {
+  if (!storage) {
+    return settings;
+  }
+
+  storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+
+  return settings;
+};
+
+export const toggleAudioEnabled = (settings = createDefaultSettings()) => ({
+  ...settings,
+  audioEnabled: !settings.audioEnabled
+});
+
+export const toggleFullscreenEnabled = (settings = createDefaultSettings()) => ({
+  ...settings,
+  fullscreenEnabled: !settings.fullscreenEnabled
+});
+
+export const markTutorialReplayRequested = (settings = createDefaultSettings()) => ({
+  ...settings,
+  tutorialReplayRequested: true
+});
+
+export const clearTutorialReplayRequested = (settings = createDefaultSettings()) => ({
+  ...settings,
+  tutorialReplayRequested: false
+});
+
+export const resetLocalRecords = ({ storage = globalThis.localStorage } = {}) => saveLocalRecords({
+  storage,
+  records: createDefaultLocalRecords()
+});
+
+export const createTutorialContent = () => ({
+  title: 'Flight Briefing',
+  controls: 'Move with Arrow keys or WASD. Your ship auto-fires so you can focus on dodging and collecting pickups.',
+  goal: 'Chase the highest score, defeat enemies and bosses, and beat your local record for each run length and difficulty.'
+});
+
+export const createPauseMenuContent = (settings = createDefaultSettings()) => ({
+  title: 'Paused',
+  actions: ['Continue', 'Restart', 'Return to Menu', `Audio ${settings.audioEnabled ? 'On' : 'Off'}`],
+  keyReference: 'Key Reference: Arrow keys or WASD move. Esc pauses or resumes. Your ship auto-fires.'
+});
+
+export const loadTutorialProgress = ({ storage = globalThis.localStorage } = {}) => {
+  if (!storage) {
+    return { seen: false };
+  }
+
+  try {
+    return {
+      seen: false,
+      ...JSON.parse(storage.getItem(TUTORIAL_STORAGE_KEY) ?? '{}')
+    };
+  } catch {
+    return { seen: false };
+  }
+};
+
+export const markTutorialSeen = ({ storage = globalThis.localStorage } = {}) => {
+  const progress = { seen: true };
+
+  if (storage) {
+    storage.setItem(TUTORIAL_STORAGE_KEY, JSON.stringify(progress));
+  }
+
+  return progress;
+};
+
+export const markTutorialSkipped = ({ storage = globalThis.localStorage } = {}) => {
+  const progress = { seen: true, skipped: true };
+
+  if (storage) {
+    storage.setItem(TUTORIAL_STORAGE_KEY, JSON.stringify(progress));
+  }
+
+  return progress;
+};
+
+export const shouldShowTutorialOnLaunch = ({ storage = globalThis.localStorage } = {}) => !loadTutorialProgress({ storage }).seen;
 
 export const createRunRecordKey = ({ runLengthMinutes, difficulty }) => `${runLengthMinutes}m:${difficulty}`;
 
@@ -920,6 +1027,8 @@ export const getRunEndReason = ({ clock, stats, enemies = [] }) => {
 
   return null;
 };
+
+export const shouldPersistRunOutcome = ({ endReason }) => ['timer-expired', 'health-depleted', 'boss-defeated'].includes(endReason);
 
 export const advanceBackgroundOffset = ({ currentOffset, deltaSeconds, tileHeight }) => (
   currentOffset + BACKGROUND_SCROLL.speed * deltaSeconds

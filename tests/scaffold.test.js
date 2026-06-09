@@ -1354,6 +1354,170 @@ test('results screen receives distinct boss and player defeat reasons', async ()
   assert.match(renderer, /dataset\.resultsTitle/);
 });
 
+test('settings controls expose audio, fullscreen, tutorial replay, and record reset actions', async () => {
+  const {
+    LOCAL_RECORDS_STORAGE_KEY,
+    createDefaultLocalRecords,
+    createDefaultSettings,
+    markTutorialReplayRequested,
+    resetLocalRecords,
+    toggleAudioEnabled,
+    toggleFullscreenEnabled
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  storage.setItem(LOCAL_RECORDS_STORAGE_KEY, JSON.stringify({ bestScores: { '1m:normal': 1200 }, recentRuns: [{ id: 'old-run' }] }));
+
+  const defaults = createDefaultSettings();
+  const mutedSettings = toggleAudioEnabled(defaults);
+  const fullscreenSettings = toggleFullscreenEnabled(mutedSettings);
+  const replaySettings = markTutorialReplayRequested(fullscreenSettings);
+  const recordsAfterReset = resetLocalRecords({ storage });
+
+  assert.deepEqual(defaults, {
+    audioEnabled: true,
+    fullscreenEnabled: false,
+    tutorialReplayRequested: false
+  });
+  assert.equal(mutedSettings.audioEnabled, false);
+  assert.equal(fullscreenSettings.fullscreenEnabled, true);
+  assert.equal(replaySettings.tutorialReplayRequested, true);
+  assert.deepEqual(recordsAfterReset, createDefaultLocalRecords());
+  assert.equal(storage.getItem(LOCAL_RECORDS_STORAGE_KEY), JSON.stringify(createDefaultLocalRecords()));
+  assert.match(renderer, /SettingsScene/);
+  assert.match(renderer, /Audio/);
+  assert.match(renderer, /Fullscreen/);
+  assert.match(renderer, /Replay Tutorial/);
+  assert.match(renderer, /Reset Records/);
+});
+
+test('tutorial appears once on first launch and teaches controls and score-chase goal', async () => {
+  const {
+    TUTORIAL_STORAGE_KEY,
+    createTutorialContent,
+    loadTutorialProgress,
+    markTutorialSeen,
+    shouldShowTutorialOnLaunch
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+  const tutorialContent = createTutorialContent();
+
+  assert.deepEqual(loadTutorialProgress({ storage }), { seen: false });
+  assert.equal(shouldShowTutorialOnLaunch({ storage }), true);
+  assert.match(tutorialContent.controls, /Arrow keys|WASD/);
+  assert.match(tutorialContent.controls, /auto-fire/i);
+  assert.match(tutorialContent.goal, /score/i);
+  assert.match(tutorialContent.goal, /record/i);
+
+  markTutorialSeen({ storage });
+
+  assert.equal(storage.getItem(TUTORIAL_STORAGE_KEY), JSON.stringify({ seen: true }));
+  assert.equal(shouldShowTutorialOnLaunch({ storage }), false);
+  assert.match(renderer, /TutorialScene/);
+  assert.match(renderer, /createTutorialContent/);
+  assert.match(renderer, /dataset\.screen = 'tutorial'/);
+  assert.match(renderer, /this\.scene\.start\('main-menu'\)/);
+});
+
+test('tutorial can be skipped and still counts as seen for future launches', async () => {
+  const {
+    TUTORIAL_STORAGE_KEY,
+    markTutorialSkipped,
+    shouldShowTutorialOnLaunch
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  const progress = markTutorialSkipped({ storage });
+
+  assert.deepEqual(progress, { seen: true, skipped: true });
+  assert.equal(storage.getItem(TUTORIAL_STORAGE_KEY), JSON.stringify({ seen: true, skipped: true }));
+  assert.equal(shouldShowTutorialOnLaunch({ storage }), false);
+  assert.match(renderer, /Skip Tutorial/);
+  assert.match(renderer, /markTutorialSkipped/);
+  assert.match(renderer, /skipTutorial\(\)/);
+});
+
+test('tutorial replay can be triggered immediately from settings', async () => {
+  const {
+    clearTutorialReplayRequested,
+    createDefaultSettings,
+    markTutorialReplayRequested
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const replaySettings = markTutorialReplayRequested(createDefaultSettings());
+
+  assert.equal(replaySettings.tutorialReplayRequested, true);
+  assert.deepEqual(clearTutorialReplayRequested(replaySettings), {
+    audioEnabled: true,
+    fullscreenEnabled: false,
+    tutorialReplayRequested: false
+  });
+  assert.match(renderer, /this\.scene\.start\('tutorial', \{ returnScene: 'settings', replay: true \}\)/);
+  assert.match(renderer, /this\.returnScene = data\.returnScene \?\? 'main-menu'/);
+  assert.match(renderer, /this\.scene\.start\(this\.returnScene\)/);
+});
+
+test('pause menu supports continue, restart, return to menu, audio toggle, and key reference', async () => {
+  const {
+    createDefaultSettings,
+    createPauseMenuContent,
+    toggleAudioEnabled
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  const pauseMenu = createPauseMenuContent(createDefaultSettings());
+  const mutedPauseMenu = createPauseMenuContent(toggleAudioEnabled(createDefaultSettings()));
+
+  assert.deepEqual(pauseMenu.actions, ['Continue', 'Restart', 'Return to Menu', 'Audio On']);
+  assert.equal(mutedPauseMenu.actions.at(-1), 'Audio Off');
+  assert.match(pauseMenu.keyReference, /Arrow keys|WASD/);
+  assert.match(pauseMenu.keyReference, /Esc/);
+  assert.match(pauseMenu.keyReference, /auto-fire/i);
+  assert.match(renderer, /Phaser\.Input\.Keyboard\.KeyCodes\.ESC/);
+  assert.match(renderer, /openPauseMenu/);
+  assert.match(renderer, /closePauseMenu/);
+  assert.match(renderer, /restartRun/);
+  assert.match(renderer, /returnToMenu/);
+  assert.match(renderer, /togglePauseAudio/);
+  assert.match(renderer, /dataset\.paused/);
+  assert.match(renderer, /Key Reference/);
+});
+
+test('restart and return-to-menu avoid abandoned-run records while completed runs still persist', async () => {
+  const { shouldPersistRunOutcome } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+
+  assert.equal(shouldPersistRunOutcome({ endReason: 'timer-expired' }), true);
+  assert.equal(shouldPersistRunOutcome({ endReason: 'health-depleted' }), true);
+  assert.equal(shouldPersistRunOutcome({ endReason: 'boss-defeated' }), true);
+  assert.equal(shouldPersistRunOutcome({ endReason: 'restart' }), false);
+  assert.equal(shouldPersistRunOutcome({ endReason: 'return-to-menu' }), false);
+  assert.equal(shouldPersistRunOutcome({ endReason: null }), false);
+  assert.match(renderer, /shouldPersistRunOutcome\(\{ endReason \}\)/);
+  assert.match(renderer, /restartRun\(\) \{[\s\S]*?this\.scene\.restart\(\{[\s\S]*?runLengthMinutes: this\.selectedRunLengthMinutes[\s\S]*?difficulty: this\.selectedDifficulty/);
+  assert.match(renderer, /returnToMenu\(\) \{[\s\S]*?this\.scene\.start\('main-menu'\)/);
+  assert.match(renderer, /resetRunState\(\) \{[\s\S]*?this\.projectiles = \[\][\s\S]*?this\.enemies = \[\][\s\S]*?this\.enemyProjectiles = \[\][\s\S]*?this\.pickups = \[\][\s\S]*?this\.paused = false/);
+  assert.match(renderer, /create\(data\) \{\r?\n    this\.resetRunState\(\)/);
+  assert.doesNotMatch(renderer.match(/restartRun\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun/);
+  assert.doesNotMatch(renderer.match(/returnToMenu\(\) \{[\s\S]*?\n  \}/)[0], /persistCompletedRun/);
+});
+
 test('local best scores are saved separately by run length and difficulty', async () => {
   const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
   const values = new Map();
