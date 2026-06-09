@@ -76,11 +76,15 @@ Relevant trigger:
 ```yaml
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review, synchronize]
   push:
     branches:
       - main
       - master
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   windows-check:
@@ -91,7 +95,8 @@ jobs:
 | --- | --- | ---: | ---: | --- |
 | New Ready PR | `pull_request.opened` | Yes | Yes | CI runs when a PR first becomes a candidate for the main branch. |
 | New Draft PR | `pull_request.opened` | Yes | No | Workflow starts, but the job is skipped by the draft guard. |
-| Push new commit to PR branch | `pull_request.synchronize` | No | No | `synchronize` is intentionally omitted so heavy CI does not run on every PR commit. |
+| Push new commit to Ready PR branch | `pull_request.synchronize` | Yes | Yes | Ready PR updates can affect the branch that may be merged, so CI checks each new commit. |
+| Push new commit to Draft PR branch | `pull_request.synchronize` | Yes | No | Workflow starts, but the job is skipped by the draft guard. |
 | Reopen PR | `pull_request.reopened` | Yes | Yes | Reopened PRs are rechecked before they can affect the main branch. |
 | Draft PR becomes Ready for review | `pull_request.ready_for_review` | Yes | Yes | Heavy CI runs when draft work is promoted to review-ready. |
 | Human creates a new PR comment | `issue_comment.created` | No | No | CI does not listen to comments. |
@@ -102,6 +107,8 @@ jobs:
 | Edit PR title or description | `pull_request.edited` | No | No | `edited` is not listed in `pull_request.types`. |
 | Close PR without merge | `pull_request.closed` | No | No | The PR close event itself does not run CI. |
 | Merge PR into `main` | `push` | Yes | Yes | The merge creates a push to `main`. |
+
+Concurrency behavior: for the same workflow and ref, a newer run cancels any older in-progress run. For example, if a Ready PR receives another commit while CI is still running, the old run is cancelled and the latest commit is checked instead.
 
 When triggered, CI runs on `windows-latest` and performs:
 
