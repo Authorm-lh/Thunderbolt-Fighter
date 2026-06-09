@@ -865,6 +865,8 @@ class ResultsScene extends Phaser.Scene {
     root.dataset.resultsDamageBoosted = String(data.runStats.damageBoosted);
     root.dataset.resultsShieldBlocked = String(data.runStats.shieldBlocked);
     root.dataset.resultsWeaponShape = data.runStats.weaponName;
+    root.dataset.resultsBestScore = data.runStats.bestScore === null ? '' : String(data.runStats.bestScore);
+    root.dataset.resultsLocalRecord = String(Math.max(data.runStats.score, data.runStats.bestScore ?? 0));
   }
 }
 

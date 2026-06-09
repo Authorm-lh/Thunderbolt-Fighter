@@ -1407,6 +1407,25 @@ test('recent run history is saved locally and capped at the last 10 runs', async
   ]);
 });
 
+test('results screen shows current stats with local record context', async () => {
+  const { createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const stats = {
+    ...createRunStats(),
+    score: 3000,
+    bestScore: 2400,
+    kills: 7
+  };
+  const resultsValues = createResultsValues({ clock: createRunClock({ runLengthMinutes: 5 }), stats });
+
+  assert.equal(resultsValues.score, 'Score 3000');
+  assert.equal(resultsValues.kills, 'Kills 7');
+  assert.equal(resultsValues.bestScore, 'Previous Best 2400');
+  assert.equal(resultsValues.localRecord, 'Local Record 3000');
+  assert.match(renderer, /dataset\.resultsBestScore/);
+  assert.match(renderer, /dataset\.resultsLocalRecord/);
+});
+
 test('results screen shows baseline run performance stats', async () => {
   const { advanceRunClock, createResultsValues, createRunClock, createRunStats } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');
@@ -1426,7 +1445,9 @@ test('results screen shows baseline run performance stats', async () => {
     damageDealt: 'Damage Dealt 0',
     damageBoosted: 'Damage Boosted 0',
     shieldBlocked: 'Shield Blocked 0',
-    weaponShape: 'Weapon Shape Blaster'
+    weaponShape: 'Weapon Shape Blaster',
+    bestScore: 'Previous Best —',
+    localRecord: 'Local Record 0'
   });
   assert.match(renderer, /ResultsScene/);
   assert.match(renderer, /createResultsValues/);

@@ -732,7 +732,9 @@ export const createResultsValues = ({ clock, stats }) => ({
   damageDealt: `Damage Dealt ${stats.damageDealt}`,
   damageBoosted: `Damage Boosted ${stats.damageBoosted}`,
   shieldBlocked: `Shield Blocked ${stats.shieldBlocked}`,
-  weaponShape: `Weapon Shape ${stats.weaponName}`
+  weaponShape: `Weapon Shape ${stats.weaponName}`,
+  bestScore: stats.bestScore === null ? 'Previous Best —' : `Previous Best ${stats.bestScore}`,
+  localRecord: `Local Record ${Math.max(stats.score, stats.bestScore ?? 0)}`
 });
 
 export const applyPlayerDamage = ({ stats, damage }) => {
