@@ -1063,6 +1063,18 @@ test('Boss HP HUD layout does not cover regular HUD values', async () => {
   assert.match(renderer, /HUD_LAYOUT\.bossHp/);
 });
 
+test('Boss HP HUD exposes DOM state for smoke checks', async () => {
+  const { createBossEnemySpawn, createBossHpHudState } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const boss = { ...createBossEnemySpawn({ spawnIndex: 0 }), health: 180 };
+  const bossHpHud = createBossHpHudState({ enemies: [boss] });
+
+  assert.equal(bossHpHud.text, 'Boss HP 180/240');
+  assert.match(renderer, /dataset\.bossHpCurrent/);
+  assert.match(renderer, /dataset\.bossHpMax/);
+  assert.match(renderer, /dataset\.bossHpText/);
+});
+
 test('the run ends when the selected timer expires', async () => {
   const { advanceRunClock, createRunClock, createRunStats, getRunEndReason } = await import('../src/renderer/gameplay-state.js');
   const renderer = await readText('src/renderer/game.js');

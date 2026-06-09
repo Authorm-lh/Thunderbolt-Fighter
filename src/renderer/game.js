@@ -518,6 +518,9 @@ class GameplayScene extends Phaser.Scene {
 
     this.bossHpHudText.setText(bossHpHud.text).setVisible(bossHpHud.visible);
     this.root.dataset.bossHpHudVisible = String(bossHpHud.visible);
+    this.root.dataset.bossHpCurrent = String(bossHpHud.currentHealth);
+    this.root.dataset.bossHpMax = String(bossHpHud.maxHealth);
+    this.root.dataset.bossHpText = bossHpHud.text;
   }
 
   applyDamage(damage) {
