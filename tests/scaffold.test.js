@@ -1971,6 +1971,17 @@ test('release packaging workflow reuses the Windows package command', async () =
   assert.doesNotMatch(releaseWorkflow, /node scripts\/package-win\.js/);
 });
 
+test('release packaging workflow uses a stable Windows zip asset name', async () => {
+  const releaseWorkflow = await readText('.github/workflows/release-windows-package.yml');
+
+  assert.deepEqual(releaseWorkflow.match(/thunderbolt-fighter-win32-x64\.zip/g), [
+    'thunderbolt-fighter-win32-x64.zip',
+    'thunderbolt-fighter-win32-x64.zip'
+  ]);
+  assert.match(releaseWorkflow, /-DestinationPath "release\/thunderbolt-fighter-win32-x64\.zip"/);
+  assert.match(releaseWorkflow, /files: release\/thunderbolt-fighter-win32-x64\.zip/);
+});
+
 test('desktop smoke test launches the shell and reaches the main menu', async () => {
   const packageJson = await readJson('package.json');
   const renderer = await readText('src/renderer/game.js');
