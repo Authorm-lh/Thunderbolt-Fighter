@@ -42,6 +42,7 @@ import {
   loadSettings,
   markTutorialReplayRequested,
   markTutorialSeen,
+  markTutorialSkipped,
   persistCompletedRun,
   resetLocalRecords,
   resolveEscapedEnemyHits,
@@ -143,15 +144,23 @@ class TutorialScene extends Phaser.Scene {
       lineSpacing: 8
     }).setOrigin(0.5);
 
-    this.createTutorialButton(this.scale.width / 2, 546, 'Continue', () => {
-      markTutorialSeen();
-      this.scene.start('main-menu');
-    });
+    this.createTutorialButton(this.scale.width / 2, 506, 'Continue', () => this.continueTutorial());
+    this.createTutorialButton(this.scale.width / 2, 592, 'Skip Tutorial', () => this.skipTutorial());
 
     root.dataset.screen = 'tutorial';
     root.dataset.tutorialTitle = tutorialContent.title;
     root.dataset.tutorialControls = tutorialContent.controls;
     root.dataset.tutorialGoal = tutorialContent.goal;
+  }
+
+  continueTutorial() {
+    markTutorialSeen();
+    this.scene.start('main-menu');
+  }
+
+  skipTutorial() {
+    markTutorialSkipped();
+    this.scene.start('main-menu');
   }
 
   createTutorialButton(x, y, labelText, action) {

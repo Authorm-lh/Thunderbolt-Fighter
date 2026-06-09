@@ -666,6 +666,16 @@ export const markTutorialSeen = ({ storage = globalThis.localStorage } = {}) => 
   return progress;
 };
 
+export const markTutorialSkipped = ({ storage = globalThis.localStorage } = {}) => {
+  const progress = { seen: true, skipped: true };
+
+  if (storage) {
+    storage.setItem(TUTORIAL_STORAGE_KEY, JSON.stringify(progress));
+  }
+
+  return progress;
+};
+
 export const shouldShowTutorialOnLaunch = ({ storage = globalThis.localStorage } = {}) => !loadTutorialProgress({ storage }).seen;
 
 export const createRunRecordKey = ({ runLengthMinutes, difficulty }) => `${runLengthMinutes}m:${difficulty}`;

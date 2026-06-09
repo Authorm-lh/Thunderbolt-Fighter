@@ -19,7 +19,7 @@ try {
   if (await gameRoot.getAttribute('data-screen') === 'tutorial') {
     assert.match(await gameRoot.getAttribute('data-tutorial-controls'), /Arrow keys|WASD/);
     assert.match(await gameRoot.getAttribute('data-tutorial-goal'), /score/i);
-    await clickGamePoint(640, 546);
+    await clickGamePoint(640, 506);
   }
 
   await window.waitForSelector('#game-root[data-screen="main-menu"]', { timeout: 15000 });

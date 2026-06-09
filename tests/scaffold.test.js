@@ -1429,6 +1429,29 @@ test('tutorial appears once on first launch and teaches controls and score-chase
   assert.match(renderer, /this\.scene\.start\('main-menu'\)/);
 });
 
+test('tutorial can be skipped and still counts as seen for future launches', async () => {
+  const {
+    TUTORIAL_STORAGE_KEY,
+    markTutorialSkipped,
+    shouldShowTutorialOnLaunch
+  } = await import('../src/renderer/gameplay-state.js');
+  const renderer = await readText('src/renderer/game.js');
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+
+  const progress = markTutorialSkipped({ storage });
+
+  assert.deepEqual(progress, { seen: true, skipped: true });
+  assert.equal(storage.getItem(TUTORIAL_STORAGE_KEY), JSON.stringify({ seen: true, skipped: true }));
+  assert.equal(shouldShowTutorialOnLaunch({ storage }), false);
+  assert.match(renderer, /Skip Tutorial/);
+  assert.match(renderer, /markTutorialSkipped/);
+  assert.match(renderer, /skipTutorial\(\)/);
+});
+
 test('local best scores are saved separately by run length and difficulty', async () => {
   const { getBestScoreForRun, loadLocalRecords, saveBestScoreForRun } = await import('../src/renderer/gameplay-state.js');
   const values = new Map();
